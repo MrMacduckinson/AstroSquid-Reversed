@@ -4,10 +4,35 @@ Target: AstroSquid 1.1 reconstructed native Intel application, macOS 10.13.6.
 Original execution references: PowerPC G5, Mac OS X 10.4.11, original 1.1 CFM/PEF.
 No game, GUI, OpenGL or audio test is launched on the primary development Mac.
 
+## Bitwise fidelity work in progress
+
+Full original-logic equivalence remains unproved. Current bounded evidence:
+
+- Shared production world methods match an original G5 capture for180 controlled
+  ticks:26808 canonical records, with exact nonpointer fields, list order, RNG,
+  effects, sound names/pan and animation. The committed30tick fixture has6588
+  records. See `tools/WORLD_ORACLE.md`; this excludes map scheduling, respawn,
+  transitions, normal frame ordering and actual GPU rasterization.
+- All29 original AI scripts match104400 controlled original/portable ticks,
+  including natural/scaled visual dimensions (separate G5 oracle invocation).
+- `tests/caret_vectors.csv` contains4225 original DRAWMYEDITFIELD captures of
+  deadline, visibility and conditional TickCount reads. GL/font drawing is
+  replaced by no-ops in the private native oracle; original caret logic runs.
+  Signed deadline comparison, strict inequality and a single reschedule after a
+  long gap are preserved. `tests/ui_render_host.m` checks the real Intel renderer
+  independently of panel frames; name input does not reset the caret clock.
+- GameOver control-flow checks execute actual host world methods with controlled
+  OS clock/Delay:10cleanup/calc/animate/render iterations,29delay ticks,60panel
+  redraws, then name entry. This does not prove a complete native GameOver world
+  or rendered-state trace.
+
+Original configured FPS intervals, parent-linked cases, production scheduling,
+full startup/menu state, extended campaigns and final packaging remain open.
+
 ## Checks performed
 
 - `./test.sh --native-only` on Intel: portable behavior fixtures from original
-  execution, including all 29 AI scripts, weapons, targeting, damage, pickups,
+  execution and interpreter checks, weapons, targeting, damage, pickups,
   player/scenery, visuals, special attacks, nested scheduling, campaign, HUD,
   score editing and transitions.
 - `./test.sh` portable/resource checks: all 8126 map entries and cross-links,

@@ -40,7 +40,7 @@ static BOOL observing;
     for(int i=0;i<60;i++)[expected appendString:@"P"];
     assert([events isEqual:expected]);assert(delays==10&&worldFrames==10&&panelFrames==60);
     assert(controlledTick==129&&simulationTick==129&&camera==10&&randomSeed==42);
-    assert(gameOver&&menuVisible&&!gameOverPending&&!ui.transitioning&&ui.editingHighscore==1);
+    assert(gameOver&&menuVisible&&!gameOverPending&&!ui.transitioning&&ui.editingHighscore==1&&ui.editingCaretVisible);
     puts("PASS actual GameOver cleanup/calc/animate/render/Delay order,29clockticks,60panelredraws and field enabled last");
     // Death cleanup must remove the player before queueing the next-loop transition.
     gameOver=NO;gameOverPending=NO;selftestPath=nil;inventory.lives=0;

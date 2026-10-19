@@ -1,6 +1,7 @@
 #import "ui_renderer.h"
 #include "ui_model.h"
 #include "weapons.h"
+#include "scores.h"
 #include <math.h>
 
 @implementation AstroUIRenderer {
@@ -8,7 +9,7 @@
     NSArray *_objects;
     NSString *_anchor,*_hover,*_pressed;
     double _cameraX,_cameraY,_cameraStepX,_cameraStepY;
-    unsigned _ticks;
+    AstroScoreCaret _caret;
     double _targetX,_targetY;
     BOOL _transitioning;
     unsigned _panelFrames;
@@ -28,7 +29,7 @@
         _orbStates=[NSMutableDictionary dictionary];_registered=YES;_registeredName=@"";_editingName=@"";
         _unlockedLevel=1;_smooth=YES;_soundVolume=.6;_musicVolume=1;
         _keyLabels=@[@"Space",@"Option",@"Up",@"Down",@"Left",@"Right"];
-        _highscores=@[];
+        _highscores=@[];astro_score_caret_begin(&_caret,0);
         [self show:@"Main Menu"];
     }return self;
 }
@@ -42,7 +43,7 @@
     BOOL sameScene=[scene isEqual:@"Data B2"]&&_objects==_data[@"scenes"][scene];
     _objects=_data[@"scenes"][scene];_anchor=[anchor copy];_hover=nil;_pressed=nil;
     if(!sameScene){
-        _cameraX=0;_cameraY=0;_ticks=0;[_orbStates removeAllObjects];
+        _cameraX=0;_cameraY=0;[_orbStates removeAllObjects];
         for(NSDictionary *object in _objects){
             NSInteger counter=[object[@"animation_counter"] integerValue];
             AstroUIMotion state={[object[@"x"] doubleValue],[object[@"y"] doubleValue],[object[@"width"] doubleValue],[object[@"height"] doubleValue],(int32_t)counter,[object[@"sprite"] shortValue]};
@@ -127,7 +128,6 @@
     for(NSDictionary *object in _objects)astro_ui_animate([_orbStates[object[@"name"]] mutableBytes],1);
 }
 - (void)animateTicks:(unsigned)ticks {
-    _ticks+=ticks;
     for(unsigned i=0;i<ticks;i++){
         if(_panelFrames){
             _panelOffset+=_panelStep;
@@ -141,6 +141,8 @@
         [self animateMenuObjects];
     }
 }
+- (BOOL)editingCaretVisible {return _caret.visible==1;}
+- (void)beginScoreClock:(uint32_t)tick {astro_score_caret_begin(&_caret,tick);}
 - (double)textWidth:(NSString *)text size:(double)size {
     NSData *bytes=[text dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:YES];
     const unsigned char *chars=bytes.bytes;NSArray *advance=_data[@"font"][@"advance"];double width=0;
@@ -226,7 +228,12 @@
         glScissor(viewport[0]+(GLint)(225*viewport[2]/640.0),viewport[1]+(GLint)(203*viewport[3]/480.0),
             (GLsizei)(198*viewport[2]/640.0),(GLsizei)(22*viewport[3]/480.0));
         [self drawText:name x:225-offset baseline:277 size:20 texture:texture];
-        if((_ticks/20)%2==0){
+        if(self.readTick){
+            uint32_t tick=self.readTick();
+            uint32_t reset=(int32_t)_caret.deadline<(int32_t)tick?self.readTick():tick;
+            astro_score_caret_draw(&_caret,tick,reset);
+        }
+        if(self.editingCaretVisible){
             double x=225+cursorWidth-offset;
             glDisable(GL_TEXTURE_2D);glBegin(GL_QUADS);glVertex2d(x,255);glVertex2d(x+1,255);glVertex2d(x+1,274);glVertex2d(x,274);glEnd();
         }

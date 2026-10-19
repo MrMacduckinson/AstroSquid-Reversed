@@ -84,4 +84,15 @@ int main(int argc,const char **argv){@autoreleasepool{
     for(unsigned i=0;i<640*480;i++)if(fp[4*i]==127&&fp[4*i+1]==127&&fp[4*i+2]==127)half++;
     assert(half>0);printf("PASS font original ONE blend, %u actual half-coverage pixels retain127\n",half);
 
+    __block uint32_t caretTick=100;__block unsigned tickReads=0;
+    ui.readTick=^{tickReads++;return caretTick;};[ui beginScoreClock:100];
+    [ui show:@"GameOver"];[ui animateTicks:60];ui.editingHighscore=1;
+    [ui drawSprites:sprite texture:load];assert(ui.editingCaretVisible&&tickReads==1);
+    caretTick=120;[ui drawSprites:sprite texture:load];assert(ui.editingCaretVisible&&tickReads==2);
+    caretTick=121;[ui drawSprites:sprite texture:load];assert(!ui.editingCaretVisible&&tickReads==4);
+    caretTick=1000;[ui drawSprites:sprite texture:load];assert(ui.editingCaretVisible&&tickReads==6);
+    ui.editingName=@"ABC";ui.editingCursor=3;
+    caretTick=1020;[ui drawSprites:sprite texture:load];assert(ui.editingCaretVisible&&tickReads==7);
+    caretTick=1021;[ui drawSprites:sprite texture:load];assert(!ui.editingCaretVisible&&tickReads==9);
+    puts("PASS actual renderer caret: strict20tick clock, single toggle after long gap, panel frame independence and conditional clock reads");
 }}

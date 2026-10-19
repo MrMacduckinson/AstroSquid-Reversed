@@ -52,6 +52,8 @@ build/hud_test tests/hud_vectors.csv
 build/flow_test
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/scores_test.c src/scores.c -o build/scores_test
 build/scores_test
+"${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/caret_test.c src/scores.c -o build/caret_test
+build/caret_test tests/caret_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/transition_test.c src/transition.c -lm -o build/transition_test
 build/transition_test
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/nested_special_test.c src/special.c src/beams.c src/weapons.c src/physics.c src/ppc_math.c -lm -o build/nested_special_test

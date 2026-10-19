@@ -5,6 +5,10 @@ running macOS 10.13 or later. It runs natively, without Classic or a PowerPC
 emulator. This is newly reconstructed source, not the author's FutureBASIC
 project. Original art, levels, sounds and music belong to their original authors.
 
+Bitwise fidelity verification is in progress. The earlier packaged release is
+playable; full original-logic equivalence has not yet been proved. See
+[VALIDATION.md](VALIDATION.md) for the verified scope and remaining limits.
+
 ## Play
 
 Extract `AstroSquid-Intel.zip`, then open `AstroSquid.app`. The application contains

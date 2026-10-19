@@ -60,3 +60,12 @@ int astro_score_editor_resolve_alert(AstroScoreEditor *editor,int continue_editi
     memcpy(editor->name,editor->pending_name,sizeof(editor->name));editor->cursor=editor->pending_cursor;
     return ASTRO_SCORE_EDIT_CHANGED;
 }
+
+void astro_score_caret_begin(AstroScoreCaret *caret,uint32_t tick){
+    caret->deadline=tick+20u;caret->visible=1;
+}
+void astro_score_caret_draw(AstroScoreCaret *caret,uint32_t comparison_tick,uint32_t reset_tick){
+    if((int32_t)caret->deadline<(int32_t)comparison_tick){
+        caret->visible=(int16_t)-caret->visible;caret->deadline=reset_tick+20u;
+    }
+}

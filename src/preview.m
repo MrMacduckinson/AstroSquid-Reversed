@@ -4,6 +4,7 @@
 #import <OpenGL/gl.h>
 #import <AVFoundation/AVFoundation.h>
 #include "physics.h"
+#include "ppc_math.h"
 #include "script.h"
 #include "weapons.h"
 #include "combat.h"
@@ -136,6 +137,7 @@ typedef struct {AstroVisual visual;int layer;uint64_t birth;} LiveEffect;
 - (void)addSpecialBeam:(const AstroBeam *)beam temporary:(int)temporary context:(BeamContext *)context;
 - (void)addSpecialSprite:(int)sprite x:(double)x y:(double)y width:(double)width height:(double)height;
 - (void)addSpecialPolygon:(const AstroSpecialVertex *)vertices count:(size_t)count;
+- (uint32_t)currentGameTick;
 - (void)playSound:(int)index x:(double)x;
 - (void)playBeamSound:(int)index x:(int)x;
 - (void)drawSceneSprite:(const AstroSceneSprite *)sprite;
@@ -230,6 +232,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(!audio) {NSLog(@"Cannot load original audio: %@",error);return nil;}
     ui=[[AstroUIRenderer alloc] initWithAssets:path error:&error];
     if(!ui) {NSLog(@"Cannot load original interface: %@",error);return nil;}
+    __weak AstroView *weakView=self;ui.readTick=^{return [weakView currentGameTick];};
     randomSeed=1;[self reloadMainMenu];
     ui.registered=YES;ui.registeredName=@"MACSPB";editingKey=-1;
     ui.unlockedLevel=MAX(1,MIN(16,[[NSUserDefaults standardUserDefaults] integerForKey:@"AstroSquidUnlockedLevel"]));
@@ -1524,7 +1527,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     flow.phase=savedPhase;simulationTick=[self currentGameTick];
     menuVisible=YES;[ui show:@"GameOver"];[self drawPanelTransition];
     ui.editingHighscore=astro_scores_qualifies(highscores,score)?1:0;
-    astro_score_editor_begin(&scoreEditor);[self refreshScoreEditor];
+    astro_score_editor_begin(&scoreEditor);[ui beginScoreClock:[self currentGameTick]];[self refreshScoreEditor];
 }
 - (void)finishGameOver {
     BOOL entered=ui.editingHighscore>0;
