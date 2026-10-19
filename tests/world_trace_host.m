@@ -8,6 +8,7 @@ static void be64(unsigned char *p,double value){uint64_t u;memcpy(&u,&value,8);f
 static void dump(const unsigned char *p,int count){for(int i=0;i<count;i++)printf("%02x",p[i]);}
 static void rectBytes(unsigned char *p,AstroRect r){be16(p,r.top);be16(p+2,r.left);be16(p+4,r.bottom);be16(p+6,r.right);}
 static unsigned traceTick,traceSteps=30;
+static BOOL traceParents;
 static const char *tracePhase;
 @interface AstroTraceAudio : AstroAudio
 @end
@@ -49,14 +50,16 @@ static unsigned entityID(id object){return object==[NSNull null]?1:[[entityIDs o
     playerCombat=(AstroCombatState){.kind=1,.hit_points=200};
     playerState=(AstroPlayer){.frame=12,.tilt=3,.state=1};playerVelocity=(AstroVelocity){0};
     lastPlayerShot=0;inventory=(AstroInventory){10,0,2,0};campaign=(AstroCampaign){0};score=0;
+    AstroEnemy *created[4];
     int attrs[]={73,204,73,401},xs[]={300,200,450,160},ys[]={180,250,100,180};
     for(int i=0;i<4;i++){
         NSDictionary *a=game[@"attributes"][[NSString stringWithFormat:@"%d",attrs[i]]];
         int sprite=[a[@"sprite"] intValue];
         AstroEnemy *e=[self entityForPlacement:@{@"attribute":@(attrs[i]),@"x":@(xs[i]),@"y":@(ys[i]),
             @"width":@(spriteInfo[sprite].width),@"height":@(spriteInfo[sprite].height)}];
-        e->active=YES;if(i<2)e->hitPoints=1;[self prependEnemy:e];
+        e->active=YES;if(i<2)e->hitPoints=1;[self prependEnemy:e];created[i]=e;
     }
+    if(traceParents){created[0]->parent=created[1];created[1]->parent=created[2];created[3]->parent=created[0];created[2]->state.velocity=(AstroVelocity){2.75,-1.125};}
     AstroShot shot={.type=1,.x=300,.y=180};[self spawnShot:&shot source:1];
     shot.x=200;shot.y=250;[self spawnShot:&shot source:1];
     [self dumpWorldTrace:@"initial"];
@@ -95,7 +98,7 @@ static unsigned entityID(id object){return object==[NSNull null]?1:[[entityIDs o
         be64(bytes+72,st.velocity.x);be64(bytes+80,st.velocity.y);
         be16(bytes+88,player?playerCombat.hit_points:e->hitPoints);be16(bytes+90,player?playerCombat.layer:e->layer);
         be16(bytes+96,player?0:[e->placement[@"tag"] intValue]);
-        printf("E\t%u\t%s\t%u\t%u\t0\t%u\t%u\t",simulationTick,phase.UTF8String,eid,player?1:(unsigned)e->renderBirth,before,after);
+        printf("E\t%u\t%s\t%u\t%u\t%u\t%u\t%u\t",simulationTick,phase.UTF8String,eid,player?1:(unsigned)e->renderBirth,player||!e->parent?0:entityID(e->parent),before,after);
         dump(bytes,62);dump(bytes+66,26);dump(bytes+96,2);putchar('\n');
     }
     NSMutableDictionary *renders=[NSMutableDictionary dictionary];
@@ -114,7 +117,7 @@ static unsigned entityID(id object){return object==[NSNull null]?1:[[entityIDs o
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
-    assert(argc==2||argc==3);if(argc==3){traceSteps=(unsigned)strtoul(argv[2],NULL,10);assert(traceSteps&&traceSteps<=36000);}
+    assert(argc>=2&&argc<=4);traceParents=argc==4&&!strcmp(argv[3],"parents");if(argc>=3){traceSteps=(unsigned)strtoul(argv[2],NULL,10);assert(traceSteps&&traceSteps<=36000);}
     [NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
     [[NSUserDefaults standardUserDefaults] setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}} forName:NSArgumentDomain];
     AstroView *view=[[AstroTraceView alloc] initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];

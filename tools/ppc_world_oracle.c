@@ -41,8 +41,9 @@ static void *spawn(unsigned char*code,uint32_t*toc,int kind,int subtype,int x,in
  return(void*)(uintptr_t)world_invoke5(code+0x53bf4,world_globals,toc,(void*)(intptr_t)kind,(void*)(intptr_t)subtype,(void*)(intptr_t)x,(void*)(intptr_t)y,NULL);
 }
 int main(int argc,char**argv){
- if(argc!=5&&argc!=6){fputs("usage: ppc_world_oracle original.pef literals.bin original-app tables-dir [ticks]\n",stderr);return 2;}
- unsigned steps=argc==6?(unsigned)strtoul(argv[5],NULL,10):180;if(!steps||steps>36000)return 2;
+ if(argc!=5&&argc!=6&&argc!=7){fputs("usage: ppc_world_oracle original.pef literals.bin original-app tables-dir [ticks] [parents]\n",stderr);return 2;}
+ int parents=argc==7&&!strcmp(argv[6],"parents");
+ unsigned steps=argc>=6?(unsigned)strtoul(argv[5],NULL,10):180;if(!steps||steps>36000)return 2;
  unsigned char*pef=read_file(argv[1]),*code=pef+128,*literals=read_file(argv[2]),*g=calloc(1,0x1300),*heap=calloc(1,0x100000);world_globals=g;
  uint32_t toc[489]={0};for(int i=0;i<484;i++){void*f=dlsym(RTLD_DEFAULT,import_names[i]);if(!strcmp(import_names[i],"TickCount"))f=(void*)controlled_tick;if(!strcmp(import_names[i],"NewPtrClear"))f=(void*)world_alloc;if(!strcmp(import_names[i],"DisposePtr"))f=(void*)world_dispose;descriptors[i][0]=(uint32_t)(uintptr_t)(f?f:(void*)missing_import);toc[i]=(uint32_t)(uintptr_t)descriptors[i];}toc[0]=(uint32_t)(uintptr_t)g;
  char path[2048];snprintf(path,sizeof path,"%s/Attr.bin",argv[4]);set_pointer(g,0xa94,read_file(path));snprintf(path,sizeof path,"%s/sprt.bin",argv[4]);set_pointer(g,0xe82,read_file(path));snprintf(path,sizeof path,"%s/Wpns.bin",argv[4]);set_pointer(g,0xa98,read_file(path));
@@ -55,7 +56,8 @@ int main(int argc,char**argv){
  /* Real shipped enemy/turret, scenery/debris source and pickup constructors. */
  unsigned char*enemy=spawn(code,toc,7,3,300,180);set_short(enemy,88,1);
  unsigned char*rock=spawn(code,toc,20,4,200,250);set_short(rock,88,1);
- spawn(code,toc,7,3,450,100);spawn(code,toc,40,1,160,180);
+ unsigned char *survivor=spawn(code,toc,7,3,450,100),*pickup=spawn(code,toc,40,1,160,180);
+ if(parents){set_pointer(enemy,92,rock);set_pointer(rock,92,survivor);set_pointer(pickup,92,enemy);set_double(survivor,72,2.75);set_double(survivor,80,-1.125);}
  world_invoke5(code+0x54248,g,toc,(void*)1,(void*)300,(void*)180,(void*)0,player);
  world_invoke5(code+0x54248,g,toc,(void*)1,(void*)200,(void*)250,(void*)0,player);snapshot();
  for(tick=1;tick<=steps;tick++){

@@ -13,6 +13,10 @@ Full original-logic equivalence remains unproved. Current bounded evidence:
   effects, sound names/pan and animation. The committed30tick fixture has6588
   records. See `tools/WORLD_ORACLE.md`; this excludes map scheduling, respawn,
   transitions, normal frame ordering and actual GPU rasterization.
+- A controlled parent-linked variant matches6576 records across30ticks, including
+  chain order and propagation of a parent death; normalparent-free180ticks remain
+  identical. This is an explicit initial-condition probe, not a normal-campaign
+  reachability claim. Parent links during specials remain unverified.
 - All29 original AI scripts match104400 controlled original/portable ticks,
   including natural/scaled visual dimensions (separate G5 oracle invocation).
 - `tests/caret_vectors.csv` contains4225 original DRAWMYEDITFIELD captures of

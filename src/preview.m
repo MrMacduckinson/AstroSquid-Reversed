@@ -972,6 +972,15 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         invulnerableUntil=0;if(!special.active)playerCombat.kind=1;
     }
 }
+- (void)inheritParentState {
+    for(id object in world)if(object!=[NSNull null]){
+        AstroEnemy *enemy=object;
+        if(enemy->parent){
+            enemy->state.velocity=enemy->parent->state.velocity;
+            if(enemy->parent->state.remove==-1)enemy->state.remove=-1;
+        }
+    }
+}
 - (void)calculateActors {
     actorVisits=0;
     astro_stars_move(stars,-camera,0,camera,0,camera+640,380,tickedScroll,0,0,0,1,&randomSeed,
@@ -991,6 +1000,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         }
     }
     if(nestedPass)specialResumePending=([self stepSpecial:NO]&ASTRO_SPECIAL_RESUME)!=0;
+    if(nestedPass||!suspendedSpecialTail)[self inheritParentState];
 }
 - (void)renderTick {
     simulationRender=YES;[self display];simulationRender=NO;
@@ -999,7 +1009,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if(specialResumePending) {
             NSArray *tail=suspendedSpecialTail;suspendedSpecialTail=nil;specialResumePending=NO;
             for(id object in tail)if([world containsObject:object])[self stepActor:object];
-            [self updateVisualEffects];
+            [self inheritParentState];[self updateVisualEffects];
         }
         if(!suspendedSpecialTail&&simulationTick-lastSpawnTick>20){lastSpawnTick=simulationTick;[self makeNewSprites];}
     }

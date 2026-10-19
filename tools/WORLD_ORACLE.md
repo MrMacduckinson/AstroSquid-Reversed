@@ -145,3 +145,20 @@ and original DOPLAYERSPRITE1005ed70 fires from truncated `(left+right)/2+38`,
 not the port's previous `+20`. Literal55f is exactly38. Player firing Y is the
 truncated double midpoint. Constructor, phase and audio observations all use
 production methods, without replacement AI/collision/effects/RNG routines.
+
+## Controlled parent links
+
+Append `parents` after the tick count for both native and host oracles. This
+controlled initial variant links enemy2→rock3→enemy4 and pickup5→enemy2, with
+entity4 velocity(2.75,−1.125). Original constructors and all subsequent routines
+are unchanged. IDs identify creation order above. Parents are installed as
+explicit initial conditions; this does not assert that ordinary gameplay creates
+those links. The fixture exercises source list-order copying and death propagation
+at the end of CALCSPRITES. It matches6576 canonical records across30ticks:
+`tests/world_trace_parents_native.txt` vs `world_trace_host assets 30 parents`.
+Normal parent-free180tick regression still matches26808 records.
+
+The host applies the parent pass after each complete calculation, and after an
+outer calculation resumes following a timed special; inner calculations retain
+their own pass. The parent fixture has no active special and does not establish
+parent-linked special or dangling/deleted-parent behavior.
