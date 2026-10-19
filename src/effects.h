@@ -12,10 +12,14 @@ typedef struct {
 enum {ASTRO_EFFECT_SOUND,ASTRO_EFFECT_EXPLOSION,ASTRO_EFFECT_DEBRIS,ASTRO_EFFECT_PICKUP};
 typedef struct {
     int type,kind,attribute,sprite,frame,sound_string;
-    double x,y,width,height;
+    double x,y,width,height,scale;
     AstroVelocity velocity;
     uint32_t animation_tick,action_tick;
 } AstroDeathEffect;
 int astro_death_effects(const AstroDeathSource *source,uint32_t tick,uint32_t *seed,
                         void (*emit)(void *,const AstroDeathEffect *),void *context);
+/* Create at the original allocation point, then mutate after the remaining RNG calls. */
+int astro_death_effects_phased(const AstroDeathSource *source,uint32_t tick,uint32_t *seed,
+                               void *(*create)(void *,const AstroDeathEffect *),
+                               void (*finish)(void *,void *,const AstroDeathEffect *),void *context);
 #endif

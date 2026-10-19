@@ -150,7 +150,8 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
 - (void)beginSelfTest:(NSString *)path;
 - (void)applyBeam:(const AstroBeam *)beam context:(BeamContext *)context;
 - (void)hitPlayerWithEnemy:(AstroEnemy *)enemy;
-- (void)emitDeathEffect:(const AstroDeathEffect *)effect;
+- (void *)emitDeathEffect:(const AstroDeathEffect *)effect;
+- (void)finishDeathEffect:(const AstroDeathEffect *)effect object:(void *)object baseTick:(uint32_t)tick;
 - (void)spawnSpecial:(const AstroSpecialSpawn *)spawn;
 - (void)spawnShot:(const AstroShot *)shot source:(int)kind;
 - (void)addSpecialBeam:(const AstroBeam *)beam temporary:(int)temporary context:(BeamContext *)context;
@@ -201,9 +202,9 @@ static void beamHit(void *context,const AstroBeam *beam) {
     [world->view applyBeam:beam context:world];
 }
 
-static void deathEffect(void *context,const AstroDeathEffect *effect) {
-    [(__bridge AstroView *)context emitDeathEffect:effect];
-}
+typedef struct {__unsafe_unretained AstroView *view;uint32_t tick;} DeathContext;
+static void *createDeathEffect(void *context,const AstroDeathEffect *effect){DeathContext *c=context;return [c->view emitDeathEffect:effect];}
+static void finishDeathEffect(void *context,void *object,const AstroDeathEffect *effect){DeathContext *c=context;[c->view finishDeathEffect:effect object:object baseTick:c->tick];}
 
 static void specialSpawn(void *c,const AstroSpecialSpawn *s) {BeamContext *w=c;[w->view spawnSpecial:s];}
 static void specialBullet(void *c,const AstroShot *s) {BeamContext *w=c;[w->view spawnShot:s source:1];}
@@ -808,16 +809,16 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         }
     }
 }
-- (void)emitDeathEffect:(const AstroDeathEffect *)effect {
+- (void *)emitDeathEffect:(const AstroDeathEffect *)effect {
     if(effect->type==ASTRO_EFFECT_SOUND) {
-        [audio playStringCue:effect->sound_string position:(effect->x-camera)/640];return;
+        [audio playStringCue:effect->sound_string position:(effect->x-camera)/640];return NULL;
     }
     emittedEffects++;
     // Generator deadlines encode offsets from simulationTick; retain the constructor's fresh clock.
     if(effect->type==ASTRO_EFFECT_EXPLOSION) {
         uint32_t deadline=[self playerClockTick]+(effect->animation_tick-simulationTick);
         AstroVisual visual={effect->sprite,effect->x,effect->y,effect->width,effect->height,deadline};
-        [self addVisualEffect:visual layer:8];return;
+        [self addVisualEffect:visual layer:8];return (__bridge void *)visualEffects.lastObject;
     }
     NSDictionary *definition=game[@"attributes"][[NSString stringWithFormat:@"%d",effect->attribute]];
     int sprite=[definition[@"sprite"] intValue];
@@ -832,6 +833,24 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     enemy->state.velocity=effect->velocity;
     if(effect->type==ASTRO_EFFECT_DEBRIS)enemy->state.action_tick+=effect->action_tick-simulationTick;
     [self prependEnemy:enemy];
+    return (__bridge void *)enemy;
+}
+- (void)finishDeathEffect:(const AstroDeathEffect *)effect object:(void *)object baseTick:(uint32_t)tick {
+    if(effect->type==ASTRO_EFFECT_SOUND)return;
+    if(effect->type==ASTRO_EFFECT_EXPLOSION){
+        NSMutableData *data=(__bridge NSMutableData *)object;LiveEffect *created=data.mutableBytes;
+        created->visual.x=effect->x;created->visual.y=effect->y;created->visual.width=effect->width;created->visual.height=effect->height;
+        created->visual.next_tick+=effect->animation_tick-(tick+(uint32_t)spriteInfo[effect->sprite].delay);
+        return;
+    }
+    if(effect->type==ASTRO_EFFECT_DEBRIS){
+        AstroEnemy *created=(__bridge AstroEnemy *)object;
+        created->state.velocity=effect->velocity;created->state.frame=effect->frame;
+        created->state.action_tick+=effect->action_tick-tick;
+        created->bounds.right=(int16_t)astro_ppc_i32((created->bounds.right-created->bounds.left)*effect->scale+created->bounds.left);
+        created->bounds.bottom=(int16_t)astro_ppc_i32((created->bounds.bottom-created->bounds.top)*effect->scale+created->bounds.top);
+        created->visual.width=effect->width;created->visual.height=effect->height;
+    }
 }
 - (void)addVisualEffect:(AstroVisual)visual layer:(int)layer {
     LiveEffect effect={visual,layer,++renderClock};
@@ -850,7 +869,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         .explosion_height=spriteInfo[explosion].height,.explosion_delay=spriteInfo[explosion].delay,
         .debris_attribute=debris,.debris_sprite=debrisSprite,.debris_width=spriteInfo[debrisSprite].width,
         .debris_height=spriteInfo[debrisSprite].height,.debris_count=[enemy->definition[@"debris_amount"] intValue]};
-    if(!astro_death_effects(&source,simulationTick,&randomSeed,deathEffect,(__bridge void *)self)) {
+    DeathContext context={self,simulationTick};
+    if(!astro_death_effects_phased(&source,context.tick,&randomSeed,createDeathEffect,finishDeathEffect,&context)) {
         NSLog(@"Invalid death effect configuration");exit(1);
     }
 }
