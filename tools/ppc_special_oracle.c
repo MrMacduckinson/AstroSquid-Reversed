@@ -94,8 +94,9 @@ int main(int argc,char **argv) {
     for(unsigned i=0;i<sizeof(noops)/sizeof(noops[0]);i++)*(uint32_t *)(code+noops[i])=0x4e800020;
     MakeDataExecutable(code,433284);
     FILE *fixture=getenv("ASTRO_SPECIAL_FIXTURE")?fopen(getenv("ASTRO_SPECIAL_FIXTURE"),"w"):NULL;
+    FILE *stale=getenv("ASTRO_STALE_SPECIAL_FIXTURE")?fopen(getenv("ASTRO_STALE_SPECIAL_FIXTURE"),"w"):NULL;
     unsigned cases=0;
-    for(int family=1;family<=5;family++)if(family!=2)for(int tier=0;tier<4;tier++)for(int n=0;n<20;n++) {
+    for(int family=1;family<=5;family++)if(family!=2)for(int tier=0;tier<4;tier++)for(int n=0;n<40;n++) {
         int id=family*10+tier;nspawn=pspawn=nbeam=pbeam=nbullet=pbullet=nflash=pflash=nvertex=pvertex=0;
         tick=100;uint32_t seed=(uint32_t)n*123456789u;*(uint32_t *)(globals+0x244)=seed;
         memset(entities,0,sizeof(entities));memset(world,0,sizeof(world));
@@ -105,9 +106,13 @@ int main(int argc,char **argv) {
         for(int i=0;i<6;i++) {
             int kind=i%3==0?1:i%3==1?5:20;
             double x=200+(n*13+i*37)%350,y=100+(n*7+i*17)%130,w=20+i*3,h=25+i*5;
-            targets[i]=(AstroTarget){kind,-1,0,x,y,w,h};
-            set_short(world[i],0,kind);set_short(world[i],36,(int)y);set_short(world[i],38,(int)x);
-            set_short(world[i],40,(int)(y+h));set_short(world[i],42,(int)(x+w));
+            if(n>=20){x+=.25*(i%3);y+=.5*(i%2);}
+            AstroRect rect={(int)x,(int)y,(int)(x+w),(int)(y+h)};
+            if(n>=20){rect.left-=11-i;rect.top+=3-i;rect.right=rect.left+(int)w-7;rect.bottom=rect.top+(int)h+5;}
+            targets[i]=(AstroTarget){.kind=kind,.parent=-1,.x=x,.y=y,.width=w+20,.height=h+17,
+                .bounds_valid=1,.bounds=rect};
+            set_short(world[i],0,kind);set_short(world[i],36,rect.top);set_short(world[i],38,rect.left);
+            set_short(world[i],40,rect.bottom);set_short(world[i],42,rect.right);
             set_double(world[i],44,x);set_double(world[i],52,y);set_pointer(world[i],102,i<5?world[i+1]:NULL);
         }
         set_pointer(globals,0xa76,world[0]);set_short(globals,0xa52,n%3+1);
@@ -152,20 +157,21 @@ int main(int argc,char **argv) {
         if(nvertex!=pvertex){printf("FAIL vertices count id%d n%d %d/%d\n",id,n,nvertex,pvertex);return 1;}
         for(int i=0;i<nvertex;i++)if(memcmp(native_vertices+i,port_vertices+i,sizeof(AstroSpecialVertex))){printf("FAIL vertex id%d n%d index%d\n",id,n,i);return 1;}
         for(int i=0;i<nflash;i++)if(native_flashes[i].id!=port_flashes[i].id||memcmp(&native_flashes[i].x,&port_flashes[i].x,4*sizeof(double))){printf("FAIL flash id%d n%d index%d\n",id,n,i);return 1;}
-        if(fixture&&n<3) {
-            fprintf(fixture,"C,%d,%d,%u,%d,%d,%d,%d,%d\n",id,n,*(uint32_t *)(globals+0x244),nspawn,nbullet,nbeam,nflash,nvertex);
+        FILE *capture=n<3?fixture:n>=20&&n<23?stale:NULL;
+        if(capture) {
+            fprintf(capture,"C,%d,%d,%u,%d,%d,%d,%d,%d\n",id,n,*(uint32_t *)(globals+0x244),nspawn,nbullet,nbeam,nflash,nvertex);
             for(int i=0;i<nspawn;i++){unsigned char *e=entities[i],*r=renders[i];
-                fprintf(fixture,"S,%d,%d,%d,%d,%d,%d,%d,%d,%.17g,%.17g,%.17g,%.17g\n",
+                fprintf(capture,"S,%d,%d,%d,%d,%d,%d,%d,%d,%.17g,%.17g,%.17g,%.17g\n",
                     *(int16_t *)e,*(int16_t *)(e+2),(int)*(double *)(e+44),(int)*(double *)(e+52),
                     *(int16_t *)(e+88),*(int16_t *)(e+90),*(int16_t *)(e+24),(int)(*(uint32_t *)(e+16)-100),
                     *(double *)(e+72),*(double *)(e+80),*(double *)(r+16),*(double *)(r+24));}
-            for(int i=0;i<nbullet;i++){AstroShot *b=native_bullets+i;fprintf(fixture,"B,%d,%d,%d,%d\n",b->type,b->heading,b->x,b->y);}
-            for(int i=0;i<nbeam;i++){AstroBeam *b=native_beams+i;fprintf(fixture,"E,%d,%d,%d,%d,%d,%d,%d\n",b->weapon,b->damage,b->x,b->y,b->end_x,b->end_y,b->target);}
-            for(int i=0;i<nflash;i++){Flash *f=native_flashes+i;fprintf(fixture,"F,%d,%.17g,%.17g,%.17g,%.17g\n",f->id,f->x,f->y,f->w,f->h);}
-            for(int i=0;i<nvertex;i++){AstroSpecialVertex *v=native_vertices+i;fprintf(fixture,"V,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g\n",v->x,v->y,v->r,v->g,v->b,v->a);}
+            for(int i=0;i<nbullet;i++){AstroShot *b=native_bullets+i;fprintf(capture,"B,%d,%d,%d,%d\n",b->type,b->heading,b->x,b->y);}
+            for(int i=0;i<nbeam;i++){AstroBeam *b=native_beams+i;fprintf(capture,"E,%d,%d,%d,%d,%d,%d,%d\n",b->weapon,b->damage,b->x,b->y,b->end_x,b->end_y,b->target);}
+            for(int i=0;i<nflash;i++){Flash *f=native_flashes+i;fprintf(capture,"F,%d,%.17g,%.17g,%.17g,%.17g\n",f->id,f->x,f->y,f->w,f->h);}
+            for(int i=0;i<nvertex;i++){AstroSpecialVertex *v=native_vertices+i;fprintf(capture,"V,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g\n",v->x,v->y,v->r,v->g,v->b,v->a);}
         }
         cases++;
     }
-    if(fixture)fclose(fixture);
+    if(fixture)fclose(fixture);if(stale)fclose(stale);
     printf("PASS %u original/portable special cases: all16 weapons, spawn fields, bullets, beam arguments, flash positions, polygon vertices/RGBA, RNG\n",cases);return 0;
 }

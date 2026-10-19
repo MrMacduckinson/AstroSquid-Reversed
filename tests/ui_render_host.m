@@ -21,19 +21,19 @@ int main(int argc,const char **argv){@autoreleasepool{
         if(textures[@(identifier)])return [textures[@(identifier)] unsignedIntValue];
         NSBitmapImageRep *source=(id)[NSBitmapImageRep imageRepWithContentsOfFile:[assets stringByAppendingPathComponent:[NSString stringWithFormat:@"atlases/%ld.png",(long)identifier]]];assert(source);
         NSInteger w=source.pixelsWide,h=source.pixelsHigh;
-        NSBitmapImageRep *rgba=[[NSBitmapImageRep alloc] initWithBitmapDataPlanes:NULL pixelsWide:w pixelsHigh:h bitsPerSample:8 samplesPerPixel:4 hasAlpha:YES isPlanar:NO colorSpaceName:NSDeviceRGBColorSpace bitmapFormat:0 bytesPerRow:w*4 bitsPerPixel:32];
-        NSGraphicsContext *old=NSGraphicsContext.currentContext;NSGraphicsContext.currentContext=[NSGraphicsContext graphicsContextWithBitmapImageRep:rgba];[source drawInRect:NSMakeRect(0,0,w,h)];NSGraphicsContext.currentContext=old;
-        GLuint texture;glGenTextures(1,&texture);glBindTexture(GL_TEXTURE_2D,texture);glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,(GLsizei)w,(GLsizei)h,0,GL_RGBA,GL_UNSIGNED_BYTE,rgba.bitmapData);
+        assert(source.bitsPerSample==8&&source.samplesPerPixel==4&&!source.isPlanar&&(source.bitmapFormat&NSAlphaNonpremultipliedBitmapFormat));
+        glPixelStorei(GL_UNPACK_ALIGNMENT,1);glPixelStorei(GL_UNPACK_ROW_LENGTH,(GLint)(source.bytesPerRow/4));
+        GLuint texture;glGenTextures(1,&texture);glBindTexture(GL_TEXTURE_2D,texture);glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,(GLsizei)w,(GLsizei)h,0,GL_RGBA,GL_UNSIGNED_BYTE,source.bitmapData);glPixelStorei(GL_UNPACK_ROW_LENGTH,0);
         glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);textures[@(identifier)]=@(texture);return texture;
     };
     AstroUISpriteDrawer sprite=^(NSInteger identifier,double x,double y,double w,double h){
         NSDictionary *s=game[@"sprites"][[NSString stringWithFormat:@"%ld",(long)identifier]];if(!s)return;
         NSInteger atlas=[s[@"texture"] integerValue];NSDictionary *a=game[@"textures"][[NSString stringWithFormat:@"%ld",(long)atlas]];
         double aw=[a[@"width"] doubleValue],ah=[a[@"height"] doubleValue],u=[s[@"x"] doubleValue]/aw,v=[s[@"y"] doubleValue]/ah,du=[s[@"width"] doubleValue]/aw,dv=[s[@"height"] doubleValue]/ah;
-        glEnable(GL_TEXTURE_2D);glEnable(GL_BLEND);glBlendFunc(GL_ONE,GL_ONE_MINUS_SRC_ALPHA);glBindTexture(GL_TEXTURE_2D,load(atlas));
+        glEnable(GL_TEXTURE_2D);glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);glBindTexture(GL_TEXTURE_2D,load(atlas));
         glBegin(GL_QUADS);glTexCoord2d(u,v);glVertex2d(x,y);glTexCoord2d(u+du,v);glVertex2d(x+w,y);glTexCoord2d(u+du,v+dv);glVertex2d(x+w,y+h);glTexCoord2d(u,v+dv);glVertex2d(x,y+h);glEnd();
     };
-    AstroUIRenderer *ui=[[AstroUIRenderer alloc] initWithAssets:assets error:NULL];assert(ui);ui.unlockedLevel=16;
+    AstroUIRenderer *ui=[[AstroUIRenderer alloc] initWithAssets:assets error:NULL];assert(ui);ui.unlockedLevel=16;ui.registeredName=@"MACSPB";
     ui.highscores=@[@{@"name":@"MACSPB",@"score":@12345}];ui.editingHighscore=1;ui.editingName=@"MACSPB";ui.editingCursor=6;
     AstroHUDRenderer *hud=[[AstroHUDRenderer alloc] initWithGame:game ui:ui];
     [[NSFileManager defaultManager] createDirectoryAtPath:output withIntermediateDirectories:YES attributes:nil error:NULL];
@@ -49,4 +49,28 @@ int main(int argc,const char **argv){@autoreleasepool{
         assert([[png representationUsingType:NSBitmapImageFileTypePNG properties:@{}] writeToFile:file atomically:YES]);
         printf("PASS %s rendered %lu visible pixels\n",anchor.UTF8String,(unsigned long)bright);
     }
+    glViewport(0,0,640,480);glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);glMatrixMode(GL_MODELVIEW);glLoadIdentity();
+    [ui show:@"GameOver"];[ui animateTicks:120];ui.editingName=@"";ui.editingCursor=0;
+    glClear(GL_COLOR_BUFFER_BIT);[ui drawSprites:sprite texture:load];
+    NSMutableData *empty=[NSMutableData dataWithLength:640*480*4],*longName=[NSMutableData dataWithLength:640*480*4];
+    glReadPixels(0,0,640,480,GL_RGBA,GL_UNSIGNED_BYTE,empty.mutableBytes);
+    ui.editingName=[@"" stringByPaddingToLength:255 withString:@"W" startingAtIndex:0];ui.editingCursor=255;
+    glClear(GL_COLOR_BUFFER_BIT);[ui drawSprites:sprite texture:load];glReadPixels(0,0,640,480,GL_RGBA,GL_UNSIGNED_BYTE,longName.mutableBytes);
+    assert(!glIsEnabled(GL_SCISSOR_TEST)&&glGetError()==GL_NO_ERROR);unsigned changes=0;
+    const unsigned char *before=empty.bytes,*after=longName.bytes;
+    for(int y=0;y<480;y++)for(int x=0;x<640;x++){
+        size_t offset=(y*640+x)*4;int differs=memcmp(before+offset,after+offset,4)!=0;
+        if(x<225||x>=423||y<203||y>=225)assert(!differs);else changes+=differs;
+    }
+    assert(changes>100);puts("PASS long score name scrolls inside field and restores GL scissor state");
+    glViewport(0,0,1,1);glDisable(GL_SCISSOR_TEST);glClearColor(0,0,0,0);glClear(GL_COLOR_BUFFER_BIT);
+    glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,1,0,1,-1,1);glMatrixMode(GL_MODELVIEW);glLoadIdentity();
+    NSDictionary *atlas=game[@"textures"][@"2"];double u=193.0/[atlas[@"width"] doubleValue],v=46.5/[atlas[@"height"] doubleValue];
+    glEnable(GL_TEXTURE_2D);glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);glColor4d(1,1,1,1);glBindTexture(GL_TEXTURE_2D,load(2));
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+    glBegin(GL_QUADS);glTexCoord2d(u,v);glVertex2d(0,0);glTexCoord2d(u,v);glVertex2d(1,0);
+    glTexCoord2d(u,v);glVertex2d(1,1);glTexCoord2d(u,v);glVertex2d(0,1);glEnd();
+    unsigned char witness[4];glReadPixels(0,0,1,1,GL_RGBA,GL_UNSIGNED_BYTE,witness);
+    assert(witness[0]>=63&&witness[0]<=65&&witness[1]==witness[0]&&witness[2]==witness[0]);
+    puts("PASS original straight-RGBA linear-edge witness (64, not premultiplied128)");
 }}

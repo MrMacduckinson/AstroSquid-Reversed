@@ -71,17 +71,22 @@ int main(int argc,char **argv) {
 
     unsigned cases=0;
     FILE *fixture=getenv("ASTRO_BEAM_FIXTURE")?fopen(getenv("ASTRO_BEAM_FIXTURE"),"w"):NULL;
+    FILE *stale=getenv("ASTRO_STALE_BEAM_FIXTURE")?fopen(getenv("ASTRO_STALE_BEAM_FIXTURE"),"w"):NULL;
     int ids[]={40,41,42,43,50,51,52,53};
-    for(unsigned k=0;k<8;k++) for(int n=0;n<100;n++) {
+    for(unsigned k=0;k<8;k++) for(int n=0;n<200;n++) {
         AstroTarget targets[6];memset(world,0,sizeof(world));
         uint32_t seed=(uint32_t)n*123456789u;*(uint32_t *)(globals+0x244)=seed;
         int source_kind=n%2?1:5;
         for(int i=0;i<6;i++) {
             int kind=i%3==0?1:i%3==1?5:20;
             double x=100+(n*13+i*37)%350,y=100+(n*7+i*17)%130,w=20+i*3,h=25+i*5;
-            targets[i]=(AstroTarget){kind,-1,0,x,y,w,h};
-            set_short(world[i],0,kind);set_short(world[i],36,(int)y);set_short(world[i],38,(int)x);
-            set_short(world[i],40,(int)(y+h));set_short(world[i],42,(int)(x+w));
+            if(n>=100){x+=.25*(i%3);y+=.5*(i%2);}
+            AstroRect rect={(int)x,(int)y,(int)(x+w),(int)(y+h)};
+            if(n>=100){rect.left-=11-i;rect.top+=3-i;rect.right=rect.left+(int)w-7;rect.bottom=rect.top+(int)h+5;}
+            targets[i]=(AstroTarget){.kind=kind,.parent=-1,.x=x,.y=y,.width=w+20,.height=h+17,
+                .bounds_valid=1,.bounds=rect};
+            set_short(world[i],0,kind);set_short(world[i],36,rect.top);set_short(world[i],38,rect.left);
+            set_short(world[i],40,rect.bottom);set_short(world[i],42,rect.right);
             set_double(world[i],44,x);set_double(world[i],52,y);
             set_pointer(world[i],102,i<5?world[i+1]:NULL);
         }
@@ -102,17 +107,18 @@ int main(int argc,char **argv) {
             printf("FAIL beam%d case%d shot%d\n",id,n,i);
             for(int j=0;j<7;j++) printf("field%d original%d port%d\n",j,a[j],b[j]);return 1;
         }
-        if(fixture&&n<20) {
-            fprintf(fixture,"%d,%d,%u",id,n,beam_count);
+        FILE *capture=n<20?fixture:n>=100&&n<120?stale:NULL;
+        if(capture) {
+            fprintf(capture,"%d,%d,%u",id,n,beam_count);
             for(unsigned i=0;i<beam_count;i++) {
                 int *values=(int *)(beam_log+i);
-                for(int j=0;j<7;j++) fprintf(fixture,",%d",values[j]);
+                for(int j=0;j<7;j++) fprintf(capture,",%d",values[j]);
             }
-            fprintf(fixture,",%u\n",*(uint32_t *)(globals+0x244));
+            fprintf(capture,",%u\n",*(uint32_t *)(globals+0x244));
         }
         cases++;
     }
-    if(fixture) fclose(fixture);
+    if(fixture) fclose(fixture);if(stale)fclose(stale);
     printf("PASS: %u original/portable beam cases, endpoints, damage, target, RNG (damage intercepted)\n",cases);
     return 0;
 }

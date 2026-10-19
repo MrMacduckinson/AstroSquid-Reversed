@@ -25,8 +25,16 @@ int main(int argc,char **argv){
         int id,n,es,eb,ee,ef,ev;unsigned expected_seed;
         assert(sscanf(line,"C,%d,%d,%u,%d,%d,%d,%d,%d",&id,&n,&expected_seed,&es,&eb,&ee,&ef,&ev)==8);
         AstroTarget targets[6];
-        for(int i=0;i<6;i++)targets[i]=(AstroTarget){i%3==0?1:i%3==1?5:20,-1,0,
-            200+(n*13+i*37)%350,100+(n*7+i*17)%130,20+i*3,25+i*5};
+        for(int i=0;i<6;i++) {
+            double x=200+(n*13+i*37)%350,y=100+(n*7+i*17)%130,w=20+i*3,h=25+i*5;
+            if(n>=20){x+=.25*(i%3);y+=.5*(i%2);}
+            targets[i]=(AstroTarget){.kind=i%3==0?1:i%3==1?5:20,.parent=-1,.x=x,.y=y,.width=w,.height=h};
+            if(n>=20) {
+                int left=(int)x-11+i,top=(int)y+3-i;
+                targets[i].width=w+20;targets[i].height=h+17;targets[i].bounds_valid=1;
+                targets[i].bounds=(AstroRect){left,top,left+(int)w-7,top+(int)h+5};
+            }
+        }
         uint32_t seed=(uint32_t)n*123456789u;ns=nb=ne=nf=nv=0;kill=n%4==0;
         AstroSpecialContext c={.context=targets,.seed=&seed,.targets=targets,.target_count=6,.source_parent=-1,
             .gun_x=234,.gun_y=192,.frame_interval=n%3+1,.left=0,.top=0,.right=640,.bottom=380,

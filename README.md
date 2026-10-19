@@ -45,12 +45,19 @@ include54 atlases,295 sprite definitions,134 attributes,22 weapons,29 scripts,
 8126 map objects,17 stage files, all18 sound cues and3 music tracks.
 
 The host connects normal and special weapons, damage, pickups, effects, sprite
-animation, camera, campaign markers, death and respawn. It now uses the original
-star/parallax and beam geometry. Original menus and HUD are connected to the host: mouse navigation, New Game,
-Continue, pause/resume, volume controls and key reassignment. Briefing components
-are independently rendered; their campaign flow remains pending. Complete world update/collision ordering, final UI/settings/highscores,
-cutscene flow, a full campaign comparison and release packaging remain required.
-No finished port or release is claimed.
+animation, camera, campaign markers, death and respawn. The live entity list now
+preserves original prepend order and the player's insertion position; each actor
+moves, collides and then runs AI before the next actor. Cleanup precedes updates.
+Native original-code probes verify those ordering rules separately from gameplay.
+
+Original menus, HUD, startup credits, volume/filter controls, key reassignment,
+highscore entry, stage cards, midpoint autopilot and departure animation are
+connected. Preferences and unlocked stages persist. Score defaults, tie ordering
+and Classic name editing were checked against original PPC routines on G5.
+
+The full campaign route is under automated test. A complete original-game frame
+comparison, timed-special nested-world interleaving and final release packaging
+remain required. No finished port or release is claimed.
 
 ## Build
 
@@ -66,7 +73,7 @@ python3 -m venv .venv
 open 'build/AstroSquid Preview.app'
 ```
 
-Controls: arrows move, Space fires, Option triggers a special attack, Escape
+Controls: arrows move, Command fires, Option triggers a special attack, Escape
 pauses. Original menus support mouse navigation, volume adjustment and key
 reassignment. Settings are stored in the app preferences. Development weapon and
 stage shortcuts are enabled only in the explicit self-test.
@@ -99,3 +106,10 @@ verified against original execution, not assumed from the decompiler cast.
 See [IBM's stfs reference](https://www.ibm.com/docs/kk/ssw_aix_72/assembler/idalangref_stfs_instrs.html)
 and the Power ISA `SINGLE` conversion implemented in
 [QEMU's PowerPC helpers](https://github.com/qemu/qemu/blob/master/target/ppc/fpu_helper.c).
+
+`--campaign-test DIRECTORY` runs the complete campaign through real world updates
+and screens, with a controlled pilot that replenishes its shield, uses weapon53
+and steers toward bosses. It writes progress/results without modifying player
+preferences. This diagnoses campaign connectivity; it does not prove an unaided
+playthrough or original-game frame identity. Test rendering submits every frame
+to OpenGL without waiting for screen presentation, allowing accelerated checks.

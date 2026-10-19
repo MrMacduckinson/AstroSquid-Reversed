@@ -9,9 +9,9 @@
 - (void)drawState:(const AstroHUDState *)state texture:(AstroUITextureLoader)texture framebufferWidth:(GLsizei)width height:(GLsizei)height {
     AstroHUDCommand commands[32];size_t count=astro_hud_commands(state,commands,32);
     glMatrixMode(GL_PROJECTION);glLoadIdentity();glViewport(0,0,width,height);glOrtho(0,640,480,0,-1,1);glMatrixMode(GL_MODELVIEW);
-    glEnable(GL_BLEND);glBlendFunc(GL_ONE,GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     for(size_t i=0;i<count;i++){
-        AstroHUDCommand c=commands[i];double alpha=MAX(0,MIN(1,c.a));glColor4d(c.r*alpha,c.g*alpha,c.b*alpha,alpha);
+        AstroHUDCommand c=commands[i];double alpha=MAX(0,MIN(1,c.a));glColor4d(c.r,c.g,c.b,alpha);
         if(c.kind==ASTRO_HUD_BOX){
             glDisable(GL_TEXTURE_2D);glBegin(GL_QUADS);glVertex2d(c.x,c.y);glVertex2d(c.x+c.width,c.y);glVertex2d(c.x+c.width,c.y+c.height);glVertex2d(c.x,c.y+c.height);glEnd();
         }else if(c.kind==ASTRO_HUD_SPRITE){

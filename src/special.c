@@ -11,14 +11,17 @@ static int random_value(AstroSpecialContext *c,int n) {return astro_random(c->se
 static int valid(const AstroSpecialContext *c) {
     return c&&c->seed&&(!c->target_count||c->targets)&&c->frame_interval>0&&c->left<c->right&&c->top<c->bottom;
 }
-static int center(double p,double size) {return (int)(p+((int)(p+size)-(int)p)/2.0);}
+static int center(const AstroTarget *t,int y) {
+    AstroRect r=astro_target_rect(t);
+    return (int)((y?t->y:t->x)+(y?r.bottom-r.top:r.right-r.left)/2.0);
+}
 static int nearest(AstroSpecialContext *c,int x,int y,int distance,int excluded) {
     int found=-1;
     for(size_t i=0;i<c->target_count;i++) {
         AstroTarget *t=c->targets+i;
         if(!(t->kind==1||t->kind==5||(t->kind>19&&t->kind<30))||
             (int)i==excluded||(int)i==c->source_parent||t->remove)continue;
-        int dx=x-(int16_t)center(t->x,t->width),dy=y-(int16_t)center(t->y,t->height);
+        int dx=x-(int16_t)center(t,0),dy=y-(int16_t)center(t,1);
         int d=dx*dx+dy*dy;
         if(d<distance){distance=d;found=(int)i;}
     }
@@ -73,14 +76,14 @@ static void storm(AstroSpecial *s,AstroSpecialContext *c,int render) {
         int target=nearest(c,x,y,90000,-1);
         if(target<0)continue;
         AstroTarget *t=c->targets+target;
-        int ex=center(t->x,t->width),ey=center(t->y,t->height);
+        int ex=center(t,0),ey=center(t,1);
         sound(c,295,ex);hits++;
         beam(c,s->weapon,0,c->gun_x,c->gun_y,x,y,-1,0);
         beam(c,s->weapon,(s->weapon-49)*4,x,y,ex,ey,target,0);
         if(s->weapon>50&&!t->remove) {
             int second=nearest(c,ex,ey,6400,target);
             if(second>=0){AstroTarget *u=c->targets+second;
-                beam(c,s->weapon-1,s->weapon-49,ex,ey,center(u->x,u->width),center(u->y,u->height),second,0);}
+                beam(c,s->weapon-1,s->weapon-49,ex,ey,center(u,0),center(u,1),second,0);}
         }
     }
     if(render)for(int i=0;i<hits;i++) {
@@ -94,7 +97,8 @@ static int point(AstroSpecialContext *c,int x,int y) {
     for(size_t i=0;i<c->target_count;i++) {
         AstroTarget *t=c->targets+i;
         if(t->kind==2||t->kind==999||t->kind==4)continue;
-        if(x>=(int)t->x&&x<(int)(t->x+t->width)&&y>=(int)t->y&&y<(int)(t->y+t->height))result=(int)i;
+        AstroRect r=astro_target_rect(t);
+        if(x>=r.left&&x<r.right&&y>=r.top&&y<r.bottom)result=(int)i;
     }
     if(result>=0&&(c->targets[result].kind==40||c->targets[result].kind==-1||result==c->source_parent))return -1;
     return result;
@@ -120,14 +124,30 @@ static void plasma_ray(AstroSpecialContext *c,int render) {
         sprite(c,90,ex+dx-size/2,ey-15+dy-size/2,size);
     }
 }
-int astro_special_step(AstroSpecial *s,uint32_t tick,AstroSpecialContext *c) {
-    if(!s||!s->active||!valid(c))return 0;
-    if(tick-s->started>=31){s->active=0;return 0;}
+static int apply_tick(AstroSpecial *s,uint32_t tick,AstroSpecialContext *c) {
     s->action_until=tick+(uint32_t)c->frame_interval+59;
-    if(tick==s->last_tick)return 1;
+    if(tick==s->last_tick)return 0;
     s->last_tick=tick;
     int render=tick-s->last_render_tick>=(uint32_t)c->frame_interval;
     if(render)s->last_render_tick=tick;
     if(s->weapon>=50)storm(s,c,render);else plasma_ray(c,render);
     return 1;
+}
+int astro_special_step(AstroSpecial *s,uint32_t tick,AstroSpecialContext *c) {
+    if(!s||!s->active||!valid(c))return 0;
+    if(tick-s->started>=31){s->active=0;return 0;}
+    apply_tick(s,tick,c);return 1;
+}
+int astro_special_start_nested(AstroSpecial *s,int weapon,int x,int y,int heading,
+                               uint32_t tick,AstroSpecialContext *c) {
+    if(!astro_special_start(s,weapon,x,y,heading,tick,c))return 0;
+    if(s->active){s->started=tick+1;s->last_tick=tick;}
+    return 1;
+}
+int astro_special_step_nested(AstroSpecial *s,uint32_t tick,AstroSpecialContext *c) {
+    if(!s||!s->active||!valid(c))return 0;
+    if((int32_t)(tick-s->started)<0||tick==s->last_tick)return ASTRO_SPECIAL_WAIT;
+    apply_tick(s,tick,c);
+    if(tick-s->started>=30){s->active=0;return ASTRO_SPECIAL_EFFECT|ASTRO_SPECIAL_RESUME;}
+    return ASTRO_SPECIAL_EFFECT;
 }

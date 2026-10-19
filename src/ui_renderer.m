@@ -20,8 +20,8 @@
         if(!bytes)return nil;
         _data=[NSJSONSerialization JSONObjectWithData:bytes options:0 error:error];
         if(![_data[@"scenes"] isKindOfClass:[NSDictionary class]]||![_data[@"font"][@"advance"] isKindOfClass:[NSArray class]])return nil;
-        _orbStates=[NSMutableDictionary dictionary];_registered=YES;_editingName=@"";
-        _unlockedLevel=1;_smooth=YES;_soundVolume=1;_musicVolume=1;
+        _orbStates=[NSMutableDictionary dictionary];_registered=YES;_registeredName=@"";_editingName=@"";
+        _unlockedLevel=1;_smooth=YES;_soundVolume=.6;_musicVolume=1;
         _keyLabels=@[@"Space",@"Option",@"Up",@"Down",@"Left",@"Right"];
         _highscores=@[];
         [self show:@"Main Menu"];
@@ -112,7 +112,7 @@
 - (void)drawText:(NSString *)text x:(double)x baseline:(double)y size:(double)size texture:(AstroUITextureLoader)texture {
     NSData *bytes=[text dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:YES];
     const unsigned char *chars=bytes.bytes;NSArray *advance=_data[@"font"][@"advance"];
-    glEnable(GL_TEXTURE_2D);glEnable(GL_BLEND);glBlendFunc(GL_ONE,GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_TEXTURE_2D);glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     glBindTexture(GL_TEXTURE_2D,texture(50));
     for(NSUInteger i=0;i<bytes.length;i++){
         unsigned c=chars[i];
@@ -151,8 +151,8 @@
     for(NSDictionary *object in _objects){
         if([object[@"kind"] intValue]<9||![self enabled:object])continue;
         NSString *name=object[@"name"],*label=labelMap[name]?:name;
-        if([name isEqual:@"SetSVolume"])label=[label stringByAppendingString:self.soundVolume>0?[NSString stringWithFormat:@"%d",(int)(self.soundVolume*100)]:@"Mute"];
-        if([name isEqual:@"SetMVolume"])label=[label stringByAppendingString:self.musicVolume>0?[NSString stringWithFormat:@"%d",(int)(self.musicVolume*100)]:@"Mute"];
+        if([name isEqual:@"SetSVolume"])label=[label stringByAppendingString:self.soundVolume>0?[NSString stringWithFormat:@" %d",(int)lround(self.soundVolume*10)]:@"Mute"];
+        if([name isEqual:@"SetMVolume"])label=[label stringByAppendingString:self.musicVolume>0?[NSString stringWithFormat:@" %d",(int)lround(self.musicVolume*10)]:@"Mute"];
         if([name hasPrefix:@"Level"]){NSInteger index=[[name substringFromIndex:5] integerValue]-1;
             if(index>=0&&index<(NSInteger)[_data[@"level_names"] count])label=_data[@"level_names"][index];
         }
@@ -162,6 +162,15 @@
         BOOL left=[@[@"Settings",@"Register",@"Back2",@"Back3",@"Back4",@"Back5",@"Back6",@"PauseQuit"] containsObject:name];
         [self label:label object:object left:left texture:texture];
     }
+    NSDictionary *mainMenu=[self object:@"Main Menu"];
+    if(mainMenu){
+        // DRAWGLMENU footer follows the menu anchor while its camera pans.
+        NSRect r=[self bounds:mainMenu];double x=(int)(NSMidX(r)-310);
+        NSString *registration=self.registered?[(_data[@"labels"][@"223"]?:@"Registered to: ") stringByAppendingString:self.registeredName?:@""]:_data[@"labels"][@"165"];
+        glColor4d(.8,.8,.8,1);
+        [self drawText:registration x:x baseline:(int)(NSMidY(r)+215) size:10 texture:texture];
+        [self drawText:_data[@"labels"][@"224"] x:x baseline:(int)(NSMidY(r)+230) size:10 texture:texture];
+    }
     if([_anchor isEqual:@"Pause"]){glColor4d(1,1,1,1);[self drawText:@"Game Paused" x:220 baseline:220 size:32 texture:texture];}
     if([_anchor isEqual:@"GameOver"]){glColor4d(1,1,1,1);[self drawText:@"Game Over" x:240 baseline:190 size:32 texture:texture];}
     if([_anchor isEqual:@"GameOver"]&&self.editingHighscore>0){
@@ -169,12 +178,20 @@
         glDisable(GL_TEXTURE_2D);glBegin(GL_LINE_LOOP);
         glVertex2d(223,254);glVertex2d(423,254);glVertex2d(423,276);glVertex2d(223,276);glEnd();
         [self drawText:@"Name:" x:225 baseline:254 size:12 texture:texture];
-        [self drawText:self.editingName?:@"" x:225 baseline:277 size:20 texture:texture];
+        NSString *name=self.editingName?:@"";
+        NSUInteger cursor=MIN((NSUInteger)MAX(self.editingCursor,0),name.length);
+        double cursorWidth=[self textWidth:[name substringToIndex:cursor] size:20];
+        double offset=MAX(0,cursorWidth-196);
+        GLint viewport[4],oldScissor[4];glGetIntegerv(GL_VIEWPORT,viewport);glGetIntegerv(GL_SCISSOR_BOX,oldScissor);
+        GLboolean scissor=glIsEnabled(GL_SCISSOR_TEST);glEnable(GL_SCISSOR_TEST);
+        glScissor(viewport[0]+(GLint)(225*viewport[2]/640.0),viewport[1]+(GLint)(203*viewport[3]/480.0),
+            (GLsizei)(198*viewport[2]/640.0),(GLsizei)(22*viewport[3]/480.0));
+        [self drawText:name x:225-offset baseline:277 size:20 texture:texture];
         if((_ticks/20)%2==0){
-            NSUInteger cursor=MIN((NSUInteger)MAX(self.editingCursor,0),self.editingName.length);
-            double x=225+[self textWidth:[self.editingName substringToIndex:cursor] size:20];
+            double x=225+cursorWidth-offset;
             glDisable(GL_TEXTURE_2D);glBegin(GL_QUADS);glVertex2d(x,255);glVertex2d(x+1,255);glVertex2d(x+1,274);glVertex2d(x,274);glEnd();
         }
+        glScissor(oldScissor[0],oldScissor[1],oldScissor[2],oldScissor[3]);if(!scissor)glDisable(GL_SCISSOR_TEST);
     }
     if([_anchor isEqual:@"Highscores Menu"]){
         NSDictionary *object=[self object:@"Highscores Menu"];NSRect r=[self bounds:object];NSInteger i=0;
@@ -203,6 +220,23 @@
     glTexCoord2d(u,v);glVertex2d(x+width,y+height);glTexCoord2d(0,v);glVertex2d(x,y+height);glEnd();
     GLint filter=self.smooth?GL_LINEAR:GL_NEAREST;
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,filter);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,filter);
+}
+- (NSInteger)scoreCursorAtX:(double)x {
+    NSString *name=self.editingName?:@"";
+    NSUInteger cursor=MIN((NSUInteger)MAX(self.editingCursor,0),name.length);
+    double offset=MAX(0,[self textWidth:[name substringToIndex:cursor] size:20]-196);
+    double position=x-225+offset;
+    for(NSUInteger i=0;i<name.length;i++) {
+        double left=[self textWidth:[name substringToIndex:i] size:20];
+        double right=[self textWidth:[name substringToIndex:i+1] size:20];
+        if(position<(left+right)/2)return i;
+    }
+    return name.length;
+}
+- (NSString *)nameForKeyCode:(NSInteger)code {
+    NSArray *names=_data[@"key_names"];NSInteger bit=code^7;
+    if(bit>=0&&bit<(NSInteger)names.count&&[names[bit] length])return names[bit];
+    return [NSString stringWithFormat:@"[%ld]",(long)code];
 }
 - (NSString *)briefingForStage:(NSInteger)stage list:(NSInteger)list {
     NSArray *lines=_data[@"briefings"][[NSString stringWithFormat:@"%ld",(long)list]];

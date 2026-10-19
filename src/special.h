@@ -31,10 +31,20 @@ typedef struct {
     uint32_t started,last_tick,last_render_tick,action_until;
 } AstroSpecial;
 /* 10..13 and30..33 create their full burst immediately;40..43 and50..53 run31 ticks.
- * While active, keep player movement/input but treat player kind as-1 and suppress
- * firing until action_until. Advance the world
+ * While active, keep player movement/input but treat player kind as-1. Copy
+ * action_until into shared player.action_tick; both weapons still require the
+ * original strict elapsed>60/rate gate. Advance the world
  * once before each step; refresh gun position/targets after that world update. */
 int astro_special_start(AstroSpecial *,int weapon,int x,int y,int heading,uint32_t tick,
                         AstroSpecialContext *);
 int astro_special_step(AstroSpecial *,uint32_t tick,AstroSpecialContext *);
+enum {ASTRO_SPECIAL_WAIT=1,ASTRO_SPECIAL_EFFECT=2,ASTRO_SPECIAL_RESUME=4};
+/* Trigger inside player updater, save/stop the outer actor tail. Subsequent ticks
+ * run a full nested world pass before step_nested. RESUME restores kind1 and
+ * resumes that saved tail at the SAME tick, after presenting the final effect.
+ * No map spawning or normal flow dispatch runs while nested. Instant families
+ * stay instant and leave active0, so their outer actor tail is not suspended. */
+int astro_special_start_nested(AstroSpecial *,int weapon,int x,int y,int heading,
+                               uint32_t tick,AstroSpecialContext *);
+int astro_special_step_nested(AstroSpecial *,uint32_t tick,AstroSpecialContext *);
 #endif

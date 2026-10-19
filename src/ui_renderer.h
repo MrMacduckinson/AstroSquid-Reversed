@@ -8,6 +8,7 @@ typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
 @property(nonatomic,readonly) NSString *anchor;
 @property(nonatomic,readonly) BOOL transitioning;
 @property(nonatomic) BOOL registered;
+@property(nonatomic,copy) NSString *registeredName;
 /* 1-based row, zero disables new-score entry. Root handles text input. */
 @property(nonatomic) NSInteger editingHighscore;
 @property(nonatomic,copy) NSString *editingName;
@@ -27,6 +28,8 @@ typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
 - (NSString *)mouseUpX:(double)x y:(double)y;
 - (void)animateTicks:(unsigned)ticks;
 - (void)drawSprites:(AstroUISpriteDrawer)sprites texture:(AstroUITextureLoader)texture;
+- (NSInteger)scoreCursorAtX:(double)x;
+- (NSString *)nameForKeyCode:(NSInteger)code;
 - (double)textWidth:(NSString *)text size:(double)size;
 - (void)drawText:(NSString *)text x:(double)x baseline:(double)y size:(double)size
         texture:(AstroUITextureLoader)texture;

@@ -7,8 +7,8 @@ static int point_target(int x,int y,const AstroTarget *targets,size_t count) {
     for(size_t i=0;i<count;i++) {
         const AstroTarget *t=&targets[i];
         if(t->kind==2||t->kind==999||t->kind==4) continue;
-        if(x>=(int)t->x&&x<(int)(t->x+t->width)&&
-           y>=(int)t->y&&y<(int)(t->y+t->height)) result=(int)i;
+        AstroRect r=astro_target_rect(t);
+        if(x>=r.left&&x<r.right&&y>=r.top&&y<r.bottom)result=(int)i;
     }
     return result;
 }
@@ -20,8 +20,8 @@ static int nearest(int x,int y,int limit,int excluded,int kind,int parent,
         const AstroTarget *t=&targets[i];
         if(!(t->kind==1||t->kind==5||(t->kind>19&&t->kind<30))||
            t->kind==kind||(int)i==parent||(int)i==excluded||t->remove) continue;
-        int width=(int)(t->x+t->width)-(int)t->x;
-        int height=(int)(t->y+t->height)-(int)t->y;
+        AstroRect r=astro_target_rect(t);
+        int width=r.right-r.left,height=r.bottom-r.top;
         int dx=x-(int16_t)(int)(t->x+width/2.0);
         int dy=y-(int16_t)(int)(t->y+height/2.0);
         int distance=dx*dx+dy*dy;
@@ -53,7 +53,7 @@ int astro_beam_shots(int weapon,int x,int y,int heading,int interval,
         int target=nearest(x,y,90000,-1,kind,parent,targets,count);
         if(target<0) return 0;
         const AstroTarget *t=&targets[target];
-        int width=(int)(t->x+t->width)-(int)t->x,height=(int)(t->y+t->height)-(int)t->y;
+        AstroRect r=astro_target_rect(t);int width=r.right-r.left,height=r.bottom-r.top;
         double ex=t->x+width/4.0+astro_random(seed,(int)(width/2.0));
         double ey=t->y+height/4.0+astro_random(seed,(int)(height/2.0));
         int distance=(int)((x-ex)*(x-ex)+(y-ey)*(y-ey));
@@ -65,7 +65,7 @@ int astro_beam_shots(int weapon,int x,int y,int heading,int interval,
             int second=nearest((int)ex,(int)ey,6400,target,kind,parent,targets,count);
             if(second>=0) {
                 const AstroTarget *u=&targets[second];
-                int w=(int)(u->x+u->width)-(int)u->x,h=(int)(u->y+u->height)-(int)u->y;
+                AstroRect r=astro_target_rect(u);int w=r.right-r.left,h=r.bottom-r.top;
                 out[1]=(AstroBeam){weapon-1,weapon-49,(int)ex,(int)ey,
                     (int)(u->x+w/2.0),(int)(u->y+h/2.0),second};
                 if(hit) hit(context,&out[1]);return 2;
@@ -74,7 +74,7 @@ int astro_beam_shots(int weapon,int x,int y,int heading,int interval,
         return 1;
     }
     if(weapon<40||weapon>43) return -1;
-    double radians=3.14159265358979323846*heading/180.0;
+    double radians=3.14159265358979323846*(heading/180.0);
     double dx=10*cos(radians),dy=-10*sin(radians);
     if(weapon<42) {
         out[0]=ray(weapon,(int)((weapon==40?1.5:3)*interval),x+2,y+1,dx,dy,
