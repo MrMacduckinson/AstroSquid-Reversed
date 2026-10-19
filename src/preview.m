@@ -3,11 +3,25 @@
 #import <OpenGL/gl.h>
 #import <AVFoundation/AVFoundation.h>
 #include "physics.h"
+#include "script.h"
+
+@interface AstroEnemy : NSObject {
+@public
+    AstroScriptState state;
+    NSDictionary *placement, *definition;
+    NSData *program;
+}
+@end
+@implementation AstroEnemy
+@end
 
 @interface AstroView : NSOpenGLView {
     NSDictionary *game;
     NSMutableDictionary *textures;
     NSArray *levels;
+    NSMutableArray *enemies;
+    uint32_t simulationTick;
+    NSUInteger scriptSteps;
     NSString *assetPath;
     NSTimer *timer;
     AVAudioPlayer *music;
@@ -49,6 +63,7 @@ static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValu
     levels = [[game[@"levels"] allKeys] sortedArrayUsingSelector:@selector(localizedStandardCompare:)];
     if (!levels.count) return nil;
     textures = [NSMutableDictionary dictionary];
+    [self resetEnemies];
     playerX = 60; playerY = 220;
     previousTime = [NSDate timeIntervalSinceReferenceDate];
     timer = [NSTimer scheduledTimerWithTimeInterval:1.0/60.0 target:self
@@ -148,17 +163,68 @@ static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValu
         [self sprite:[background[@"sprite"] integerValue] x:x y:y
                width:number(background,@"width") height:number(background,@"height")];
     }
-    for (NSDictionary *entity in level[@"entities"]) {
-        NSInteger attribute = [entity[@"attribute"] integerValue];
-        if (attribute == 11) continue;
-        double x=number(entity,@"x")-camera, y=number(entity,@"y");
+    for (AstroEnemy *enemy in enemies) {
+        if(enemy->state.remove) continue;
+        NSDictionary *entity=enemy->placement;
+        double x=enemy->state.x-camera,y=enemy->state.y;
         double w=number(entity,@"width"),h=number(entity,@"height");
-        if (x+w<0 || x>640 || y+h<70 || y>450) continue;
-        NSDictionary *definition=game[@"attributes"][[NSString stringWithFormat:@"%ld",(long)attribute]];
-        [self sprite:[definition[@"sprite"] integerValue] x:x y:y width:w height:h];
+        if(x+w<0||x>640||y+h<70||y>450) continue;
+        NSInteger sprite=[enemy->definition[@"sprite"] integerValue]+enemy->state.frame-1;
+        [self sprite:sprite x:x y:y width:w height:h];
     }
     [self sprite:1 x:playerX y:playerY width:0 height:0];
     [[self openGLContext] flushBuffer];
+}
+- (void)resetEnemies {
+    enemies=[NSMutableArray array]; simulationTick=0;
+    NSDictionary *level=game[@"levels"][levels[selectedLevel]];
+    for(NSDictionary *placement in level[@"entities"]) {
+        NSString *attribute=[placement[@"attribute"] stringValue];
+        if([attribute isEqualToString:@"11"]) continue;
+        AstroEnemy *enemy=[AstroEnemy new];
+        enemy->placement=placement; enemy->definition=game[@"attributes"][attribute];
+        enemy->state=(AstroScriptState){.frame=1,.tilt=1,.state=1,
+            .x=number(placement,@"x"),.y=number(placement,@"y")};
+        NSString *script=[enemy->definition[@"script"] stringValue];
+        NSMutableData *program=[NSMutableData data];
+        for(NSString *line in game[@"scripts"][script]) {
+            AstroInstruction instruction;
+            if(!astro_parse_instruction(line.UTF8String,&instruction)) {
+                NSLog(@"Invalid script %@: %@",script,line); exit(1);
+            }
+            [program appendBytes:&instruction length:sizeof(instruction)];
+        }
+        enemy->program=program;
+        [enemies addObject:enemy];
+    }
+}
+- (void)stepEnemies {
+    simulationTick++;
+    for(AstroEnemy *enemy in enemies) {
+        AstroScriptState *state=&enemy->state;
+        // shortcut: preview activates visible objects; recover original spawn/parent rules next.
+        if(state->remove||state->x-camera>700||state->x-camera< -300) continue;
+        if(enemy->program.length) {
+            double w=number(enemy->placement,@"width"),h=number(enemy->placement,@"height");
+            double dx=(int)(playerX+camera+40)-(int)(state->x+w/2);
+            double dy=(int)(playerY+15)-(int)(state->y+h/2);
+            double heading=atan2(-dy,dx)*180/M_PI;
+            if(heading<0) heading+=360;
+            AstroScriptContext context={.player_present=1,.target_heading=(int)heading,
+                .player_x=playerX+camera,.player_y=playerY,
+                .animated=[enemy->definition[@"animated"] intValue],
+                .weapon=[enemy->definition[@"weapon"] intValue],
+                .gun_x=(int)state->x+[enemy->definition[@"turret_x"] intValue],
+                .gun_y=(int)state->y+[enemy->definition[@"turret_y"] intValue]};
+            // shortcut: weapon/damage callbacks await reconstructed combat; no invented bullets.
+            if(!astro_script_step(state,enemy->program.bytes,
+                enemy->program.length/sizeof(AstroInstruction),simulationTick,&context)) {
+                NSLog(@"Script ended outside RETURN"); exit(1);
+            }
+            scriptSteps++;
+        }
+        state->x+=state->velocity.x; state->y+=state->velocity.y;
+    }
 }
 - (void)tick:(NSTimer *)sender {
     double now=[NSDate timeIntervalSinceReferenceDate];
@@ -166,6 +232,7 @@ static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValu
     tickRemainder+=dt;
     while(tickRemainder>=1.0/60.0) {
         tickRemainder-=1.0/60.0;
+        [self stepEnemies];
         playerX+=playerVelocity.x; playerY+=playerVelocity.y;
         // Original player acceleration and drag: DOPLAYERSPRITE literals.
         if(keys[123]||keys[0]) astro_vector_make(&playerVelocity,180,.5);
@@ -192,6 +259,9 @@ static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValu
         withIntermediateDirectories:YES attributes:nil error:nil];
     [self keyDown:[self testEvent:NSKeyDown code:124]];
     [self keyDown:[self testEvent:NSKeyDown code:45]];
+    for(AstroEnemy *enemy in enemies) if(enemy->program.length) {
+        camera=fmax(0,enemy->state.x-400); break;
+    }
     music.volume=0;
     [music play];
 }
@@ -222,8 +292,8 @@ static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValu
     [png writeToFile:[selftestPath stringByAppendingPathComponent:@"frame.png"] atomically:YES];
     BOOL moved=playerX>selftestStartX+10;
     BOOL audio=music.isPlaying && music.currentTime>0;
-    BOOL passed=moved && selectedLevel==1 && colored>100 && textures.count>0 && audio;
-    NSDictionary *report=@{@"passed":@(passed),@"player_moved":@(moved),
+    BOOL passed=scriptSteps>0 && moved && selectedLevel==1 && colored>100 && textures.count>0 && audio;
+    NSDictionary *report=@{@"passed":@(passed),@"script_steps":@(scriptSteps),@"player_moved":@(moved),
         @"stage_switched":@(selectedLevel==1),@"music_time":@(music.currentTime),
         @"music_playing":@(music.isPlaying),@"colored_pixels":@(colored),
         @"textures_loaded":@(textures.count),@"frame_width":@(width),@"frame_height":@(height)};
@@ -240,6 +310,7 @@ static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValu
     if(key==45||key==35) {
         selectedLevel=(selectedLevel+levels.count+(key==45?1:-1))%levels.count;
         camera=0;
+        [self resetEnemies];
         self.window.title=[NSString stringWithFormat:@"AstroSquid reconstruction preview — %@",levels[selectedLevel]];
     }
     if(key==49) automatic=!automatic;

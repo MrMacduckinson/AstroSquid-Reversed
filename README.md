@@ -31,7 +31,13 @@ The Ten for X build is a separate comparison and runtime reference.
 - VECTORMAKE and VECTORSLOW recovered as portable C. Each passed 1000 cases
   against original unmodified code executed on the G5; captured vectors also
   pass on ARM64. Numeric tolerance is 1e-10, not a bit-identical game claim.
-- Original gameplay, collisions, AI, bosses, effects and sound effects are pending.
+- Recovered the 29 original AI scripts and interpreter. Compared 87 controlled
+  cases / 52200 ticks against original G5 code, including every fire argument,
+  animation state, timers and hit callbacks. The oracle controls time and
+  intercepts combat callbacks; this does not validate projectile/collision code.
+- Preview now executes these scripts on visible level objects. Activation,
+  parent relationships and aiming integration are provisional; combat callbacks
+  are not connected yet. Full gameplay, collisions, bosses and effects remain pending.
 
 The preview is a renderer and host-input smoke test. It is not the finished game.
 It uses the recovered movement primitives; complete player behavior and camera
@@ -57,7 +63,7 @@ toggles automatic camera scrolling; N/P select a stage file; M toggles music;
 Escape quits. These controls apply only to the preview.
 
 `./test.sh` checks the recovered physics against the captured original results
-and validates the complete extracted asset graph. `--self-test DIRECTORY` on the
+checks script parsing/scheduling and validates the complete extracted asset graph. `--self-test DIRECTORY` on the
 preview executable tests its own key handlers, level switching, framebuffer and
 muted audio decoder, writes evidence there, and exits. This avoids requiring
 system-wide accessibility access for the preview's own integration tests.

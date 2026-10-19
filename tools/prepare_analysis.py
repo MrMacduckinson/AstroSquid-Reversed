@@ -20,11 +20,11 @@ def prepare(app, output):
     for marker in re.finditer(rb'\x4e\x75\x80[\x01-\x7f]([_A-Za-z][ -~]{2,80})',code):
         size = code[marker.start()+3]
         name = code[marker.start()+4:marker.start()+4+size].decode('ascii').rstrip('.')
-        rows.append((0x10000000+previous+4,name))
+        rows.append((0x10000000+previous+4,name,0x10000000+marker.start()))
         previous = (marker.start()+4+size+3) & ~3
     # Names are candidate entry associations; PrepareAstro.java renames only
     # entries that Ghidra actually recognized, leaving unmatched entries alone.
-    (output / 'function-names.tsv').write_text(''.join(f'{a:08x}\t{n}\n' for a,n in rows))
+    (output / 'function-names.tsv').write_text(''.join(f'{a:08x}\t{n}\t{end:08x}\n' for a,n,end in rows))
     changes = []
     for offset in range(code_start,code_start+code_length,4):
         value = struct.unpack_from('>I',view,offset)[0]
