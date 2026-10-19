@@ -953,18 +953,21 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     *velocity=actor->velocity;return YES;
 }
 - (void)firePlayerWeapons {
-    if((!changingStage||transition.allow_input)&&keys[selftestPath?8:controlKeys[0]]&&!special.active&&(int32_t)([self playerClockTick]-lastPlayerShot)>
-        60.0/[game[@"weapons"][[NSString stringWithFormat:@"%d",playerWeapon]][@"rate"] doubleValue]) {
-        [self fireWeapon:playerWeapon x:astro_ppc_i32(38+(playerBounds.left+playerBounds.right)/2.0)
-            y:astro_ppc_i32((playerBounds.top+playerBounds.bottom)/2.0) heading:0 source:1];
-        lastPlayerShot=[self playerClockTick]+(uint32_t)ui.frameInterval-1;
-    }
+    [self fireOrdinaryPlayerWeaponFrom:playerBounds actionTick:&lastPlayerShot kind:playerCombat.kind];
     BOOL startSpecial=(!changingStage||transition.allow_input)&&keys[selftestPath?58:controlKeys[1]]&&!special.active&&inventory.specials>0&&
         (int32_t)([self playerClockTick]-lastPlayerShot)>
         60.0/[game[@"weapons"][[NSString stringWithFormat:@"%d",playerWeapon]][@"rate"] doubleValue];
     BOOL timed=startSpecial&&[self startSpecial];
     uint32_t finishTick=timed?[self specialClockTick]:[self playerClockTick];
     simulationTick=finishTick;[self finishPlayerUpdateAtTick:finishTick];
+}
+- (void)fireOrdinaryPlayerWeaponFrom:(AstroRect)bounds actionTick:(uint32_t *)actionTick kind:(int)kind {
+    if((!changingStage||transition.allow_input)&&keys[selftestPath?8:controlKeys[0]]&&(int32_t)([self playerClockTick]-*actionTick)>
+        60.0/[game[@"weapons"][[NSString stringWithFormat:@"%d",playerWeapon]][@"rate"] doubleValue]) {
+        [self fireWeapon:playerWeapon x:astro_ppc_i32(38+(bounds.left+bounds.right)/2.0)
+            y:astro_ppc_i32((bounds.top+bounds.bottom)/2.0) heading:0 source:kind];
+        *actionTick=[self playerClockTick]+(uint32_t)ui.frameInterval-1;
+    }
 }
 - (void)finishPlayerUpdateAtTick:(uint32_t)tick {
     playerState.update_tick=tick;

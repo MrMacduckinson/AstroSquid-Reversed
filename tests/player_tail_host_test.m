@@ -7,13 +7,16 @@ static void same(double actual,unsigned long long want){uint64_t bits;memcpy(&bi
 static BOOL gateCheck;
 static uint32_t gateClock;
 static unsigned fires,finishes,clockReads;
-static uint32_t prefixClocks[4];
+static uint32_t prefixClocks[8];
 static unsigned prefixCount,prefixRead;
+static BOOL separateFireCheck;
+static unsigned separateFires;
 @interface AstroPlayerTailView : AstroView
 @end
 @implementation AstroPlayerTailView
 - (uint32_t)playerClockTick {if(prefixCount){assert(prefixRead<prefixCount);return prefixClocks[prefixRead++];}if(gateCheck){clockReads++;return gateClock;}return [super playerClockTick];}
 - (void)fireWeapon:(int)weapon x:(int)x y:(int)y heading:(int)heading source:(int)kind {
+    if(separateFireCheck){assert(weapon==10&&x==68&&y==30&&heading==0&&kind==-1);separateFires++;}
     if(gateCheck){assert(playerState.update_tick==99);fires++;gateClock=105;}
     [super fireWeapon:weapon x:x y:y heading:heading source:kind];
 }
@@ -80,6 +83,18 @@ static unsigned prefixCount,prefixRead;
     assert(playerState.update_tick==primaryUpdate&&playerState.animation_tick==primaryAnimation);
     prefixCount=0;
     puts("PASS shared player motion uses supplied actor clocks/state without changing primary actor or storing update before firing");
+    memset(keys,0,sizeof(keys));keys[controlKeys[0]]=YES;special.active=1;separateFireCheck=YES;separateFires=0;
+    uint32_t action=100,primaryAction=lastPlayerShot;
+    prefixClocks[0]=100;prefixCount=1;prefixRead=0;
+    [self fireOrdinaryPlayerWeaponFrom:(AstroRect){20,20,40,40} actionTick:&action kind:-1];
+    assert(prefixRead==1&&action==100&&separateFires==0);
+    action=0;const uint32_t fireClocks[]={100,101,102,103,104,130};
+    memcpy(prefixClocks,fireClocks,sizeof(fireClocks));prefixCount=6;prefixRead=0;
+    [self fireOrdinaryPlayerWeaponFrom:(AstroRect){20,20,40,40} actionTick:&action kind:-1];
+    assert(prefixRead==6&&action==132&&lastPlayerShot==primaryAction&&separateFires==1);
+    AstroEnemy *bullet=enemies[0];assert(bullet->layer==3&&bullet->state.update_tick==101&&bullet->state.animation_tick==102&&bullet->state.action_tick==103);
+    prefixCount=0;separateFireCheck=NO;special.active=0;
+    puts("PASS actor-origin ordinary fire uses separate cooldown, fresh postfactory store, kind-1 source and remains enabled during special");
     puts("PASS actual host separate animation/update comparisons and distinct animation store clock");
     puts("PASS actual player closed gate suppresses fire/posttail; open gate defers update store and samples clocks after synchronous fire");
 }
