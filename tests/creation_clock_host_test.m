@@ -60,8 +60,26 @@ static unsigned used,count;
         assert(particle->state.action_tick==clocks[2]+(uint32_t)offsets[i]);
         assert(particle->visual.next_tick==504+(uint32_t)spriteInfo[particle->baseSprite].delay);
     }
+    for(int type=ASTRO_EFFECT_DEBRIS;type<=ASTRO_EFFECT_PICKUP;type++) {
+        const uint32_t clocks[]={601,602,UINT32_MAX-3,604};
+        memcpy(script,clocks,sizeof(clocks));count=4;used=0;
+        AstroDeathEffect effect={.type=type,.kind=type==ASTRO_EFFECT_DEBRIS?4:40,
+            .attribute=type==ASTRO_EFFECT_DEBRIS?42:401,.x=100,.y=180,.frame=1,
+            .width=20,.height=20,.action_tick=simulationTick+9};
+        [self emitDeathEffect:&effect];AstroEnemy *created=enemies[0];
+        assert(used==4&&created->state.update_tick==601&&created->state.animation_tick==602);
+        assert(created->state.action_tick==clocks[2]+(type==ASTRO_EFFECT_DEBRIS?9u:0u));
+        assert(created->visual.next_tick==604+(uint32_t)spriteInfo[created->baseSprite].delay);
+    }
+    for(int delta=-5;delta<=4;delta++) {
+        script[0]=UINT32_MAX-2;count=1;used=0;
+        AstroDeathEffect effect={.type=ASTRO_EFFECT_EXPLOSION,.sprite=1,.x=100,.y=180,
+            .width=71,.height=20,.animation_tick=simulationTick+(uint32_t)spriteInfo[1].delay+(uint32_t)delta};
+        [self emitDeathEffect:&effect];const LiveEffect *created=[visualEffects.lastObject bytes];
+        assert(used==1&&created->visual.next_tick==script[0]+(uint32_t)spriteInfo[1].delay+(uint32_t)delta);
+    }
     injecting=NO;
-    puts("PASS source-backed creation: four fresh clocks, deadline wrap, map/bullet/special retain timestamps, signed special offsets with wrap, map order, edge/NaN rejection");
+    puts("PASS source-backed creation: four clocks, map/bullet/special timestamps, signed offsets/wrap, death debris/pickup clocks, ten explosion offsets, map order/edge/NaN");
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{

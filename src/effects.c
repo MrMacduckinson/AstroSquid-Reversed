@@ -4,6 +4,7 @@
 
 int astro_death_effects(const AstroDeathSource *s,uint32_t tick,uint32_t *seed,
                         void (*emit)(void *,const AstroDeathEffect *),void *context) {
+    /* shortcut: effects are randomized before callbacks; split creation/mutation for exact constructor-clock/RNG interleaving. */
     if(!s||!seed||!emit||!isfinite(s->width)||!isfinite(s->height)||
        s->width<0||s->height<0||s->width>32767||s->height>32767||
        s->original_height<=0||s->debris_count<0) return 0;

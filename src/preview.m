@@ -772,8 +772,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [audio playStringCue:effect->sound_string position:(effect->x-camera)/640];return;
     }
     emittedEffects++;
+    // Generator deadlines encode offsets from simulationTick; retain the constructor's fresh clock.
     if(effect->type==ASTRO_EFFECT_EXPLOSION) {
-        AstroVisual visual={effect->sprite,effect->x,effect->y,effect->width,effect->height,effect->animation_tick};
+        uint32_t deadline=[self playerClockTick]+(effect->animation_tick-simulationTick);
+        AstroVisual visual={effect->sprite,effect->x,effect->y,effect->width,effect->height,deadline};
         [self addVisualEffect:visual layer:8];return;
     }
     NSDictionary *definition=game[@"attributes"][[NSString stringWithFormat:@"%d",effect->attribute]];
@@ -787,8 +789,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     enemy->state.frame=effect->frame;
     enemy->renderLayer=6;enemy->layer=0;
     enemy->state.velocity=effect->velocity;
-    enemy->state.update_tick=enemy->state.animation_tick=simulationTick;
-    enemy->state.action_tick=effect->action_tick;
+    if(effect->type==ASTRO_EFFECT_DEBRIS)enemy->state.action_tick+=effect->action_tick-simulationTick;
     [self prependEnemy:enemy];
 }
 - (void)addVisualEffect:(AstroVisual)visual layer:(int)layer {
