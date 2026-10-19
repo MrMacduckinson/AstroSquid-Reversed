@@ -341,8 +341,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     NSDictionary *atlas = game[@"textures"][[NSString stringWithFormat:@"%ld",(long)atlasID]];
     GLuint texture = [self texture:atlasID];
     if (!texture) return;
-    if (w <= 0) w = number(sprite,@"width");
-    if (h <= 0) h = number(sprite,@"height");
     double u = number(sprite,@"x")/number(atlas,@"width");
     double v = number(sprite,@"y")/number(atlas,@"height");
     double u2 = u+number(sprite,@"width")/number(atlas,@"width");
