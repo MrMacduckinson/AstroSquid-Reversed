@@ -153,6 +153,8 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
 - (void *)emitDeathEffect:(const AstroDeathEffect *)effect;
 - (void)finishDeathEffect:(const AstroDeathEffect *)effect object:(void *)object baseTick:(uint32_t)tick;
 - (void)spawnSpecial:(const AstroSpecialSpawn *)spawn;
+- (AstroEnemy *)createSpecial:(const AstroSpecialSpawn *)spawn;
+- (void)finishSpecial:(const AstroSpecialSpawn *)spawn object:(AstroEnemy *)enemy;
 - (void)spawnShot:(const AstroShot *)shot source:(int)kind;
 - (void)addSpecialBeam:(const AstroBeam *)beam temporary:(int)temporary context:(BeamContext *)context;
 - (void)addSpecialSprite:(int)sprite x:(double)x y:(double)y width:(double)width height:(double)height;
@@ -207,6 +209,8 @@ static void *createDeathEffect(void *context,const AstroDeathEffect *effect){Dea
 static void finishDeathEffect(void *context,void *object,const AstroDeathEffect *effect){DeathContext *c=context;[c->view finishDeathEffect:effect object:object baseTick:c->tick];}
 
 static void specialSpawn(void *c,const AstroSpecialSpawn *s) {BeamContext *w=c;[w->view spawnSpecial:s];}
+static void *specialCreate(void *c,const AstroSpecialSpawn *s){BeamContext *w=c;return (__bridge void *)[w->view createSpecial:s];}
+static void specialFinish(void *c,void *object,const AstroSpecialSpawn *s){BeamContext *w=c;[w->view finishSpecial:s object:(__bridge AstroEnemy *)object];}
 static void specialBullet(void *c,const AstroShot *s) {BeamContext *w=c;[w->view spawnShot:s source:1];}
 static void specialBeam(void *c,const AstroBeam *b,int temporary) {BeamContext *w=c;[w->view addSpecialBeam:b temporary:temporary context:w];}
 static void specialSprite(void *c,int sprite,double x,double y,double width,double height) {
@@ -670,6 +674,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     return data;
 }
 - (void)spawnSpecial:(const AstroSpecialSpawn *)spawn {
+    AstroEnemy *enemy=[self createSpecial:spawn];[self finishSpecial:spawn object:enemy];
+}
+- (AstroEnemy *)createSpecial:(const AstroSpecialSpawn *)spawn {
     int attribute=spawn->kind*10+spawn->subtype;
     NSDictionary *definition=game[@"attributes"][[NSString stringWithFormat:@"%d",attribute]];
     int sprite=[definition[@"sprite"] intValue];
@@ -677,6 +684,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     NSDictionary *placement=@{@"attribute":@(attribute),@"x":@(spawn->x),@"y":@(spawn->y),
         @"width":@(spriteInfo[sprite].width),@"height":@(spriteInfo[sprite].height),@"tag":@0};
     AstroEnemy *enemy=[self entityForPlacement:placement];enemy->active=YES;
+    [self prependEnemy:enemy];return enemy;
+}
+- (void)finishSpecial:(const AstroSpecialSpawn *)spawn object:(AstroEnemy *)enemy {
     enemy->kind=spawn->kind;enemy->layer=spawn->layer;enemy->state.frame=spawn->frame;
     enemy->state.velocity=spawn->velocity;
     enemy->state.action_tick+=(uint32_t)spawn->action_offset;
@@ -684,11 +694,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(spawn->width>0) enemy->visual.width=spawn->width;
     if(spawn->height>0) enemy->visual.height=spawn->height;
     if(spawn->scale!=1) {
-        enemy->bounds.right=(int)(enemy->bounds.left+(enemy->bounds.right-enemy->bounds.left)*spawn->scale);
-        enemy->bounds.bottom=(int)(enemy->bounds.top+(enemy->bounds.bottom-enemy->bounds.top)*spawn->scale);
+        enemy->bounds.right=(int16_t)astro_ppc_i32((enemy->bounds.right-enemy->bounds.left)*spawn->scale+enemy->bounds.left);
+        enemy->bounds.bottom=(int16_t)astro_ppc_i32((enemy->bounds.bottom-enemy->bounds.top)*spawn->scale+enemy->bounds.top);
         enemy->visual.width*=spawn->scale;enemy->visual.height*=spawn->scale;
     }
-    [self prependEnemy:enemy];
 }
 - (void)addSpecialBeam:(const AstroBeam *)beam temporary:(int)temporary context:(BeamContext *)context {
     [self applyBeam:beam context:context];
@@ -747,7 +756,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         .frame_interval=ui.frameInterval,.left=camera,.top=0,.right=camera+640,.bottom=380,
         .render_tick=&worldRenderTick,.action_tick=actor?&actor->state.action_tick:&lastPlayerShot,.render_world=specialRenderWorld,.present=specialPresent,
         .spawn=specialSpawn,.bullet=specialBullet,.beam=specialBeam,.sprite=specialSprite,
-        .polygon=specialPolygon,.sound=specialSound};
+        .polygon=specialPolygon,.sound=specialSound,.create_spawn=specialCreate,.finish_spawn=specialFinish};
     inventory.specials--;emittedSpecials++;
     if(!astro_special_start(&special,playerWeapon,context.gun_x,context.gun_y,0,[self playerClockTick],&context)) {
         NSLog(@"Cannot start special attack");exit(1);

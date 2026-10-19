@@ -4,13 +4,19 @@
 #include <string.h>
 
 static void sound(AstroSpecialContext *c,int id,double x) {if(c->sound)c->sound(c->context,id,x);}
-static void spawn(AstroSpecialContext *c,const AstroSpecialSpawn *s) {if(c->spawn)c->spawn(c->context,s);}
+static void *create_spawn(AstroSpecialContext *c,const AstroSpecialSpawn *s) {
+    return c->create_spawn?c->create_spawn(c->context,s):NULL;
+}
+static void finish_spawn(AstroSpecialContext *c,void *object,const AstroSpecialSpawn *s) {
+    if(c->finish_spawn)c->finish_spawn(c->context,object,s);else if(c->spawn)c->spawn(c->context,s);
+}
 static void sprite(AstroSpecialContext *c,int id,double x,double y,double size) {
     if(c->sprite)c->sprite(c->context,id,x,y,size,size);
 }
 static int random_value(AstroSpecialContext *c,int n) {return astro_random(c->seed,n);}
 static int valid(const AstroSpecialContext *c) {
-    return c&&c->seed&&(!c->target_count||c->targets)&&c->left<c->right&&c->top<c->bottom;
+    return c&&c->seed&&(!c->target_count||c->targets)&&c->left<c->right&&c->top<c->bottom&&
+        (!!c->create_spawn==!!c->finish_spawn);
 }
 static double center_value(const AstroTarget *t,int y) {
     AstroRect r=astro_target_rect(t);
@@ -38,15 +44,17 @@ static void burst(AstroSpecialContext *c,int x,int y) {
         int dx=random_value(c,10),dy=random_value(c,10);
         AstroSpecialSpawn s={.kind=2,.subtype=group?1:5,.x=x-5+dx,.y=y-5+dy,
             .hit_points=group?30:60,.layer=3,.frame=1,.scale=1};
+        void *object=create_spawn(c,&s);
         int heading=random_value(c,360),r=random_value(c,4);
         astro_vector_make(&s.velocity,heading,(group?6:9)*(6.0+r)/10.0);
-        s.velocity.x+=6;spawn(c,&s);
+        s.velocity.x+=6;finish_spawn(c,object,&s);
     }
 }
 static void plasma_projectile(AstroSpecialContext *c,int x,int y,int heading) {
     AstroSpecialSpawn s={.kind=2,.subtype=6,.x=x-80,.y=y-44,.hit_points=2000,
         .layer=3,.frame=1,.scale=1,.width=144,.height=82};
-    astro_vector_make(&s.velocity,heading,7);spawn(c,&s);
+    void *object=create_spawn(c,&s);
+    astro_vector_make(&s.velocity,heading,7);finish_spawn(c,object,&s);
     double speed=s.velocity.x;
     for(int i=0;i<6;i++) {
         int dx=random_value(c,60),dy=random_value(c,50);
@@ -55,11 +63,12 @@ static void plasma_projectile(AstroSpecialContext *c,int x,int y,int heading) {
     for(int group=0;group<2;group++)for(int i=0;i<(group?10:24);i++) {
         int dx=random_value(c,20),dy=random_value(c,50);
         AstroSpecialSpawn p={.kind=4,.subtype=2,.x=x+dx-40,.y=y+dy-30,.frame=1,.scale=1};
+        object=create_spawn(c,&p);
         int angle=random_value(c,360),r=random_value(c,20);
         astro_vector_make(&p.velocity,angle,(10.0+r)*.1);
         if(!group){p.velocity.x+=speed;p.velocity.y=0;}
         p.frame=random_value(c,3);p.action_offset=random_value(c,60)-30;
-        p.scale=(5.0+random_value(c,8))/10.0;spawn(c,&p);
+        p.scale=(5.0+random_value(c,8))/10.0;finish_spawn(c,object,&p);
     }
 }
 static void set_action(AstroSpecial *s,AstroSpecialContext *c,uint32_t value) {

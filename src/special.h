@@ -32,6 +32,9 @@ typedef struct {
     /* Due frames: world first (including its RNG), then special tail, present. */
     void (*render_world)(void *);
     void (*present)(void *);
+    /* Paired allocation/mutation callbacks preserve constructor/RNG ordering. */
+    void *(*create_spawn)(void *,const AstroSpecialSpawn *);
+    void (*finish_spawn)(void *,void *,const AstroSpecialSpawn *);
 } AstroSpecialContext;
 typedef struct {
     int weapon,active;
