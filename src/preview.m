@@ -113,6 +113,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     NSUInteger emittedEffects,emittedSpecials;
     AstroSpecial special;
     BOOL specialLoopRunning,specialEntered,specialReturnPending;
+    AstroEnemy *specialSourceActor;
     uint32_t specialRealOrigin,specialSimulationOrigin;
     NSArray *specialTargetObjects;
     NSMutableData *specialTargetData;
@@ -700,8 +701,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     return (!wallClockPoll&&(selftestPath||campaignTestPath))?simulationTick:[self currentGameTick];
 }
 - (void)prepareSpecialContext:(AstroSpecialContext *)context {
-    if(!specialEntered){playerCombat.kind=-1;specialEntered=YES;}
-    context->gun_x=playerBounds.left+74;context->gun_y=playerBounds.top+12;
+    if(!specialEntered){if(specialSourceActor)specialSourceActor->kind=-1;else playerCombat.kind=-1;specialEntered=YES;}
+    AstroRect bounds=specialSourceActor?specialSourceActor->bounds:playerBounds;
+    context->gun_x=bounds.left+74;context->gun_y=bounds.top+12;
 }
 - (void)calculateSpecialContext:(AstroSpecialContext *)context world:(BeamContext *)worldContext {
     simulationTick=observedWallTick;[self cleanupWorld];camera=astro_camera_advance(camera,tickedScroll);[self calculateActors];
@@ -718,29 +720,35 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     for(int i=0;i<6;i++)keys[controlKeys[i]]=CGEventSourceKeyState(kCGEventSourceStateCombinedSessionState,(CGKeyCode)controlKeys[i]);
 }
 - (BOOL)startSpecial {
+    return [self startSpecialFrom:nil];
+}
+- (BOOL)startSpecialFrom:(AstroEnemy *)actor {
     assert(!specialLoopRunning);
+    specialSourceActor=actor;
+    AstroRect bounds=actor?actor->bounds:playerBounds;
     NSArray *objects=[world copy];NSMutableData *data=[self targetsForObjects:objects];
     BeamContext beamWorld={.view=self,.objects=objects,.targets=data.mutableBytes};
     AstroSpecialContext context={.context=&beamWorld,.seed=&randomSeed,.targets=data.mutableBytes,
-        .target_count=objects.count,.source_parent=-1,.gun_x=playerBounds.left+74,.gun_y=playerBounds.top+12,
+        .target_count=objects.count,.source_parent=-1,.gun_x=bounds.left+74,.gun_y=bounds.top+12,
         .frame_interval=ui.frameInterval,.left=camera,.top=0,.right=camera+640,.bottom=380,
-        .render_tick=&worldRenderTick,.action_tick=&lastPlayerShot,.render_world=specialRenderWorld,.present=specialPresent,
+        .render_tick=&worldRenderTick,.action_tick=actor?&actor->state.action_tick:&lastPlayerShot,.render_world=specialRenderWorld,.present=specialPresent,
         .spawn=specialSpawn,.bullet=specialBullet,.beam=specialBeam,.sprite=specialSprite,
         .polygon=specialPolygon,.sound=specialSound};
     inventory.specials--;emittedSpecials++;
     if(!astro_special_start(&special,playerWeapon,context.gun_x,context.gun_y,0,[self playerClockTick],&context)) {
         NSLog(@"Cannot start special attack");exit(1);
     }
-    if(!special.active)return 0;
+    if(!special.active){specialSourceActor=nil;return NO;}
     specialSimulationOrigin=simulationTick;
     if(selftestPath||campaignTestPath){specialRealOrigin=[self currentGameTick];observedWallTick=simulationTick;}
     specialEntered=playerWeapon<50;
-    if(specialEntered)playerCombat.kind=-1;
+    if(specialEntered){if(actor)actor->kind=-1;else playerCombat.kind=-1;}
     specialLoopRunning=YES;
     AstroSpecialLoop loop={.cpu_tick=&observedWallTick,.read_tick=specialReadTick,
         .prepare=specialPrepare,.calculate=specialCalculate,.animate=specialAnimate,.read_keys=specialKeys};
     if(!astro_special_run_nested(&special,&context,&loop)){NSLog(@"Invalid special loop");exit(1);}
-    specialLoopRunning=NO;specialReturnPending=YES;playerCombat.kind=1;specialTargetObjects=nil;specialTargetData=nil;
+    specialLoopRunning=NO;specialReturnPending=YES;if(actor)actor->kind=1;else playerCombat.kind=1;
+    specialSourceActor=nil;specialTargetObjects=nil;specialTargetData=nil;
     return YES;
 }
 
