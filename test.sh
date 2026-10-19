@@ -60,6 +60,8 @@ build/transition_test
 build/nested_special_test tests/nested_special_trace.csv
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/special_fps_test.c src/special.c src/beams.c src/weapons.c src/physics.c src/ppc_math.c -lm -o build/special_fps_test
 build/special_fps_test tests/special_fps_vectors.csv
+"${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/special_clock_test.c src/special.c src/beams.c src/weapons.c src/physics.c src/ppc_math.c -lm -o build/special_clock_test
+build/special_clock_test tests/special_clock_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/hit_visual_test.c src/hit_visual.c src/visual.c -o build/hit_visual_test
 build/hit_visual_test
 if [ "${1:-}" != "--native-only" ] && [ -f assets/game.json ]; then

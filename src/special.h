@@ -35,6 +35,18 @@ typedef struct {
     int weapon,active;
     uint32_t started,last_tick,last_render_tick,action_until;
 } AstroSpecial;
+typedef struct {
+    uint32_t *cpu_tick;
+    uint32_t (*read_tick)(void *);
+    /* All hooks use AstroSpecialContext.context. Prepare copies pre-CALC gun;
+       calculate performs cleanup/CALC and refreshes targets without changing it. */
+    void (*prepare)(void *,AstroSpecialContext *);
+    void (*calculate)(void *,AstroSpecialContext *);
+    void (*animate)(void *);
+    void (*read_keys)(void *);
+} AstroSpecialLoop;
+/* Run an already-started timed special with original independent clock reads. */
+int astro_special_run_nested(AstroSpecial *,AstroSpecialContext *,const AstroSpecialLoop *);
 /* 10..13 and30..33 create their full burst immediately;40..43 and50..53 use a31-tick window.
  * While active, keep player movement/input but treat player kind as-1. Copy
  * action_until into shared player.action_tick; both weapons still require the

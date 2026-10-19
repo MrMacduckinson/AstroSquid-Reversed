@@ -57,6 +57,12 @@ full startup/menu state, extended campaigns and final packaging remain open.
 In particular, the original may finish a special between CPU updates when a
 separate TickCount read crosses the deadline; the asynchronous host's completion
 boundary still needs that clock-read behavior modeled and compared.
+The separate `astro_special_run_nested` driver now matches12 original polling
+schedules and all62066 clock reads, with distinct compare/store times, a
+clock-consuming CALC hook, ordered effects/RNG and terminal deadlines. Its
+728-line fixture losslessly expands repeated clock records; every expanded read
+is checked. Actor internals, entity-kind writes and production integration are
+outside this driver test. The application still calls the scalar stepping API.
 
 ## Checks performed
 

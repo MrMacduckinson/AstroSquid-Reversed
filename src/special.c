@@ -134,18 +134,27 @@ static void plasma_ray_render(AstroSpecialContext *c,SpecialRay ray) {
         sprite(c,90,ex+dx-size/2,ey-15+dy-size/2,size);
     }
 }
+typedef struct {int hits;SpecialRay ray;} SpecialFrame;
+static SpecialFrame special_cpu(AstroSpecial *s,AstroSpecialContext *c) {
+    SpecialFrame frame={0};
+    if(s->weapon>=50)frame.hits=storm_cpu(s,c);else frame.ray=plasma_ray_cpu(c);
+    return frame;
+}
+static void special_render(AstroSpecial *s,AstroSpecialContext *c,SpecialFrame frame,uint32_t tick) {
+    uint32_t *render_tick=c->render_tick?c->render_tick:&s->last_render_tick;
+    *render_tick=tick;s->last_render_tick=tick;
+    if(c->render_world)c->render_world(c->context);
+    if(s->weapon>=50)storm_render(c,frame.hits);else plasma_ray_render(c,frame.ray);
+    if(c->present)c->present(c->context);
+}
 static int apply_tick(AstroSpecial *s,uint32_t tick,AstroSpecialContext *c) {
     s->action_until=tick+(uint32_t)c->frame_interval+59;
     if(tick==s->last_tick)return 0;
     s->last_tick=tick;
-    int hits=0;SpecialRay ray={0};
-    if(s->weapon>=50)hits=storm_cpu(s,c);else ray=plasma_ray_cpu(c);
+    SpecialFrame frame=special_cpu(s,c);
     uint32_t *render_tick=c->render_tick?c->render_tick:&s->last_render_tick;
     if((int32_t)(tick-*render_tick)>=c->frame_interval) {
-        *render_tick=tick;s->last_render_tick=tick;
-        if(c->render_world)c->render_world(c->context);
-        if(s->weapon>=50)storm_render(c,hits);else plasma_ray_render(c,ray);
-        if(c->present)c->present(c->context);
+        special_render(s,c,frame,tick);
     }
     return 1;
 }
@@ -161,10 +170,30 @@ int astro_special_start_nested(AstroSpecial *s,int weapon,int x,int y,int headin
     return 1;
 }
 int astro_special_step_nested(AstroSpecial *s,uint32_t tick,AstroSpecialContext *c) {
-    /* shortcut: model separate original bottom-loop TickCount reads before whole-loop fidelity. */
+    /* shortcut: host still uses scalar ticks; wire run_nested for original polling. */
     if(!s||!s->active||!valid(c))return 0;
     if((int32_t)(tick-s->started)<0||tick==s->last_tick)return ASTRO_SPECIAL_WAIT;
     apply_tick(s,tick,c);
     if(tick-s->started>=30){s->active=0;return ASTRO_SPECIAL_EFFECT|ASTRO_SPECIAL_RESUME;}
     return ASTRO_SPECIAL_EFFECT;
+}
+int astro_special_run_nested(AstroSpecial *s,AstroSpecialContext *c,const AstroSpecialLoop *loop) {
+    if(!s||!s->active||!valid(c)||!c->render_tick||!loop||!loop->cpu_tick||
+       !loop->read_tick||!loop->prepare||!loop->calculate||!loop->animate||!loop->read_keys)return 0;
+    s->started=loop->read_tick(c->context);
+    do {
+        loop->prepare(c->context,c);
+        s->action_until=loop->read_tick(c->context)+(uint32_t)c->frame_interval+59;
+        uint32_t comparison=loop->read_tick(c->context);
+        if((int32_t)(comparison-*loop->cpu_tick)>0){
+            *loop->cpu_tick=loop->read_tick(c->context);s->last_tick=*loop->cpu_tick;
+            loop->calculate(c->context,c);
+            SpecialFrame frame=special_cpu(s,c);
+            comparison=loop->read_tick(c->context);
+            if((int32_t)(comparison-*c->render_tick)>=c->frame_interval)
+                special_render(s,c,frame,loop->read_tick(c->context));
+            loop->animate(c->context);loop->read_keys(c->context);
+        }
+    }while((int32_t)(loop->read_tick(c->context)-s->started)<31);
+    s->active=0;return 1;
 }
