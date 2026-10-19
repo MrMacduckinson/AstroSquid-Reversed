@@ -59,6 +59,7 @@ typedef struct {AstroVisual visual;int layer;uint64_t birth;} LiveEffect;
     int score;
     NSUInteger emittedShots,damageHits,emittedBeams;
     int playerWeapon;
+    int16_t preferenceFPS;
     AstroInventory inventory;
     AstroCampaign campaign;
     AstroFlow flow;
@@ -259,6 +260,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     int defaults[6]={55,58,126,125,123,124};memcpy(controlKeys,defaults,sizeof(defaults));
     NSUserDefaults *preferences=[NSUserDefaults standardUserDefaults];
     NSDictionary *settings=[preferences dictionaryForKey:@"AstroSquidSettings"];
+    preferenceFPS=settings[@"fps"]?[settings[@"fps"] shortValue]:60;
+    ui.frameInterval=astro_frame_interval(preferenceFPS);
     if(settings) {
         ui.smooth=[settings[@"smooth"] boolValue];
         ui.soundVolume=fmax(0,fmin(1,[settings[@"sound"] doubleValue]));
@@ -1109,15 +1112,17 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     NSUserDefaults *preferences=[NSUserDefaults standardUserDefaults];
     if([stage isEqual:@"write"]) {
         assert(controlKeys[0]==55&&fabs(ui.soundVolume-.6)<.001&&ui.musicVolume==1&&ui.smooth&&ui.unlockedLevel==1);
-        assert(highscores[0].score==0);splashVisible=NO;
+        assert(highscores[0].score==0&&preferenceFPS==60&&ui.frameInterval==1);splashVisible=NO;
         [self performMenuAction:@"SetKeyFire"];[self keyDown:[self testEvent:NSKeyDown code:14]];
         [self performMenuAction:@"SetSmooth"];[self performMenuAction:@"SetSVolume"];[self performMenuAction:@"SetMVolume"];
         assert(astro_scores_insert(highscores,650,"Persistence Probe")==1);[self saveScores];
         campaign=(AstroCampaign){4,1,0,0};[self unlockStage];
+        preferenceFPS=20;[self saveSettings];assert(ui.frameInterval==1);
         assert([preferences synchronize]);puts("PASS isolated preference write through actual UI handlers");
     } else if([stage isEqual:@"read"]) {
         assert(controlKeys[0]==14&&fabs(ui.soundVolume-.7)<.001&&ui.musicVolume==0&&!ui.smooth&&ui.unlockedLevel==7);
         assert(highscores[0].score==650&&!strcmp(highscores[0].name,"Persistence Probe"));
+        assert(preferenceFPS==20&&ui.frameInterval==3);
         [preferences removePersistentDomainForName:domain];assert([preferences synchronize]);
         puts("PASS new-process reload of keys, volumes, filter, unlocked stage and score; probe preferences removed");
     } else {fputs("Unknown preference probe stage\n",stderr);exit(2);}
@@ -1627,7 +1632,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(selftestPath||campaignTestPath)return;
     NSMutableArray *codes=[NSMutableArray array];for(int i=0;i<6;i++)[codes addObject:@(controlKeys[i])];
     [[NSUserDefaults standardUserDefaults] setObject:@{@"smooth":@(ui.smooth),@"sound":@(ui.soundVolume),
-        @"music":@(ui.musicVolume),@"keys":codes} forKey:@"AstroSquidSettings"];
+        @"music":@(ui.musicVolume),@"keys":codes,@"fps":@(preferenceFPS)} forKey:@"AstroSquidSettings"];
 }
 - (NSPoint)menuPoint:(NSEvent *)event {
     NSPoint p=[self convertPoint:event.locationInWindow fromView:nil];
