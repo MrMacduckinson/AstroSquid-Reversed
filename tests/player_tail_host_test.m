@@ -69,6 +69,17 @@ static unsigned prefixCount,prefixRead;
     int beforeFrame=playerState.frame;
     [self stepPlayer];assert(prefixRead==4&&playerState.animation_tick==107&&playerState.update_tick==107&&playerState.frame!=beforeFrame);
     prefixCount=0;
+    AstroPlayer separate={{2,3},1,1,1,100,100};AstroVelocity separateVelocity={2,3};
+    uint32_t primaryUpdate=playerState.update_tick,primaryAnimation=playerState.animation_tick;
+    prefixClocks[0]=100;prefixClocks[1]=100;prefixCount=2;prefixRead=0;
+    BOOL open=[self updatePlayerMotion:&separate velocity:&separateVelocity bounds:(AstroRect){20,20,40,40} width:20 height:20];
+    assert(!open&&prefixRead==2&&separate.update_tick==100&&separateVelocity.x==2);
+    prefixClocks[0]=112;prefixClocks[1]=119;prefixClocks[2]=120;prefixCount=3;prefixRead=0;
+    open=[self updatePlayerMotion:&separate velocity:&separateVelocity bounds:(AstroRect){20,20,40,40} width:20 height:20];
+    assert(open&&prefixRead==3&&separate.animation_tick==119&&separate.update_tick==100&&separate.tilt==2&&separate.frame==7);
+    assert(playerState.update_tick==primaryUpdate&&playerState.animation_tick==primaryAnimation);
+    prefixCount=0;
+    puts("PASS shared player motion uses supplied actor clocks/state without changing primary actor or storing update before firing");
     puts("PASS actual host separate animation/update comparisons and distinct animation store clock");
     puts("PASS actual player closed gate suppresses fire/posttail; open gate defers update store and samples clocks after synchronous fire");
 }

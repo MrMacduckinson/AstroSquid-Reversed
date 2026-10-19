@@ -931,21 +931,28 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         (int16_t)(int)(playerVisual.x+playerVisual.width),(int16_t)(int)(playerVisual.y+playerVisual.height)};
     playerCombat.velocity=playerVelocity;
     [self checkCollisionsFor:[NSNull null]];
+    if(![self updatePlayerMotion:&playerState velocity:&playerVelocity bounds:playerBounds width:playerVisual.width height:playerVisual.height])return;
+    playerCombat.velocity=playerVelocity;
+    [self firePlayerWeapons];
+}
+- (BOOL)updatePlayerMotion:(AstroPlayer *)actor velocity:(AstroVelocity *)velocity bounds:(AstroRect)bounds width:(double)width height:(double)height {
     unsigned controls=0;
     if(keys[controlKeys[4]])controls|=ASTRO_KEY_LEFT;
     if(keys[controlKeys[5]])controls|=ASTRO_KEY_RIGHT;
     if(keys[controlKeys[2]])controls|=ASTRO_KEY_UP;
     if(keys[controlKeys[3]])controls|=ASTRO_KEY_DOWN;
     if(changingStage&&!transition.allow_input)controls=transition.controls;
-    uint32_t comparison=[self playerClockTick],store=playerState.animation_tick;
-    if((int32_t)(comparison-playerState.animation_tick)>10)store=[self playerClockTick];
-    astro_player_animate(&playerState,comparison,store,controls);
+    uint32_t comparison=[self playerClockTick],store=actor->animation_tick;
+    if((int32_t)(comparison-actor->animation_tick)>10)store=[self playerClockTick];
+    astro_player_animate(actor,comparison,store,controls);
     comparison=[self playerClockTick];
-    if((int32_t)(comparison-playerState.update_tick)<=0)return;
-    playerState.velocity=playerVelocity;
-    astro_player_move(&playerState,controls,1,playerBounds,playerVisual.width,playerVisual.height,
+    if((int32_t)(comparison-actor->update_tick)<=0)return NO;
+    actor->velocity=*velocity;
+    astro_player_move(actor,controls,1,bounds,width,height,
         (AstroViewport){camera,0,camera+640,380},changingStage);
-    playerVelocity=playerState.velocity;playerCombat.velocity=playerVelocity;
+    *velocity=actor->velocity;return YES;
+}
+- (void)firePlayerWeapons {
     if((!changingStage||transition.allow_input)&&keys[selftestPath?8:controlKeys[0]]&&!special.active&&(int32_t)([self playerClockTick]-lastPlayerShot)>
         60.0/[game[@"weapons"][[NSString stringWithFormat:@"%d",playerWeapon]][@"rate"] doubleValue]) {
         [self fireWeapon:playerWeapon x:astro_ppc_i32(38+(playerBounds.left+playerBounds.right)/2.0)
