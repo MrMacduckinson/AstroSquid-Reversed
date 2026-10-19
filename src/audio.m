@@ -6,6 +6,7 @@
     NSMutableDictionary *samples;
     NSArray *tracks;
     NSMutableArray *voices;
+    NSMapTable *cueNames;
     AVAudioPlayer *_music;
     BOOL paused;
 }
@@ -17,6 +18,7 @@
     manifest=[NSJSONSerialization JSONObjectWithData:data options:0 error:error];
     if (![manifest isKindOfClass:[NSDictionary class]]) return nil;
     samples=[NSMutableDictionary dictionary]; voices=[NSMutableArray array];
+    cueNames=[NSMapTable weakToStrongObjectsMapTable];
     _soundVolume=1; _musicVolume=0.5; _stereo=YES;
     for (NSString *name in manifest[@"sounds"]) {
         NSString *file=manifest[@"sounds"][name][@"file"];
@@ -63,7 +65,15 @@
     NSTimeInterval time=left.deviceCurrentTime+0.005;
     BOOL ok=[left playAtTime:time] && [right playAtTime:time];
     if (!ok) { [left stop];[right stop];return NO; }
+    [cueNames setObject:name forKey:left];
     [voices addObject:@[left,right]];return YES;
+}
+- (BOOL)playCueIfNotPlaying:(NSString *)name position:(double)position {
+    for (NSArray *pair in voices) {
+        if ([[cueNames objectForKey:pair[0]] isEqual:name] &&
+            ([pair[0] isPlaying] || [pair[1] isPlaying])) return NO;
+    }
+    return [self playCue:name position:position];
 }
 - (BOOL)playStringCue:(int)index position:(double)position {
     NSString *name=manifest[@"string_cues"][[NSString stringWithFormat:@"%d",index]];

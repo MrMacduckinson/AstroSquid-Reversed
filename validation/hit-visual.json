@@ -1,0 +1,18 @@
+{
+  "source": "BULLETHITSPLAYER10060430,DOPLAYERSPRITE1005ed70,LMHANDLESPRITES1003b55c",
+  "semantics": "Valid nonfatalhit emitsHit301;create71layer7 atleft-5,top-5,width+10,height+10;existingnamedPlayerShield resets72;followleft/top-5eachplayerupdate;LMHANDLEstrictTickCount>next;71..75delay2,last-1remove",
+  "portable_tests": "ARMandIntelpass create/reset/scale/follow/strictanimationexpiry/recreate",
+  "native_new_oracle": "PASS1980original/portable mixedbullet+sceneryhit lifecycle ticks onG5:Hitcue/pan,LMlayer7or8,new71/reset72,follow,expiry;actualBULLETHITSPLAYER/PLAYERHITSSCENERY/DOPLAYERSPRITE/LMHANDLESPRITES executed;allocation/deallocation/audio driverobserved",
+  "audio_dedup": "actualAVAudioPlayer.isPlaying same-name dedup passedall18cuesonARMandIntel;all3musictracksdecode/advance/pausepassed",
+  "bounded_audit_e637127": [
+    "Pause freezesworld+HUDbutmusiccontinues,Menu277cue;hostpausedaudioanddisplayedmenustars.",
+    "Respawnpreservesbaseweapon,resetsupgrade0,keepsspecials;hostresetbase10.",
+    "Blink6tickphaseisrelativebirth,notglobalclock.",
+    "Nonfatalhitvisual+Hit301missinghostcallbacks.",
+    "Laser/Zapdeduppercue;Zaponlyiflightningtargetemitted.",
+    "DeathFX8vsLaserImpact/Shield7mustretainlayerorder."
+  ],
+  "reference_limit": "g5-screen.jpg menu03:29 andintel-selftest-frame.png gameplay04:46 arenotmatchingframes,cannotprovewholeframediff",
+  "scenery": "OriginalPLAYERHITSSCENERYcreateslayer8;repeatresets72andforcescurrentboundsW/H+10/left/top-5;existingcreationlayer/birthretained",
+  "latest_portable_test": "LocalplainCtestpassedwithmixedsceneryresizingtests;noGUI/OpenGL/audio runtime launchedonprimaryMac"
+}

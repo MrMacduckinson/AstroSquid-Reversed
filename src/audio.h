@@ -9,6 +9,7 @@
 - (instancetype)initWithAssets:(NSString *)path error:(NSError **)error;
 - (BOOL)playCue:(NSString *)name;
 - (BOOL)playCue:(NSString *)name position:(double)position;
+- (BOOL)playCueIfNotPlaying:(NSString *)name position:(double)position;
 - (BOOL)playStringCue:(int)index position:(double)position;
 - (BOOL)playMusic:(int)track;
 - (void)setPaused:(BOOL)paused;

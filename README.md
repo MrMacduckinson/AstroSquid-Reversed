@@ -1,11 +1,39 @@
-# AstroSquid reconstruction
+# AstroSquid 1.1 — native reconstruction
 
-Work in progress: recover the behavior of AstroSquid 1.1 and build a native
-Intel macOS port. This is a partial playable reconstruction, not a complete
-port or the original author’s source code.
+A reconstructed C/Objective-C port of Lost Minds' AstroSquid 1.1 for Intel Macs
+running macOS 10.13 or later. It runs natively, without Classic or a PowerPC
+emulator. This is newly reconstructed source, not the author's FutureBASIC
+project. Original art, levels, sounds and music belong to their original authors.
 
-The original executable is PowerPC CFM/PEF, compiled with FutureBASIC 3.
-The `FCOD` resource contains the actual program. The tiny data fork is a loader.
+## Play
+
+Extract `AstroSquid-Intel.zip`, then open `AstroSquid.app`. The application contains
+all runtime assets. No Python, developer tools or original installation is needed.
+The build is unsigned. Tested on the Intel reference iMac with macOS 10.13.6;
+newer macOS releases have not been tested on Intel hardware.
+
+Arrows move, Command fires, Option uses a special attack. Escape or the grave key
+pauses; any key resumes. Use Settings to reassign keys, adjust sound/music and
+change filtering. Keys, settings, scores and unlocked stages persist between
+launches. Close the window or use Command-Q to quit.
+
+The game includes all 17 stage files, all four special-attack families and their
+upgrades, enemies, bosses, pickups, deaths/respawns, menus, score entry, stage
+transitions and the four ending pages. The optional graphics archive contains the
+original Infini-D models; it is not required to play or compile this port.
+
+## Build from the source archive
+
+`AstroSquid-Source.zip` includes the extracted runtime assets. On a Mac with Xcode
+Command Line Tools installed:
+
+```sh
+./build.sh
+```
+
+The result is `build/AstroSquid.app`. The compiler builds for the host architecture;
+the distributed application was built on the Intel iMac. Python and image tools
+are needed only to regenerate assets or run the additional resource checks below.
 
 ## Inputs
 
@@ -19,9 +47,9 @@ The Ten for X build is a separate comparison and runtime reference.
 
 ## Current state
 
-This remains a work in progress. The native host runs reconstructed gameplay,
-not the original PowerPC executable or an emulator. It builds and runs on the
-Intel reference iMac with macOS10.13.6 and on the ARM development Mac.
+The native host runs reconstructed gameplay, not the original PowerPC executable.
+Runtime verification is performed on the Intel iMac; original-code probes run on
+the G5. Development builds on ARM are not the distributed Intel application.
 
 Recovered and checked against original instructions on the G5:
 
@@ -55,11 +83,25 @@ highscore entry, stage cards, midpoint autopilot and departure animation are
 connected. Preferences and unlocked stages persist. Score defaults, tie ordering
 and Classic name editing were checked against original PPC routines on G5.
 
-The full campaign route is under automated test. A complete original-game frame
-comparison, timed-special nested-world interleaving and final release packaging
-remain required. No finished port or release is claimed.
+The complete controlled campaign route passed on the Intel iMac: all 17 stages
+and the ending, through normal world updates and stage transitions. The pilot
+replenishes its shield and uses weapon 53; this proves route connectivity, not an
+unaided playthrough. Nested timed-special world interleaving is checked against
+an original PPC actor trace, including the terminal same-tick outer-loop resume.
 
-## Build
+Ordinary host checks also cover nonfatal hits, scenery hit effects, death,
+respawn, weapon retention, invulnerability, pause/resume, modifier-key release,
+new-game transition reset and wall-clock aging while paused. Original PPC probes
+check 1980 mixed projectile/scenery shield-effect lifecycle ticks. Preferences
+are tested through a write process and a separate reload process in an isolated
+test bundle, without changing player preferences.
+
+The validation does not establish pixel-identical live campaign frames across
+GPUs or an unaided full playthrough. The original painter order and all 74 source
+rasters have separate original-machine checks. See `VALIDATION.md` for the final
+release evidence and its scope.
+
+## Regenerate assets from the original
 
 Assets are generated from the original application, including its resource fork
 and adjacent Data folder. On macOS with Xcode Command Line Tools, Python, Pillow,
@@ -70,13 +112,11 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python tools/prepare_assets.py '/path/to/original/AstroSquid' assets
 ./build.sh
-open 'build/AstroSquid Preview.app'
+# Run build/AstroSquid.app on the target test Mac.
 ```
 
-Controls: arrows move, Command fires, Option triggers a special attack, Escape
-pauses. Original menus support mouse navigation, volume adjustment and key
-reassignment. Settings are stored in the app preferences. Development weapon and
-stage shortcuts are enabled only in the explicit self-test.
+Development weapon and stage shortcuts are enabled only in the explicit
+self-test. They are disabled during ordinary play.
 
 `PYTHON=.venv/bin/python ./test.sh` replays original captures and checks resources,
 audio PCM integrity and all74 QuickDraw image references. The native executable's
@@ -113,3 +153,11 @@ and steers toward bosses. It writes progress/results without modifying player
 preferences. This diagnoses campaign connectivity; it does not prove an unaided
 playthrough or original-game frame identity. Test rendering submits every frame
 to OpenGL without waiting for screen presentation, allowing accelerated checks.
+
+## Package
+
+After building and checking the Intel application, `tools/package_release.sh`
+writes `AstroSquid-Intel.zip` and `AstroSquid-Source.zip` into
+`~/Downloads/AstroSquid-Release`. It checks that the executable contains x86_64.
+The source archive includes runtime assets and the Git source revision, but no
+private analysis files, access credentials or original executable.

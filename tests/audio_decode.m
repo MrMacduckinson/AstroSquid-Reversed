@@ -10,7 +10,8 @@ int main(int argc,char **argv) { @autoreleasepool {
     audio.soundVolume=0.001;
     NSUInteger cues=0;
     for (NSString *name in manifest[@"sounds"]) {
-        [audio stop];assert([audio playCue:name position:0.25]);cues++;
+        [audio stop];assert([audio playCueIfNotPlaying:name position:0.25]);
+        assert(![audio playCueIfNotPlaying:name position:0.75]);cues++;
     }
     for (int i=1;i<=3;i++) {
         assert([audio playMusic:i]);audio.musicVolume=0;

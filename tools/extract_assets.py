@@ -17,6 +17,7 @@ def export(application, output):
     app = Path(application)
     items = resources(Path(str(app) + '/..namedfork/rsrc').read_bytes())
     records = {(r['type'], r['id']): r for r in items}
+    (output / 'AstroSquid.icns').write_bytes(records[('icns', -16455)]['data'])
     pict = output / 'pict'
     png = output / 'pictures'
     atlas = output / 'atlases'

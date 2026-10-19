@@ -1,0 +1,266 @@
+{
+  "scope": "12 controlled playfield composites: original PPC RENDERGAMEWINDOW/LMDRAWSPRITE versus duplicated equivalent Intel sprite/star math; not linked production renderer, not live campaign/HUD/menu identity",
+  "original_gpu": "ATI Radeon 9600 OpenGL1.5 ATI-1.4.18, PowerPC Tiger",
+  "port_gpu": "AMD Radeon Pro560 OpenGL2.1 ATI-1.68.20, Intel HighSierra",
+  "tolerance": "Mean error below1/255 per RGB channel and at least99% pixels within2/255; high-contrast raster-edge differences reported separately",
+  "passed": true,
+  "frames": [
+    {
+      "smooth": 0,
+      "trial": 0,
+      "stage": 1,
+      "camera": [
+        0,
+        0
+      ],
+      "changed_pixels": 73837,
+      "pixels_over_2": 1305,
+      "pixels_over_16": 105,
+      "max_rgb": 252,
+      "mean_rgb": [
+        0.25185444078947367,
+        0.2482606907894737,
+        0.24497944078947367
+      ],
+      "over16_neighbor_max": 18,
+      "original_sha256": "36b645a1b39a80bbf330788e8363b55c43f9214a0f91f95fe03350bb40ad2485",
+      "port_sha256": "2961c5924835881e0b284a7d1a7de70c4eff871c536163f465f95e1e3e55f865"
+    },
+    {
+      "smooth": 0,
+      "trial": 1,
+      "stage": 4,
+      "camera": [
+        0,
+        0
+      ],
+      "changed_pixels": 73738,
+      "pixels_over_2": 1242,
+      "pixels_over_16": 48,
+      "max_rgb": 52,
+      "mean_rgb": [
+        0.22383634868421054,
+        0.22011513157894738,
+        0.2168092105263158
+      ],
+      "over16_neighbor_max": 9,
+      "original_sha256": "5f6ee61e2f60d95fa016d69887d95990dd104b2735a0e1e06544e22f07dd99b7",
+      "port_sha256": "c8d0cbf2eba0fa72eff05dd11e2df6e1dc56c11ae8e1213b8fe0e60aea6301f4"
+    },
+    {
+      "smooth": 0,
+      "trial": 2,
+      "stage": 7,
+      "camera": [
+        0,
+        0
+      ],
+      "changed_pixels": 73837,
+      "pixels_over_2": 1305,
+      "pixels_over_16": 105,
+      "max_rgb": 252,
+      "mean_rgb": [
+        0.25185444078947367,
+        0.2482606907894737,
+        0.24497944078947367
+      ],
+      "over16_neighbor_max": 18,
+      "original_sha256": "36b645a1b39a80bbf330788e8363b55c43f9214a0f91f95fe03350bb40ad2485",
+      "port_sha256": "2961c5924835881e0b284a7d1a7de70c4eff871c536163f465f95e1e3e55f865"
+    },
+    {
+      "smooth": 0,
+      "trial": 3,
+      "stage": 1,
+      "camera": [
+        -37.25,
+        -13.5
+      ],
+      "changed_pixels": 73913,
+      "pixels_over_2": 741,
+      "pixels_over_16": 59,
+      "max_rgb": 252,
+      "mean_rgb": [
+        0.23831825657894737,
+        0.2349547697368421,
+        0.23428042763157894
+      ],
+      "over16_neighbor_max": 6,
+      "original_sha256": "a6bcef2a7f4c1b5d3757b9d49802df070e19a4e79d67cffafb36297c2d1f79e5",
+      "port_sha256": "7ae6c65ebe62ba886c8d95b21ad626140bb7d33aff4ff7a02ba78cd602d71d91"
+    },
+    {
+      "smooth": 0,
+      "trial": 4,
+      "stage": 4,
+      "camera": [
+        -37.25,
+        -13.5
+      ],
+      "changed_pixels": 73817,
+      "pixels_over_2": 678,
+      "pixels_over_16": 7,
+      "max_rgb": 18,
+      "mean_rgb": [
+        0.21199835526315788,
+        0.20858141447368422,
+        0.20783717105263158
+      ],
+      "over16_neighbor_max": 2,
+      "original_sha256": "fe2c94f610494c7af48aa88810f95b4edc9136288decc6a0542297138edf6551",
+      "port_sha256": "ea4c9bc6902d6e7c1d79eeab05f669b577d1d0db6a06df1518d7944464c2d7a7"
+    },
+    {
+      "smooth": 0,
+      "trial": 5,
+      "stage": 7,
+      "camera": [
+        -37.25,
+        -13.5
+      ],
+      "changed_pixels": 73913,
+      "pixels_over_2": 741,
+      "pixels_over_16": 59,
+      "max_rgb": 252,
+      "mean_rgb": [
+        0.23831825657894737,
+        0.2349547697368421,
+        0.23428042763157894
+      ],
+      "over16_neighbor_max": 6,
+      "original_sha256": "a6bcef2a7f4c1b5d3757b9d49802df070e19a4e79d67cffafb36297c2d1f79e5",
+      "port_sha256": "7ae6c65ebe62ba886c8d95b21ad626140bb7d33aff4ff7a02ba78cd602d71d91"
+    },
+    {
+      "smooth": 1,
+      "trial": 0,
+      "stage": 1,
+      "camera": [
+        0,
+        0
+      ],
+      "changed_pixels": 73681,
+      "pixels_over_2": 318,
+      "pixels_over_16": 56,
+      "max_rgb": 252,
+      "mean_rgb": [
+        0.23172697368421052,
+        0.23111842105263158,
+        0.22963815789473685
+      ],
+      "over16_neighbor_max": 6,
+      "original_sha256": "92ce639cc270dfdd4f651352c0a1c4529fb78086eeecef4552e19c8db32868ce",
+      "port_sha256": "8dc49cd7d687e354381c032fe79b7a126d15fd5d10c7eb3008302d032fbb7017"
+    },
+    {
+      "smooth": 1,
+      "trial": 1,
+      "stage": 4,
+      "camera": [
+        0,
+        0
+      ],
+      "changed_pixels": 73580,
+      "pixels_over_2": 256,
+      "pixels_over_16": 0,
+      "max_rgb": 6,
+      "mean_rgb": [
+        0.20349917763157896,
+        0.2029235197368421,
+        0.20146792763157895
+      ],
+      "over16_neighbor_max": 0,
+      "original_sha256": "0ea2421fd3c4459106e89752696d0a8a6722ebc2fa231664147e8612cf5f8957",
+      "port_sha256": "319194804deb660bb35f354dc97bd97987e955f59c2746a5b772d73d5b007255"
+    },
+    {
+      "smooth": 1,
+      "trial": 2,
+      "stage": 7,
+      "camera": [
+        0,
+        0
+      ],
+      "changed_pixels": 73681,
+      "pixels_over_2": 318,
+      "pixels_over_16": 56,
+      "max_rgb": 252,
+      "mean_rgb": [
+        0.23172697368421052,
+        0.23111842105263158,
+        0.22963815789473685
+      ],
+      "over16_neighbor_max": 6,
+      "original_sha256": "92ce639cc270dfdd4f651352c0a1c4529fb78086eeecef4552e19c8db32868ce",
+      "port_sha256": "8dc49cd7d687e354381c032fe79b7a126d15fd5d10c7eb3008302d032fbb7017"
+    },
+    {
+      "smooth": 1,
+      "trial": 3,
+      "stage": 1,
+      "camera": [
+        -37.25,
+        -13.5
+      ],
+      "changed_pixels": 74110,
+      "pixels_over_2": 314,
+      "pixels_over_16": 52,
+      "max_rgb": 252,
+      "mean_rgb": [
+        0.2297985197368421,
+        0.23208059210526316,
+        0.22778782894736843
+      ],
+      "over16_neighbor_max": 6,
+      "original_sha256": "410171c52d2b71d8198668035901e63472bbb4594307bbf2a303414226be6d45",
+      "port_sha256": "fd7159fc1082224d46936de9df580f893e3d8b25e9ab7f8163df32103263712f"
+    },
+    {
+      "smooth": 1,
+      "trial": 4,
+      "stage": 4,
+      "camera": [
+        -37.25,
+        -13.5
+      ],
+      "changed_pixels": 74004,
+      "pixels_over_2": 251,
+      "pixels_over_16": 0,
+      "max_rgb": 6,
+      "mean_rgb": [
+        0.2034498355263158,
+        0.205625,
+        0.20133223684210527
+      ],
+      "over16_neighbor_max": 0,
+      "original_sha256": "26937de17c82f8d9f8d8e884159a62f689eb551c24b588e411dfd3db720edf36",
+      "port_sha256": "eea62df61e6ef5ff752c6157c6adeeb74bda02785be527a978e509be9b4bf731"
+    },
+    {
+      "smooth": 1,
+      "trial": 5,
+      "stage": 7,
+      "camera": [
+        -37.25,
+        -13.5
+      ],
+      "changed_pixels": 74110,
+      "pixels_over_2": 314,
+      "pixels_over_16": 52,
+      "max_rgb": 252,
+      "mean_rgb": [
+        0.2297985197368421,
+        0.23208059210526316,
+        0.22778782894736843
+      ],
+      "over16_neighbor_max": 6,
+      "original_sha256": "410171c52d2b71d8198668035901e63472bbb4594307bbf2a303414226be6d45",
+      "port_sha256": "fd7159fc1082224d46936de9df580f893e3d8b25e9ab7f8163df32103263712f"
+    }
+  ],
+  "method_limits": [
+    "Intel primitives were cross-checked against production sprite UV/quad/camera math and normal-star path but are not production function calls.",
+    "GL_DITHER disabled on both contexts; production default dither state is outside this controlled comparison.",
+    "Production renderer is checked separately by actual application runtime selftests and source/painter-order evidence."
+  ]
+}

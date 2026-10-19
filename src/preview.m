@@ -1,5 +1,6 @@
-// Partial native gameplay reconstruction; remaining limits are listed in README.md.
+// Native reconstruction; validation scope and platform support are in README.md.
 #import <Cocoa/Cocoa.h>
+#import <IOKit/hidsystem/IOLLEvent.h>
 #import <OpenGL/gl.h>
 #import <AVFoundation/AVFoundation.h>
 #include "physics.h"
@@ -12,6 +13,7 @@
 #include "flow.h"
 #include "scores.h"
 #include "transition.h"
+#include "hit_visual.h"
 #include "visual.h"
 #include "effects.h"
 #include "debris.h"
@@ -24,9 +26,10 @@
 #include <assert.h>
 
 @class AstroView;
-typedef struct { __unsafe_unretained AstroView *view; __unsafe_unretained NSArray *objects; AstroTarget *targets; } BeamContext;
+typedef struct { __unsafe_unretained AstroView *view; __unsafe_unretained NSArray *objects; AstroTarget *targets; int soundCue,soundX,soundPlayed; } BeamContext;
 typedef struct { __unsafe_unretained AstroView *view; __unsafe_unretained id enemy; } EnemyContext;
 typedef struct { AstroBeam beam; uint32_t expires; } LiveBeam;
+typedef struct {AstroVisual visual;int layer;uint64_t birth;} LiveEffect;
 
 @interface AstroEnemy : NSObject {
 @public
@@ -59,6 +62,8 @@ typedef struct { AstroBeam beam; uint32_t expires; } LiveBeam;
     AstroTransition transition;
     AstroCampaign pendingCampaign;
     BOOL changingStage,engineGlow,departureTrail;
+    uint64_t engineGlowBirth;
+    uint32_t playerSpawnTick;
     AstroTransitionRect departureGlow,trailRect;
     AstroScore highscores[10];
     AstroScoreEditor scoreEditor;
@@ -98,10 +103,15 @@ typedef struct { AstroBeam beam; uint32_t expires; } LiveBeam;
     NSInteger selectedLevel;
     double camera;
     double playerX,playerY,playerEntityX,playerEntityY;
-    double previousTime;
+    double previousTime,clockOrigin;
+    uint32_t observedWallTick;
+    BOOL initialReadyCard;
     double tickRemainder;
     AstroVelocity playerVelocity;
     AstroPlayer playerState;
+    AstroPlayerHitVisual playerHitVisual;
+    uint64_t playerHitBirth;
+    int playerHitLayer;
     BOOL automatic;
     NSString *selftestPath,*campaignTestPath;
     NSMutableArray *campaignVisits;
@@ -124,6 +134,7 @@ typedef struct { AstroBeam beam; uint32_t expires; } LiveBeam;
 - (void)addSpecialSprite:(int)sprite x:(double)x y:(double)y width:(double)width height:(double)height;
 - (void)addSpecialPolygon:(const AstroSpecialVertex *)vertices count:(size_t)count;
 - (void)playSound:(int)index x:(int)x;
+- (void)playBeamSound:(int)index x:(int)x;
 - (void)drawSceneSprite:(const AstroSceneSprite *)sprite;
 - (void)fireWeapon:(int)weapon x:(int)x y:(int)y heading:(int)heading source:(int)kind;
 @end
@@ -141,6 +152,7 @@ static void enemyHit(void *context) {
 
 static void beamHit(void *context,const AstroBeam *beam) {
     BeamContext *world=context;
+    if(world->soundCue&&!world->soundPlayed){[world->view playBeamSound:world->soundCue x:world->soundX];world->soundPlayed=1;}
     [world->view applyBeam:beam context:world];
 }
 
@@ -181,6 +193,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     NSOpenGLPixelFormat *format = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
     self = [super initWithFrame:frame pixelFormat:format];
     if (!self) return nil;
+    clockOrigin=NSProcessInfo.processInfo.systemUptime;
     assetPath = [path copy];
     NSData *data = [NSData dataWithContentsOfFile:[path stringByAppendingPathComponent:@"game.json"]];
     NSError *error = nil;
@@ -293,7 +306,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         AstroVisual v={scene->sprite,scene->xy[0]+camera,scene->xy[1],
             scene->xy[2]-scene->xy[0],scene->xy[5]-scene->xy[1],
             simulationTick+(uint32_t)spriteInfo[scene->sprite].delay};
-        [visualEffects addObject:[NSMutableData dataWithBytes:&v length:sizeof(v)]];return;
+        [self addVisualEffect:v layer:7];return;
     }
     NSDictionary *sprite=game[@"sprites"][[NSString stringWithFormat:@"%d",scene->sprite]];
     int atlas=[sprite[@"texture"] intValue];NSDictionary *definition=game[@"textures"][[NSString stringWithFormat:@"%d",atlas]];
@@ -313,7 +326,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     glMatrixMode(GL_PROJECTION); glLoadIdentity(); glOrtho(0,640,379,0,-1,1);
     glMatrixMode(GL_MODELVIEW); glLoadIdentity();
     if(!menuVisible&&flow.phase!=ASTRO_FLOW_PLAY) {
-        AstroHUDState overlay={!playerCombat.remove,playerCombat.hit_points,inventory.weapon,
+        AstroHUDState overlay={[world containsObject:[NSNull null]]&&!(flow.phase==ASTRO_FLOW_READY&&!initialReadyCard),playerCombat.hit_points,inventory.weapon,
             inventory.upgrade,inventory.specials,inventory.lives,score};
         [hud drawState:&overlay texture:^GLuint(NSInteger n){return [self texture:n];}
             framebufferWidth:(GLsizei)bounds.size.width height:(GLsizei)bounds.size.height];
@@ -326,7 +339,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         else [ui drawBriefingForStage:flow.stage list:astro_flow_text_list(&flow) texture:^GLuint(NSInteger n){return [self texture:n];}];
         if(campaignTestPath)glFlush();else [[self openGLContext] flushBuffer];return;
     }
-    if(menuVisible) {
+    BOOL worldOverlay=menuVisible&&([ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"]);
+    if(menuVisible&&!worldOverlay) {
         glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
         glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);
         glMatrixMode(GL_MODELVIEW);glLoadIdentity();
@@ -360,7 +374,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     for(int layer=4;layer<=6;layer++) {
         for(id object in renderObjects) {
             if(object==[NSNull null]) {
-                if(layer==6&&(!invulnerableUntil||(simulationTick/6)%2))
+                if(layer==6&&(!invulnerableUntil||((simulationTick-playerSpawnTick)/6)%2))
                     [self sprite:playerVisual.sprite x:playerX y:playerY width:playerVisual.width height:playerVisual.height];
                 continue;
             }
@@ -381,14 +395,25 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         astro_beam_render(&live->beam,-camera,0,camera,0,camera+640,380,&beamSeed,&sink);
     }
     if(simulationRender)randomSeed=beamSeed;
-    for(NSMutableData *data in visualEffects) {
-        const AstroVisual *v=data.bytes;
-        [self sprite:v->sprite x:v->x-camera y:v->y width:v->width height:v->height];
-    }
+    NSMutableArray *effectsToDraw=[visualEffects mutableCopy];
     if(engineGlow) {
         AstroTransitionRect glow=departureTrail?departureGlow:
             astro_transition_engine_glow(playerVisual.x,playerY,playerVisual.height,playerState.frame);
-        [self sprite:115 x:glow.x-camera y:glow.y width:glow.width height:glow.height];
+        LiveEffect effect={{115,glow.x,glow.y,glow.width,glow.height,0},8,engineGlowBirth};
+        [effectsToDraw addObject:[NSData dataWithBytes:&effect length:sizeof(effect)]];
+    }
+    if(playerHitVisual.active) {
+        LiveEffect effect={playerHitVisual.visual,playerHitLayer,playerHitBirth};
+        [effectsToDraw addObject:[NSData dataWithBytes:&effect length:sizeof(effect)]];
+    }
+    [effectsToDraw sortUsingComparator:^NSComparisonResult(NSData *a,NSData *b){
+        const LiveEffect *x=a.bytes,*y=b.bytes;
+        if(x->layer!=y->layer)return x->layer<y->layer?NSOrderedAscending:NSOrderedDescending;
+        return x->birth<y->birth?NSOrderedAscending:x->birth>y->birth?NSOrderedDescending:NSOrderedSame;
+    }];
+    for(NSData *data in effectsToDraw) {
+        const AstroVisual *v=data.bytes;
+        [self sprite:v->sprite x:v->x-camera y:v->y width:v->width height:v->height];
     }
     glDisable(GL_TEXTURE_2D);glShadeModel(GL_SMOOTH);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     for(NSData *data in specialPolygons) {
@@ -399,10 +424,16 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     for(NSData *data in specialFlashes) {
         const AstroVisual *v=data.bytes;[self sprite:v->sprite x:v->x-camera y:v->y width:v->width height:v->height];
     }
-    AstroHUDState overlay={!playerCombat.remove,playerCombat.hit_points,inventory.weapon,
+    AstroHUDState overlay={[world containsObject:[NSNull null]]&&!(flow.phase==ASTRO_FLOW_READY&&!initialReadyCard),playerCombat.hit_points,inventory.weapon,
         inventory.upgrade,inventory.specials,inventory.lives,score};
     [hud drawState:&overlay texture:^GLuint(NSInteger n){return [self texture:n];}
         framebufferWidth:(GLsizei)bounds.size.width height:(GLsizei)bounds.size.height];
+    if(worldOverlay) {
+        glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
+        glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);glMatrixMode(GL_MODELVIEW);glLoadIdentity();
+        [ui drawSprites:^(NSInteger n,double x,double y,double w,double h){[self sprite:n x:x y:y width:w height:h];}
+            texture:^GLuint(NSInteger n){return [self texture:n];}];
+    }
     if(campaignTestPath)glFlush();else [[self openGLContext] flushBuffer];
 }
 - (AstroEnemy *)entityForPlacement:(NSDictionary *)placement {
@@ -435,13 +466,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)resetEnemies {
     renderClock=0;enemies=[NSMutableArray array];world=[NSMutableArray array];mapPlacements=[NSMutableArray array];
-    simulationTick=0;lastSpawnTick=0;lastPlayerShot=0;score=0;
-    playerCombat=(AstroCombatState){.kind=1,.hit_points=100};
+    lastSpawnTick=lastPlayerShot=simulationTick;score=0;
+    playerCombat=(AstroCombatState){.kind=1,.hit_points=100};playerHitVisual=(AstroPlayerHitVisual){0};
     visualEffects=[NSMutableArray array];specialPolygons=[NSMutableArray array];specialFlashes=[NSMutableArray array];
     special=(AstroSpecial){0};suspendedSpecialTail=nil;specialResumePending=NO;
-    playerVisual=(AstroVisual){1,30,190,71,20,0};playerEntityX=30;playerEntityY=190;
+    playerVisual=(AstroVisual){1,30,190,71,20,simulationTick+(uint32_t)spriteInfo[1].delay};playerEntityX=30;playerEntityY=190;
     playerBounds=(AstroRect){30,190,101,210};previousPlayerBounds=playerBounds;
-    playerState=(AstroPlayer){{0,0},12,3,1,0,0};playerVelocity=(AstroVelocity){0,0};
+    playerState=(AstroPlayer){{0,0},12,3,1,simulationTick,simulationTick};playerVelocity=(AstroVelocity){0,0};
     inventory=(AstroInventory){10,0,1,1};
     NSString *stage=levels[selectedLevel];
     campaign=(AstroCampaign){[[stage substringFromIndex:5] intValue],[stage hasSuffix:@"A"]?1:2,0,0};
@@ -476,10 +507,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)fireWeapon:(int)identifier x:(int)x y:(int)y heading:(int)heading source:(int)kind {
     if(identifier>=40&&identifier<=53) {
-        [audio playStringCue:identifier>=50?295:296 position:(x-camera)/640];
         NSArray *objects=[world copy];size_t count=objects.count;
         NSMutableData *targetData=[self targetsForObjects:objects];AstroTarget *targets=targetData.mutableBytes;
-        AstroBeam beams[2];BeamContext context={self,objects,targets};
+        AstroBeam beams[2];BeamContext context={.view=self,.objects=objects,.targets=targets,
+            .soundCue=identifier>=50?295:296,.soundX=x};
         int emitted=astro_beam_shots(identifier,x,y,heading,1,kind,-1,targets,count,
             camera,0,camera+640,380,&randomSeed,beams,beamHit,&context);
         if(emitted<0) {NSLog(@"Invalid beam request");exit(1);}
@@ -570,10 +601,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)addSpecialPolygon:(const AstroSpecialVertex *)vertices count:(size_t)count {
     [specialPolygons addObject:[NSData dataWithBytes:vertices length:count*sizeof(*vertices)]];
 }
+- (void)playBeamSound:(int)index x:(int)x {
+    [audio playCueIfNotPlaying:index==295?@"Zap":@"Laser" position:(x-camera)/640];
+}
 - (void)playSound:(int)index x:(int)x {[audio playStringCue:index position:(x-camera)/640];}
 - (int)stepSpecial:(BOOL)start {
     NSArray *objects=[world copy];NSMutableData *data=[self targetsForObjects:objects];
-    BeamContext beamWorld={self,objects,data.mutableBytes};
+    BeamContext beamWorld={.view=self,.objects=objects,.targets=data.mutableBytes};
     AstroSpecialContext context={.context=&beamWorld,.seed=&randomSeed,.targets=data.mutableBytes,
         .target_count=objects.count,.source_parent=-1,.gun_x=playerBounds.left+74,.gun_y=playerBounds.top+12,
         .frame_interval=1,.left=camera,.top=0,.right=camera+640,.bottom=380,
@@ -594,16 +628,28 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     return flags;
 }
 
+- (void)showPlayerHit:(BOOL)scenery {
+    [audio playStringCue:ASTRO_PLAYER_HIT_SOUND position:(playerBounds.left-camera)/640];
+    int result=scenery?astro_player_scenery_hit_visual(&playerHitVisual,playerBounds,spriteInfo,1001,simulationTick):
+        astro_player_hit_visual(&playerHitVisual,playerBounds,spriteInfo,1001,simulationTick);
+    if(!result){NSLog(@"Invalid player hit visual");exit(1);}
+    if(result==1){playerHitBirth=++renderClock;playerHitLayer=scenery?ASTRO_PLAYER_SCENERY_HIT_LAYER:ASTRO_PLAYER_HIT_LAYER;}
+}
+- (void)hitPlayerWithCombat:(AstroCombatState *)attacker {
+    BOOL hit=!attacker->remove&&(attacker->layer==1||attacker->layer==2);
+    astro_bullet_hits_player(attacker,&playerCombat);
+    if(hit&&playerCombat.hit_points>0)[self showPlayerHit:NO];
+}
 - (void)hitPlayerWithEnemy:(AstroEnemy *)enemy {
     AstroCombatState attacker=[self combatFor:enemy];
-    astro_bullet_hits_player(&attacker,&playerCombat);
+    [self hitPlayerWithCombat:&attacker];
     [self applyCombat:attacker to:enemy];
 }
 - (void)applyBeam:(const AstroBeam *)beam context:(BeamContext *)context {
     if(beam->target<0) return;
     AstroCombatState b={.kind=999,.layer=1,.hit_points=beam->damage};
     if(context->objects[beam->target]==[NSNull null]) {
-        if(playerCombat.kind==1) astro_bullet_hits_player(&b,&playerCombat);
+        if(playerCombat.kind==1) [self hitPlayerWithCombat:&b];
         context->targets[beam->target].remove=playerCombat.remove;
     } else {
         AstroEnemy *enemy=context->objects[beam->target];
@@ -623,7 +669,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     emittedEffects++;
     if(effect->type==ASTRO_EFFECT_EXPLOSION) {
         AstroVisual visual={effect->sprite,effect->x,effect->y,effect->width,effect->height,effect->animation_tick};
-        [visualEffects addObject:[NSMutableData dataWithBytes:&visual length:sizeof(visual)]];return;
+        [self addVisualEffect:visual layer:8];return;
     }
     NSDictionary *definition=game[@"attributes"][[NSString stringWithFormat:@"%d",effect->attribute]];
     int sprite=[definition[@"sprite"] intValue];
@@ -637,6 +683,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     enemy->state.update_tick=enemy->state.animation_tick=simulationTick;
     enemy->state.action_tick=effect->action_tick;
     [self prependEnemy:enemy];
+}
+- (void)addVisualEffect:(AstroVisual)visual layer:(int)layer {
+    LiveEffect effect={visual,layer,++renderClock};
+    [visualEffects addObject:[NSMutableData dataWithBytes:&effect length:sizeof(effect)]];
 }
 - (void)addDeathEffects:(AstroEnemy *)enemy {
     int sprite=enemy->visual.sprite;
@@ -656,6 +706,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
 }
 - (void)updateVisualEffects {
+    if(astro_player_hit_step(&playerHitVisual,spriteInfo,1001,simulationTick)<0){NSLog(@"Invalid player hit animation");exit(1);}
     NSIndexSet *finished=[visualEffects indexesOfObjectsPassingTest:
         ^BOOL(NSMutableData *data,NSUInteger index,BOOL *stop) {
             int result=astro_visual_step(data.mutableBytes,spriteInfo,1001,simulationTick);
@@ -693,7 +744,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             a.left>=b.right||b.left>=a.right||a.top>=b.bottom||b.top>=a.bottom)continue;
         if((kind==2||kind==5)&&targetKind==1) {
             AstroCombatState attacker=[self combatFor:source];
-            astro_bullet_hits_player(&attacker,&playerCombat);[self applyCombat:attacker to:source];
+            [self hitPlayerWithCombat:&attacker];[self applyCombat:attacker to:source];
             playerVelocity=playerCombat.velocity;
         } else if(kind==2&&(targetKind==5||(targetKind>=20&&targetKind<=29))) {
             AstroCombatState bullet=[self combatFor:source],victim=[self combatFor:target];
@@ -709,7 +760,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             playerWeapon=inventory.weapon+inventory.upgrade;
         } else if(kind==1&&targetKind>=20&&targetKind<=29) {
             AstroCombatState scenery=[self combatFor:target];playerCombat.velocity=playerVelocity;
+            BOOL hit=!scenery.remove;
             astro_player_hits_scenery(&playerCombat,a,&scenery,b);[self applyCombat:scenery to:target];
+            if(hit&&playerCombat.hit_points>0)[self showPlayerHit:YES];
             playerVelocity=playerCombat.velocity;
         }
     }
@@ -734,6 +787,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     astro_player_step(&playerState,simulationTick,controls,1,playerBounds,playerVisual.width,playerVisual.height,
         (AstroRect){(int)camera,0,(int)(camera+640),380},changingStage);
     playerVelocity=playerState.velocity;playerCombat.velocity=playerVelocity;
+    astro_player_hit_follow(&playerHitVisual,playerBounds);
     if((!changingStage||transition.allow_input)&&keys[selftestPath?8:controlKeys[0]]&&!special.active&&(int32_t)(simulationTick-lastPlayerShot)>
         60.0/[game[@"weapons"][[NSString stringWithFormat:@"%d",playerWeapon]][@"rate"] doubleValue]) {
         lastPlayerShot=simulationTick;
@@ -816,12 +870,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
 }
 - (void)loadCampaignStage:(AstroCampaign)next {
+    initialReadyCard=NO;
     NSString *stage=[NSString stringWithFormat:@"Data %d%c",next.level,next.half==1?'A':'B'];
     NSUInteger index=[levels indexOfObject:stage];if(index==NSNotFound){NSLog(@"Missing stage %@",stage);exit(1);}
     AstroInventory saved=inventory;int savedScore=score;
     selectedLevel=index;camera=0;[self resetEnemies];inventory=saved;score=savedScore;
     inventory.weapon=10;inventory.upgrade=0;playerWeapon=10;playerX=30;playerY=190;
-    if(selftestPath)playerCombat.hit_points=1000000;
+    if(selftestPath)playerCombat.hit_points=30000;
     [self unlockStage];
 }
 - (void)beginStageTransition {
@@ -841,7 +896,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         }
     }
     if(transition.zero_velocity){playerVelocity=(AstroVelocity){0,0};playerState.velocity=playerVelocity;}
-    if(transition.events&ASTRO_TRANSITION_ENGINE_GLOW)engineGlow=YES;
+    if(transition.events&ASTRO_TRANSITION_ENGINE_GLOW){engineGlow=YES;engineGlowBirth=++renderClock;}
     if(transition.events&ASTRO_TRANSITION_HYPER_SOUND)[audio playCue:@"Hyper"];
     if(transition.events&ASTRO_TRANSITION_BANG_SOUND)[audio playCue:@"Bang3"];
     if(transition.events&ASTRO_TRANSITION_TRAIL_SPRITE) {
@@ -891,7 +946,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         playerVisual=(AstroVisual){1,playerX+camera,playerY,71,20,simulationTick};
         playerEntityX=playerVisual.x;playerEntityY=playerVisual.y;
         playerState=(AstroPlayer){{0,0},12,3,1,simulationTick,simulationTick};
-        inventory.weapon=10;inventory.upgrade=0;playerWeapon=10;
+        inventory.upgrade=0;playerWeapon=inventory.weapon;playerSpawnTick=simulationTick;
         playerRenderBirth=++renderClock;[world insertObject:[NSNull null] atIndex:0];
         invulnerableUntil=simulationTick+181;respawnTick=0;
     }
@@ -918,8 +973,39 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if(!next.complete)[self loadCampaignStage:next];
         else {campaign.complete=1;[enemies removeAllObjects];[world removeAllObjects];}
     }
+    if(previous==ASTRO_FLOW_READY&&flow.phase==ASTRO_FLOW_PLAY&&!initialReadyCard) {
+        if(flow.half==2)for(AstroEnemy *enemy in enemies){
+            enemy->state.update_tick=enemy->state.animation_tick=enemy->state.action_tick=simulationTick;
+            enemy->visual.next_tick=simulationTick+(uint32_t)spriteInfo[enemy->visual.sprite].delay;
+        }
+        playerState.update_tick=playerState.animation_tick=lastPlayerShot=simulationTick;
+        playerVisual.next_tick=simulationTick+(uint32_t)spriteInfo[playerVisual.sprite].delay;
+        playerRenderBirth=++renderClock;
+    }
     if(previous!=flow.phase&&flow.phase==ASTRO_FLOW_PLAY)[audio playMusic:2];
     if(flow.phase==ASTRO_FLOW_FINISHED)[self beginGameOver];
+}
+- (void)probePreferences:(NSString *)stage {
+    NSString *domain=NSBundle.mainBundle.bundleIdentifier;
+    if(![domain hasPrefix:@"local.astrosquid.persistence-probe."]) {
+        fputs("Preference probe requires its own isolated test bundle identifier\n",stderr);exit(2);
+    }
+    NSUserDefaults *preferences=[NSUserDefaults standardUserDefaults];
+    if([stage isEqual:@"write"]) {
+        assert(controlKeys[0]==55&&fabs(ui.soundVolume-.6)<.001&&ui.musicVolume==1&&ui.smooth&&ui.unlockedLevel==1);
+        assert(highscores[0].score==0);splashVisible=NO;
+        [self performMenuAction:@"SetKeyFire"];[self keyDown:[self testEvent:NSKeyDown code:14]];
+        [self performMenuAction:@"SetSmooth"];[self performMenuAction:@"SetSVolume"];[self performMenuAction:@"SetMVolume"];
+        assert(astro_scores_insert(highscores,650,"Persistence Probe")==1);[self saveScores];
+        campaign=(AstroCampaign){4,1,0,0};[self unlockStage];
+        assert([preferences synchronize]);puts("PASS isolated preference write through actual UI handlers");
+    } else if([stage isEqual:@"read"]) {
+        assert(controlKeys[0]==14&&fabs(ui.soundVolume-.7)<.001&&ui.musicVolume==0&&!ui.smooth&&ui.unlockedLevel==7);
+        assert(highscores[0].score==650&&!strcmp(highscores[0].name,"Persistence Probe"));
+        [preferences removePersistentDomainForName:domain];assert([preferences synchronize]);
+        puts("PASS new-process reload of keys, volumes, filter, unlocked stage and score; probe preferences removed");
+    } else {fputs("Unknown preference probe stage\n",stderr);exit(2);}
+    fflush(stdout);exit(0);
 }
 - (void)beginCampaignTest:(NSString *)path {
     splashVisible=NO;campaignTestPath=[path copy];campaignVisits=[NSMutableArray array];
@@ -947,7 +1033,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             NSLog(@"Campaign reached %@ at tick %lu",stage,(unsigned long)campaignTestTicks);
         }
         if(menuVisible&&gameOver){[self writeCampaignReport:YES passed:campaign.complete&&campaignVisits.count==17 reason:campaign.complete?@"ending reached":@"pilot died"];return;}
-        if(flow.phase!=ASTRO_FLOW_PLAY)[self advanceFlowWithKey:YES];
+        if(flow.phase!=ASTRO_FLOW_PLAY){simulationTick++;[self advanceFlowWithKey:YES];}
         else {
             memset(keys,0,sizeof(keys));
             if(!changingStage){
@@ -981,15 +1067,38 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         }
     }
 }
+- (void)tickWallClock {
+    uint32_t stamp=(uint32_t)floor((NSProcessInfo.processInfo.systemUptime-clockOrigin)*60);
+    uint32_t elapsed=stamp-observedWallTick;
+    if(!elapsed)return;
+    observedWallTick=stamp;simulationTick=stamp;
+    BOOL idle=menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY;
+    if(!menuVisible&&flow.phase!=ASTRO_FLOW_PLAY) {
+        BOOL anyKey=NO;for(int i=0;i<128;i++)anyKey|=keys[i];
+        uint64_t age=(uint64_t)flow.ticks+elapsed-1;flow.ticks=(uint32_t)MIN(age,UINT32_MAX);
+        [self advanceFlowWithKey:anyKey];
+    }
+    if(!idle) {
+        double old=camera;
+        if(changingStage&&transition.simulate_world)camera+=transition.scroll_x;
+        else if(!changingStage&&automatic&&!campaign.arena&&campaignAction==ASTRO_CAMPAIGN_NONE)camera+=1;
+        tickedScroll=camera-old;simulationTick=stamp-1;[self stepEnemies];[self renderTick];
+    }
+    if(editingKey>=0&&NSProcessInfo.processInfo.systemUptime>=keyCaptureDeadline){editingKey=-1;[self refreshKeyLabels];}
+    if(menuVisible)[ui animateTicks:1];
+    if(idle)[self setNeedsDisplay:YES];
+    self.window.title=@"AstroSquid";
+}
 - (void)tick:(NSTimer *)sender {
     if(campaignTestPath){[self driveCampaignTest];return;}
+    if(!selftestPath){[self tickWallClock];return;}
     double now=[NSDate timeIntervalSinceReferenceDate];
     double dt=fmin(now-previousTime,.05); previousTime=now;
     tickRemainder+=dt;
     if(!menuVisible&&flow.phase!=ASTRO_FLOW_PLAY) {
         BOOL anyKey=NO;for(int i=0;i<128;i++)anyKey|=keys[i];[self advanceFlowWithKey:anyKey];
     }
-    if(editingKey>=0&&[NSDate timeIntervalSinceReferenceDate]>=keyCaptureDeadline){editingKey=-1;[self refreshKeyLabels];}
+    if(editingKey>=0&&NSProcessInfo.processInfo.systemUptime>=keyCaptureDeadline){editingKey=-1;[self refreshKeyLabels];}
     if(menuVisible) [ui animateTicks:1];
     if(paused||gameOver||menuVisible||flow.phase!=ASTRO_FLOW_PLAY) tickRemainder=0;
     while(tickRemainder>=1.0/60.0&&flow.phase==ASTRO_FLOW_PLAY&&!menuVisible&&!paused) {
@@ -1070,7 +1179,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             playerVisual.x=playerX+camera;playerVisual.y=playerY;playerEntityX=playerVisual.x;playerEntityY=playerY;break;
         }
     }
-    playerCombat.hit_points=1000000;
+    playerCombat.hit_points=30000;
     audio.musicVolume=0;audio.soundVolume=0;
     [audio playMusic:2];
 }
@@ -1110,6 +1219,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         @"textures_loaded":@(textures.count),@"frame_width":@(width),@"frame_height":@(height)};
     [self testStageTransitionHandlers];
     [self testScoreAndSettingsHandlers];
+    [self testOrdinaryLifeCycle];
+    [self testPausedClock];
     [[NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:nil]
         writeToFile:[selftestPath stringByAppendingPathComponent:@"result.json"] atomically:YES];
     puts(passed?"PASS: native menus, cards, settings, score entry, renderer, combat and audio":"FAIL: native preview self-test");
@@ -1137,6 +1248,61 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         assert(inventory.weapon==10&&inventory.upgrade==0);
     }
 }
+- (void)testPausedClock {
+    [self performMenuAction:@"New Game"];for(int i=0;i<60;i++){simulationTick++;[self advanceFlowWithKey:YES];}
+    [enemies removeAllObjects];[world removeAllObjects];[world addObject:[NSNull null]];[mapPlacements removeAllObjects];
+    memset(keys,0,sizeof(keys));automatic=YES;campaign.arena=0;paused=YES;menuVisible=YES;
+    simulationTick=100;observedWallTick=100;clockOrigin=NSProcessInfo.processInfo.systemUptime-100.0/60;
+    double old=camera;clockOrigin-=5;[self tickWallClock];
+    assert(simulationTick>=400&&camera==old);
+    lastPlayerShot=100;paused=NO;menuVisible=NO;clockOrigin-=2.0/60;[self tickWallClock];
+    assert(camera==old+1&&simulationTick>=402&&lastPlayerShot==100);
+}
+- (void)testModifier:(unsigned short)code flags:(NSEventModifierFlags)flags {
+    [self flagsChanged:[NSEvent keyEventWithType:NSFlagsChanged location:NSZeroPoint modifierFlags:flags
+        timestamp:0 windowNumber:self.window.windowNumber context:nil characters:@""
+        charactersIgnoringModifiers:@"" isARepeat:NO keyCode:code]];
+}
+- (void)testOrdinaryLifeCycle {
+    [self performMenuAction:@"New Game"];for(int i=0;i<60;i++)[self advanceFlowWithKey:YES];
+    [enemies removeAllObjects];[world removeAllObjects];[world addObject:[NSNull null]];[mapPlacements removeAllObjects];
+    memset(keys,0,sizeof(keys));inventory=(AstroInventory){40,3,2,1};playerWeapon=43;
+    playerCombat=(AstroCombatState){.kind=1,.hit_points=100};
+    AstroCombatState hit={.kind=2,.layer=2,.hit_points=10};[self hitPlayerWithCombat:&hit];
+    assert(playerCombat.hit_points==90&&playerHitVisual.active&&playerHitVisual.visual.sprite==71);
+    uint64_t birth=playerHitBirth;hit=(AstroCombatState){.kind=2,.layer=2,.hit_points=10};[self hitPlayerWithCombat:&hit];
+    assert(playerCombat.hit_points==80&&playerHitVisual.visual.sprite==72&&playerHitBirth==birth);
+    AstroEnemy *obstacle=[self entityForPlacement:@{@"attribute":@201,@"x":@(playerBounds.left+5),@"y":@(playerBounds.top+3),@"width":@90,@"height":@80,@"tag":@0}];
+    obstacle->kind=20;obstacle->hitPoints=100;[self prependEnemy:obstacle];
+    [self checkCollisionsFor:[NSNull null]];
+    assert(playerCombat.hit_points==70&&playerHitLayer==7&&playerHitBirth==birth&&playerHitVisual.visual.sprite==72);
+    playerHitVisual.active=0;[self checkCollisionsFor:[NSNull null]];
+    assert(playerCombat.hit_points==60&&playerHitLayer==8&&playerHitVisual.visual.sprite==71);
+    [world removeObjectIdenticalTo:obstacle];[enemies removeObjectIdenticalTo:obstacle];
+    playerCombat.remove=-1;
+    uint32_t deathTick=simulationTick;[self cleanupWorld];
+    assert(![world containsObject:[NSNull null]]&&inventory.lives==0&&respawnTick==deathTick+61);
+    for(int i=0;i<61;i++)[self stepEnemies];
+    assert([world containsObject:[NSNull null]]&&playerCombat.kind==-1&&inventory.weapon==40&&inventory.upgrade==0&&inventory.specials==2&&playerWeapon==40);
+    assert(playerSpawnTick==simulationTick&&((simulationTick-playerSpawnTick)/6)%2==0);
+    for(int i=0;i<181;i++)[self stepEnemies];assert(playerCombat.kind==1&&!invulnerableUntil);
+    NSString *testPath=selftestPath;selftestPath=nil;
+    [self keyDown:[self testEvent:NSKeyDown code:53]];assert(paused&&menuVisible&&audio.music.isPlaying);
+    uint32_t stopped=simulationTick;[self keyDown:[self testEvent:NSKeyDown code:124]];
+    assert(!paused&&!menuVisible&&simulationTick==stopped);
+    [self keyDown:[self testEvent:NSKeyDown code:53]];assert(paused);
+    [self testModifier:55 flags:NSEventModifierFlagCommand|NX_DEVICELCMDKEYMASK];assert(!paused&&!menuVisible&&keys[55]);
+    [self testModifier:54 flags:NSEventModifierFlagCommand|NX_DEVICELCMDKEYMASK|NX_DEVICERCMDKEYMASK];assert(keys[55]&&keys[54]);
+    [self testModifier:55 flags:NSEventModifierFlagCommand|NX_DEVICERCMDKEYMASK];assert(!keys[55]&&keys[54]);
+    [self testModifier:54 flags:0];assert(!keys[55]&&!keys[54]);
+    [self keyDown:[self testEvent:NSKeyDown code:53]];assert(paused);
+    [self testModifier:55 flags:0];assert(paused);
+    [self testModifier:58 flags:NSEventModifierFlagOption|NX_DEVICELALTKEYMASK];assert(!paused&&!menuVisible);
+    [self testModifier:58 flags:0];selftestPath=testPath;
+    campaign=(AstroCampaign){1,2,0,0};[self beginStageTransition];assert(changingStage);
+    [self performMenuAction:@"PauseQuit"];[self performMenuAction:@"New Game"];
+    assert(!changingStage&&transition.phase==0&&pendingCampaign.level==0&&selectedLevel==0&&flow.phase==ASTRO_FLOW_READY);
+}
 - (void)testScoreAndSettingsHandlers {
     double volume=ui.soundVolume;
     for(int i=0;i<11;i++)[self performMenuAction:@"SetSVolume"];
@@ -1144,7 +1310,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     BOOL smooth=ui.smooth;[self performMenuAction:@"SetSmooth"];assert(ui.smooth!=smooth);
     [self performMenuAction:@"SetSmooth"];assert(ui.smooth==smooth);
     int fire=controlKeys[0];[self performMenuAction:@"SetKeyFire"];
-    [self keyDown:[self testEvent:NSKeyDown code:7]];assert(controlKeys[0]==7&&editingKey==-1);controlKeys[0]=fire;
+    [self keyDown:[self testEvent:NSKeyDown code:7]];assert(controlKeys[0]==7&&editingKey==-1);
+    [self performMenuAction:@"SetKeyFire"];[self testModifier:58 flags:NSEventModifierFlagOption|NX_DEVICELALTKEYMASK];
+    assert(controlKeys[0]==58&&editingKey==-1);[self testModifier:58 flags:0];controlKeys[0]=fire;
     AstroScore saved[10];memcpy(saved,highscores,sizeof(saved));astro_scores_clear(highscores);
     int oldScore=score;score=12345;[self beginGameOver];assert(ui.editingHighscore>0);
     NSEvent *text=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0
@@ -1154,6 +1322,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self keyDown:[self testEvent:NSKeyDown code:36]];
     assert([ui.anchor isEqual:@"Highscores Menu"]&&!strcmp(highscores[0].name,"TEST")&&highscores[0].score==12345);
     [self keyDown:[self testEvent:NSKeyDown code:17]];assert(highscores[1].score==0);
+    score=0;[self beginGameOver];assert(ui.editingHighscore==0);
+    [self testModifier:55 flags:NSEventModifierFlagCommand|NX_DEVICELCMDKEYMASK];
+    assert(!gameOver&&[ui.anchor isEqual:@"Play Menu"]);[self testModifier:55 flags:0];
     memcpy(highscores,saved,sizeof(saved));score=oldScore;[self refreshScores];
 }
 - (void)keyDown:(NSEvent *)event {
@@ -1172,14 +1343,15 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [self refreshScoreEditor];if(scoreEditor.submitted)[self finishGameOver];return;
     }
     if(menuVisible&&gameOver){[self finishGameOver];return;}
+    if(menuVisible&&paused){menuVisible=NO;paused=NO;return;}
     if(event.isARepeat) return;
     if(editingKey>=0&&key<128) {
         controlKeys[editingKey]=key;editingKey=-1;[self refreshKeyLabels];[self saveSettings];return;
     }
     if(!selftestPath) {
-        if(key==53) {
+        if((key==53||key==50)) {
             if(menuVisible&&paused) {menuVisible=NO;paused=NO;[audio setPaused:NO];}
-            else if(!menuVisible&&flow.phase==ASTRO_FLOW_PLAY) {menuVisible=YES;paused=YES;[audio setPaused:YES];[ui show:@"Pause"];}
+            else if(!menuVisible&&flow.phase==ASTRO_FLOW_PLAY&&(!changingStage||transition.allow_input)) {menuVisible=YES;paused=YES;[audio playCue:@"Menu"];[ui show:@"Pause"];}
         }
         return;
     }
@@ -1208,11 +1380,17 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     NSEventModifierFlags flag=code==58||code==61?NSEventModifierFlagOption:
         code==56||code==60?NSEventModifierFlagShift:code==59||code==62?NSEventModifierFlagControl:
         code==55||code==54?NSEventModifierFlagCommand:0;
-    if(splashVisible&&flag&&(event.modifierFlags&flag)){splashVisible=NO;return;}
-    if(flag&&code<128) {
-        keys[code]=(event.modifierFlags&flag)!=0;
-        if(editingKey>=0&&keys[code]) [self keyDown:event];
-    }
+    if(!flag||code>=128)return;
+    NSUInteger device=code==55?NX_DEVICELCMDKEYMASK:code==54?NX_DEVICERCMDKEYMASK:
+        code==58?NX_DEVICELALTKEYMASK:code==61?NX_DEVICERALTKEYMASK:
+        code==56?NX_DEVICELSHIFTKEYMASK:code==60?NX_DEVICERSHIFTKEYMASK:
+        code==59?NX_DEVICELCTLKEYMASK:NX_DEVICERCTLKEYMASK;
+    keys[code]=(event.modifierFlags&device)!=0;
+    if(!keys[code])return;
+    if(splashVisible){splashVisible=NO;return;}
+    if(menuVisible&&paused){menuVisible=NO;paused=NO;return;}
+    if(menuVisible&&gameOver&&ui.editingHighscore<=0){[self finishGameOver];return;}
+    if(editingKey>=0){controlKeys[editingKey]=code;editingKey=-1;[self refreshKeyLabels];[self saveSettings];}
 }
 - (void)refreshScores {
     NSMutableArray *rows=[NSMutableArray array];
@@ -1297,7 +1475,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     AstroUICommand command=astro_ui_command(name.UTF8String);
     if(command.action!=ASTRO_UI_NONE)[audio playCue:@"Click"];
     if(command.action==ASTRO_UI_CLEAR_SCORES){astro_scores_clear(highscores);ui.editingHighscore=0;[self saveScores];}
-    if(command.action==ASTRO_UI_KEY) {editingKey=command.key;keyCaptureDeadline=[NSDate timeIntervalSinceReferenceDate]+10;NSMutableArray *labels=[ui.keyLabels mutableCopy];labels[editingKey]=@"Press a key";ui.keyLabels=labels;}
+    if(command.action==ASTRO_UI_KEY) {editingKey=command.key;keyCaptureDeadline=NSProcessInfo.processInfo.systemUptime+10;NSMutableArray *labels=[ui.keyLabels mutableCopy];labels[editingKey]=@"Press a key";ui.keyLabels=labels;}
     if(command.action==ASTRO_UI_SMOOTH) {
         ui.smooth=!ui.smooth;[[self openGLContext] makeCurrentContext];
         for(NSNumber *texture in textures.allValues){glBindTexture(GL_TEXTURE_2D,texture.unsignedIntValue);
@@ -1310,6 +1488,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(command.action==ASTRO_UI_NEW_GAME||command.action==ASTRO_UI_CONTINUE) {
         NSString *stage=[NSString stringWithFormat:@"Data %d%c",command.stage,command.section==1?'A':'B'];
         NSUInteger index=[levels indexOfObject:stage];if(index==NSNotFound)return;
+        if(!selftestPath&&!campaignTestPath)simulationTick=(uint32_t)floor((NSProcessInfo.processInfo.systemUptime-clockOrigin)*60);
+        initialReadyCard=YES;changingStage=NO;transition=(AstroTransition){0};pendingCampaign=(AstroCampaign){0};
         ui.editingHighscore=0;selectedLevel=index;camera=0;[self resetEnemies];playerX=30;playerY=190;
         memset(keys,0,sizeof(keys));automatic=YES;paused=NO;menuVisible=NO;
         astro_flow_ready(&flow,campaign.level,campaign.half);[self unlockStage];
@@ -1331,17 +1511,18 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     NSString *path=[[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"assets"];
     NSArray *arguments=[[NSProcessInfo processInfo] arguments];
-    NSString *testPath=nil,*campaignPath=nil;
+    NSString *testPath=nil,*campaignPath=nil,*preferenceProbe=nil;
     for(NSUInteger i=1;i<arguments.count;i++) {
         if([arguments[i] isEqualToString:@"--self-test"] && i+1<arguments.count) testPath=arguments[++i];
         else if([arguments[i] isEqualToString:@"--campaign-test"] && i+1<arguments.count) campaignPath=arguments[++i];
+        else if([arguments[i] isEqualToString:@"--preferences-probe"] && i+1<arguments.count) preferenceProbe=arguments[++i];
         else if([arguments[i] isEqualToString:@"--assets"] && i+1<arguments.count) path=arguments[++i];
     }
     NSRect frame=NSMakeRect(0,0,campaignPath?640:960,campaignPath?480:720);
     self.window=[[NSWindow alloc] initWithContentRect:frame
         styleMask:NSWindowStyleMaskTitled|NSWindowStyleMaskClosable|NSWindowStyleMaskMiniaturizable|NSWindowStyleMaskResizable
         backing:NSBackingStoreBuffered defer:NO];
-    self.window.title=@"AstroSquid reconstruction preview — Data 1A";
+    self.window.title=@"AstroSquid";
     self.window.delegate=self;self.window.acceptsMouseMovedEvents=YES;
     AstroView *view=[[AstroView alloc] initWithFrame:frame assets:path];
     if(!view) { NSLog(@"Missing or invalid extracted game assets at %@",path); [NSApp terminate:nil]; return; }
@@ -1349,6 +1530,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self.window center];
     [self.window makeKeyAndOrderFront:nil];
     [NSApp activateIgnoringOtherApps:YES];
+    if(preferenceProbe)[view probePreferences:preferenceProbe];
     if(testPath) [view beginSelfTest:testPath];
     if(campaignPath) [view beginCampaignTest:campaignPath];
 }
@@ -1362,7 +1544,7 @@ int main(int argc,const char **argv) {
         AstroDelegate *delegate=[AstroDelegate new]; app.delegate=delegate;
         NSMenu *menu=[NSMenu new]; NSMenuItem *root=[NSMenuItem new]; [menu addItem:root];
         NSMenu *application=[NSMenu new];
-        [application addItemWithTitle:@"Quit AstroSquid Preview" action:@selector(terminate:) keyEquivalent:@"q"];
+        [application addItemWithTitle:@"Quit AstroSquid" action:@selector(terminate:) keyEquivalent:@"q"];
         root.submenu=application; app.mainMenu=menu;
         [app run];
     }

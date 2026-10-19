@@ -44,6 +44,8 @@ build/scores_test
 build/transition_test
 "${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/nested_special_test.c src/special.c src/beams.c src/weapons.c src/physics.c -lm -o build/nested_special_test
 build/nested_special_test tests/nested_special_trace.csv
+"${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/hit_visual_test.c src/hit_visual.c src/visual.c -o build/hit_visual_test
+build/hit_visual_test
 if [ "${1:-}" != "--native-only" ] && [ -f assets/game.json ]; then
   if [ -z "${PYTHON:-}" ]; then
     if [ -x .venv/bin/python ]; then PYTHON=.venv/bin/python; else PYTHON=python3; fi

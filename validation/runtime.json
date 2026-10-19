@@ -1,0 +1,20 @@
+{
+  "emitted_beams" : 319,
+  "special_attacks" : 4,
+  "damage_hits" : 34,
+  "script_steps" : 358,
+  "emitted_effects" : 178,
+  "stage_switched" : true,
+  "passed" : true,
+  "player_hit_points" : 30000,
+  "music_time" : 15.103650793650793,
+  "controlled_runtime_fixture" : true,
+  "player_moved" : true,
+  "music_playing" : true,
+  "colored_pixels" : 45336,
+  "frame_width" : 960,
+  "emitted_shots" : 120,
+  "frame_height" : 720,
+  "textures_loaded" : 10,
+  "score" : 10300
+}
