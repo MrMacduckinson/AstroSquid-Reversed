@@ -42,6 +42,8 @@ typedef struct {AstroVisual visual;int layer;uint64_t birth;} LiveEffect;
     AstroRect bounds,previousBounds;
     BOOL active;
     __unsafe_unretained AstroEnemy *parent;
+    // shortcut: retained deleted nodes omit original allocator reuse; revisit with native reuse traces.
+    id nextActor;
     uint64_t renderBirth;
 }
 @end
@@ -53,6 +55,8 @@ typedef struct {AstroVisual visual;int layer;uint64_t birth;} LiveEffect;
     NSMutableDictionary *textures;
     NSArray *levels;
     NSMutableArray *enemies,*world,*mapPlacements;
+    id playerNextActor;
+    unsigned actorTraversalDepth;
     AstroCombatState playerCombat;
     uint32_t randomSeed,lastPlayerShot;
     AstroVelocity menuScroll;
@@ -543,10 +547,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if([placement[@"attribute"] intValue]==11) continue;
         [mapPlacements addObject:placement];
     }
-    [self makeNewSprites];playerRenderBirth=++renderClock;[world insertObject:[NSNull null] atIndex:0];
+    [self makeNewSprites];playerRenderBirth=++renderClock;playerNextActor=world.firstObject;[world insertObject:[NSNull null] atIndex:0];
 }
 - (void)prependEnemy:(AstroEnemy *)enemy {
-    enemy->active=YES;[enemies insertObject:enemy atIndex:0];[world insertObject:enemy atIndex:0];
+    enemy->active=YES;enemy->nextActor=world.firstObject;[enemies insertObject:enemy atIndex:0];[world insertObject:enemy atIndex:0];
 }
 - (void)makeNewSprites {
     for(NSDictionary *placement in [mapPlacements copy]) {
@@ -900,7 +904,15 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         playerState.animation_tick-=5;
     }
 }
+- (id)nextActor:(id)object {return object==[NSNull null]?playerNextActor:((AstroEnemy *)object)->nextActor;}
+- (void)setNextActor:(id)next forActor:(id)object {
+    if(object==[NSNull null])playerNextActor=next;else ((AstroEnemy *)object)->nextActor=next;
+}
+- (void)syncActorLinks {
+    for(NSUInteger i=0;i<world.count;i++)[self setNextActor:i+1<world.count?world[i+1]:nil forActor:world[i]];
+}
 - (void)cleanupWorld {
+    [self syncActorLinks];
     for(id object in [world copy]) {
         BOOL player=object==[NSNull null];AstroEnemy *enemy=player?nil:object;
         int remove=player?playerCombat.remove:enemy->state.remove;
@@ -918,7 +930,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
                 if(action!=ASTRO_CAMPAIGN_NONE)campaignAction=action;
             }
         }
+        NSUInteger index=[world indexOfObjectIdenticalTo:object];
+        if(index!=NSNotFound&&index>0)[self setNextActor:[self nextActor:object] forActor:world[index-1]];
         [world removeObjectIdenticalTo:object];if(!player)[enemies removeObjectIdenticalTo:enemy];
+        if(player&&!actorTraversalDepth)playerNextActor=nil;
     }
 }
 - (void)moveChildren:(AstroEnemy *)parent heading:(int)heading amount:(double)amount {
@@ -1043,7 +1058,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         playerEntityX=playerVisual.x;playerEntityY=playerVisual.y;
         playerState=(AstroPlayer){{0,0},12,3,1,simulationTick,simulationTick};
         inventory.upgrade=0;playerWeapon=inventory.weapon;playerSpawnTick=simulationTick;
-        playerRenderBirth=++renderClock;[world insertObject:[NSNull null] atIndex:0];
+        playerRenderBirth=++renderClock;playerNextActor=world.firstObject;[world insertObject:[NSNull null] atIndex:0];
         invulnerableUntil=simulationTick+181;respawnTick=0;
     }
     if(invulnerableUntil&&simulationTick>=invulnerableUntil) {
@@ -1069,9 +1084,14 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             const LiveBeam *live=data.bytes;return live->expires<simulationTick;
         }];
     [liveBeams removeObjectsAtIndexes:expired];
-    NSArray *actors=(!changingStage||transition.simulate_world)?[world copy]:@[];
-    for(id actor in actors)[self stepActor:actor];
+    [self syncActorLinks];actorTraversalDepth++;
+    id actor=(!changingStage||transition.simulate_world)?world.firstObject:nil;
+    while(actor){
+        // CALC caches only this next pointer; nested cleanup can change later links.
+        id next=[self nextActor:actor];[self stepActor:actor];actor=next;
+    }
     [self inheritParentState];
+    if(!--actorTraversalDepth&&![world containsObject:[NSNull null]])playerNextActor=nil;
 }
 - (void)renderTick {
     uint32_t comparison=[self playerClockTick];
@@ -1090,7 +1110,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(previous==ASTRO_FLOW_END_CARD&&flow.phase!=previous&&changingStage) {
         AstroCampaign next=pendingCampaign;astro_transition_accept_card(&transition);changingStage=NO;
         if(!next.complete)[self loadCampaignStage:next];
-        else {campaign.complete=1;[enemies removeAllObjects];[world removeAllObjects];}
+        else {campaign.complete=1;[enemies removeAllObjects];[world removeAllObjects];playerNextActor=nil;}
     }
     if(previous==ASTRO_FLOW_READY&&flow.phase==ASTRO_FLOW_PLAY&&!initialReadyCard) {
         if(flow.half==2)for(AstroEnemy *enemy in enemies){
