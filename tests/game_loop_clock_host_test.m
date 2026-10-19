@@ -77,9 +77,9 @@ static NSMutableString *events;
     {const uint32_t c[]={131,140};[self resetClockCase:c count:2];changingStage=YES;transition.phase=ASTRO_TRANSITION_WAIT;
         [self pollMapSpawns];assert(!used&&!factories&&lastSpawnTick==100);
         changingStage=NO;[self pollMapSpawns];assert(used==2&&factories==1&&factoryCheckpoint==100&&lastSpawnTick==140&&[events isEqual:@"CFC"]);checked++;}
-    {[self resetClockCase:NULL count:0];invulnerableUntil=281;lastSpawnTick=73;
-        [self pollMapSpawns];[self pollMapSpawns];assert(!used&&factories==2&&lastSpawnTick==73&&[events isEqual:@"FF"]);
-        respawnTick=161;[self pollMapSpawns];assert(!used&&factories==2&&lastSpawnTick==73);checked++;}
+    {const uint32_t c[]={100,100,100,100};[self resetClockCase:c count:4];invulnerableUntil=1;respawnStartTick=respawnBlinkTick=100;lastSpawnTick=73;
+        [self pollMapSpawns];[self pollMapSpawns];assert(used==4&&factories==2&&lastSpawnTick==73&&[events isEqual:@"CFCCFC"]);
+        respawnTick=161;[self pollMapSpawns];assert(used==4&&factories==2&&lastSpawnTick==73);checked++;}
     {[self resetClockCase:NULL count:0];lastSpawnTick=0xaabbccdd;constantClock=YES;constantValue=777;
         [self resetEnemies];assert(lastSpawnTick==0xaabbccdd);constantClock=NO;checked++;}
     {const uint32_t c[]={130,140};[self resetClockCase:c count:2];

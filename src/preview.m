@@ -78,7 +78,9 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     AstroScore highscores[10];
     AstroScoreEditor scoreEditor;
     int campaignAction;
-    uint32_t respawnTick,invulnerableUntil;
+    uint32_t respawnTick,invulnerableUntil; // Blink marker, not a deadline: elapsed comparisons must survive wrap.
+    uint32_t respawnStartTick,respawnBlinkTick;
+    double respawnBlinkWidth;
     BOOL paused,gameOver,gameOverPending;
     NSMutableArray *liveBeams;
     NSArray *presentedBeams;
@@ -436,7 +438,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     for(int layer=4;layer<=6;layer++) {
         for(id object in renderObjects) {
             if(object==[NSNull null]) {
-                if(layer==6&&!playerVisualDeleted&&(!invulnerableUntil||((simulationTick-playerSpawnTick)/6)%2))
+                if(layer==6&&!playerVisualDeleted)
                     [self sprite:playerVisual.sprite x:playerX y:playerY width:playerVisual.width height:playerVisual.height];
                 continue;
             }
@@ -1160,15 +1162,30 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     simulationTick++;
     if(changingStage&&!transition.simulate_world){tickedScroll=transition.scroll_x;return;}
     if(!changingStage||transition.simulate_world)[self cleanupWorld];
+    BOOL blinking=invulnerableUntil!=0;
+    if(blinking)playerVisual.width=spriteInfo[playerVisual.sprite].width;
     [self calculateActors];
+    if(blinking)playerVisual.width=respawnBlinkWidth;
     if(respawnTick&&simulationTick>=respawnTick) {
         playerCombat=(AstroCombatState){.kind=-1,.hit_points=100};
         [self createPlayerAtX:camera+30 y:190];
         inventory.upgrade=0;playerWeapon=inventory.weapon;playerSpawnTick=simulationTick;
-        invulnerableUntil=simulationTick+181;respawnTick=0;
+        [self beginRespawnBlink];respawnTick=0;
     }
-    if(invulnerableUntil&&simulationTick>=invulnerableUntil) {
-        invulnerableUntil=0;if(!special.active)playerCombat.kind=1;
+}
+- (void)beginRespawnBlink {
+    respawnStartTick=[self playerClockTick];respawnBlinkTick=[self playerClockTick];
+    respawnBlinkWidth=0;invulnerableUntil=1;
+}
+- (void)pollRespawnBlink {
+    uint32_t comparison=[self playerClockTick];
+    if((int32_t)(comparison-respawnBlinkTick)>5){
+        respawnBlinkWidth=respawnBlinkWidth==0?spriteInfo[playerVisual.sprite].width:0;
+        respawnBlinkTick=[self playerClockTick];
+    }
+    [self makeNewSprites];
+    if((int32_t)([self playerClockTick]-respawnStartTick)>180){
+        invulnerableUntil=0;playerVisual.width=spriteInfo[playerVisual.sprite].width;playerCombat.kind=1;
     }
 }
 - (void)inheritParentState {
@@ -1224,7 +1241,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)pollMapSpawns {
     if(menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY||changingStage||respawnTick)return;
-    if(invulnerableUntil){[self makeNewSprites];return;}
+    if(invulnerableUntil){[self pollRespawnBlink];return;}
     uint32_t comparison=[self playerClockTick];
     if((int32_t)(comparison-lastSpawnTick)>20){[self makeNewSprites];lastSpawnTick=[self playerClockTick];}
 }
@@ -1586,7 +1603,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     for(int i=0;i<61;i++)[self stepEnemies];
     assert([world containsObject:[NSNull null]]&&playerCombat.kind==-1&&inventory.weapon==40&&inventory.upgrade==0&&inventory.specials==2&&playerWeapon==40);
     assert(playerSpawnTick==simulationTick&&((simulationTick-playerSpawnTick)/6)%2==0);
-    for(int i=0;i<181;i++)[self stepEnemies];assert(playerCombat.kind==1&&!invulnerableUntil);
+    for(int i=0;i<181;i++){[self stepEnemies];[self pollMapSpawns];}assert(playerCombat.kind==1&&!invulnerableUntil);
     NSString *testPath=selftestPath;selftestPath=nil;
     [self keyDown:[self testEvent:NSKeyDown code:53]];assert(paused&&menuVisible&&audio.music.isPlaying);
     uint32_t stopped=simulationTick;[self keyDown:[self testEvent:NSKeyDown code:124]];
