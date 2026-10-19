@@ -1176,12 +1176,15 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     respawnWaitStartTick=[self playerClockTick];respawnTick=1;
 }
 - (void)pollRespawnWaitFrame {
+    [self pollNestedWorld];
+    [self pollRespawnWait];
+}
+- (void)pollNestedWorld {
     uint32_t comparison=[self playerClockTick];
     if((int32_t)(comparison-observedWallTick)>0){
         observedWallTick=[self playerClockTick];simulationTick=observedWallTick;
         [self advanceWorldForWait:YES];
     }
-    [self pollRespawnWait];
 }
 - (void)pollRespawnWait {
     if((int32_t)([self playerClockTick]-respawnWaitStartTick)>60){
@@ -1260,12 +1263,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)pollMapSpawns {
     if(menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY||changingStage)return;
     if(respawnTick){[self pollRespawnWait];return;}
-    if(invulnerableUntil){[self pollRespawnBlink];return;}
+    if(invulnerableUntil){[self pollRespawnBlink];if(invulnerableUntil)return;}
     uint32_t comparison=[self playerClockTick];
     if((int32_t)(comparison-lastSpawnTick)>20){[self makeNewSprites];lastSpawnTick=[self playerClockTick];}
 }
 - (void)pollGame {
     if(respawnTick){[self pollRespawnWaitFrame];return;}
+    if(invulnerableUntil){[self pollNestedWorld];[self pollMapSpawns];specialReturnPending=NO;return;}
     uint32_t comparison=[self playerClockTick];
     if((int32_t)(comparison-observedWallTick)>0){
         observedWallTick=[self playerClockTick];simulationTick=observedWallTick;
@@ -1360,7 +1364,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if(menuVisible&&gameOver){[self writeCampaignReport:YES passed:campaign.complete&&campaignVisits.count==17 reason:campaign.complete?@"ending reached":@"pilot died"];return;}
         BOOL waitDriven=NO;
         if(flow.phase!=ASTRO_FLOW_PLAY){simulationTick++;[self advanceFlowWithKey:YES];}
-        else if(respawnPending||respawnTick){simulationTick++;[self pollGame];waitDriven=YES;}
+        else if(respawnPending||respawnTick||invulnerableUntil){simulationTick++;[self pollGame];waitDriven=YES;}
         else {
             memset(keys,0,sizeof(keys));
             if(!changingStage){
@@ -1452,7 +1456,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(paused||gameOver||menuVisible||flow.phase!=ASTRO_FLOW_PLAY) tickRemainder=0;
     while(tickRemainder>=1.0/60.0&&flow.phase==ASTRO_FLOW_PLAY&&!menuVisible&&!paused) {
         tickRemainder-=1.0/60.0;
-        if(respawnPending||respawnTick){simulationTick++;[self pollGame];continue;}
+        if(respawnPending||respawnTick||invulnerableUntil){simulationTick++;[self pollGame];continue;}
         double previousCamera=camera;
         if(changingStage&&transition.simulate_world)camera=astro_camera_advance(camera,transition.scroll_x);
         else if(selftestPath&&keys[7])camera=astro_camera_advance(camera,2);
@@ -1637,7 +1641,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     for(int i=0;i<61;i++){simulationTick++;[self pollGame];}
     assert([world containsObject:[NSNull null]]&&playerCombat.kind==-1&&inventory.weapon==40&&inventory.upgrade==0&&inventory.specials==2&&playerWeapon==40);
     assert(playerSpawnTick==simulationTick&&((simulationTick-playerSpawnTick)/6)%2==0);
-    for(int i=0;i<181;i++){[self stepEnemies];[self pollMapSpawns];}assert(playerCombat.kind==1&&!invulnerableUntil);
+    for(int i=0;i<181;i++){simulationTick++;[self pollGame];}assert(playerCombat.kind==1&&!invulnerableUntil);
     NSString *testPath=selftestPath;selftestPath=nil;
     [self keyDown:[self testEvent:NSKeyDown code:53]];assert(paused&&menuVisible&&audio.music.isPlaying);
     uint32_t stopped=simulationTick;[self keyDown:[self testEvent:NSKeyDown code:124]];

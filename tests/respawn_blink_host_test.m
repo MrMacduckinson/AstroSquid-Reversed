@@ -2,9 +2,9 @@
 #define main astrosquid_application_main
 #include "../src/preview.m"
 #undef main
-static BOOL observing;
+static BOOL observing,verifyNested;
 static uint32_t clocks[8];
-static unsigned count,used,factories,calculations;
+static unsigned count,used,factories,calculations,renders;
 static void supply(const uint32_t *values,unsigned n){memcpy(clocks,values,n*sizeof(*values));count=n;used=0;}
 @interface AstroBlinkView : AstroView
 @end
@@ -13,6 +13,8 @@ static void supply(const uint32_t *values,unsigned n){memcpy(clocks,values,n*siz
 - (void)display {}
 - (void)makeNewSprites {if(!observing){[super makeNewSprites];return;}factories++;(void)[self playerClockTick];}
 - (void)calculateActors {assert(observing&&playerVisual.width==spriteInfo[playerVisual.sprite].width);calculations++;}
+- (void)stepEnemies {assert(!verifyNested);[super stepEnemies];}
+- (void)renderTick {if(verifyNested){renders++;return;}[super renderTick];}
 @end
 @interface AstroView (BlinkCheck)
 - (void)checkBlink;
@@ -42,6 +44,21 @@ static void supply(const uint32_t *values,unsigned n){memcpy(clocks,values,n*siz
     respawnStartTick=respawnBlinkTick=0;respawnBlinkWidth=0;invulnerableUntil=1;playerCombat.kind=-1;
     const uint32_t negative[]={0x80000000,1,0x80000000};supply(negative,3);[self pollRespawnBlink];
     assert(used==3&&invulnerableUntil&&respawnBlinkWidth==0&&playerCombat.kind==-1);
+    menuVisible=paused=gameOver=changingStage=NO;flow.phase=ASTRO_FLOW_PLAY;
+    respawnTick=0;respawnPending=NO;observedWallTick=299;respawnStartTick=124;respawnBlinkTick=298;
+    campaignAction=ASTRO_CAMPAIGN_LOAD;verifyNested=YES;
+    unsigned previousCalculations=calculations;
+    const uint32_t nested[]={300,301,302,303,304};supply(nested,5);[self pollGame];
+    assert(used==5&&calculations==previousCalculations+1&&renders==1&&invulnerableUntil&&playerVisual.width==0);
+    assert(campaignAction==ASTRO_CAMPAIGN_LOAD&&!changingStage);
+    const uint32_t resume[]={301,302,303,305,306,307,308};supply(resume,7);[self pollGame];
+    assert(used==7&&calculations==previousCalculations+1&&renders==1&&!invulnerableUntil&&playerVisual.width==71);
+    assert(lastSpawnTick==308&&observedWallTick==301&&playerCombat.kind==1);
+    // A recently updated outer checkpoint remains unchanged on return.
+    invulnerableUntil=1;playerCombat.kind=-1;respawnStartTick=100;respawnBlinkTick=275;lastSpawnTick=270;
+    const uint32_t closedReturn[]={280,281,281,282};supply(closedReturn,4);[self pollMapSpawns];
+    assert(used==4&&!invulnerableUntil&&lastSpawnTick==270);
+    verifyNested=NO;
     observing=NO;
     puts("PASS source-backed actual host respawn: two entry clocks, strict5/fresh store, CPU width restoration, unconditional factory before strict180 exit, wrap/signed gates and unchanged outer checkpoint");
 }
