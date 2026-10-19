@@ -579,7 +579,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self createPlayerAtX:30 y:190];
 }
 - (void)createPlayerAtX:(double)x y:(double)y {
-    playerState=(AstroPlayer){{0,0},12,3,1,0,0};playerVelocity=(AstroVelocity){0,0};
+    playerState=(AstroPlayer){{0,0},12,1,1,0,0};playerVelocity=(AstroVelocity){0,0};
     playerState.update_tick=[self playerClockTick];playerState.animation_tick=[self playerClockTick];
     lastPlayerShot=[self playerClockTick];
     x=astro_ppc_i32(x);y=astro_ppc_i32(y);playerVisualDeleted=NO;
