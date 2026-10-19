@@ -51,6 +51,15 @@ static unsigned used,count;
         assert(used==4&&negative->state.x==-91&&negative->state.y==-311);
         assert(negative->bounds.left==-2&&negative->bounds.top==-311&&negative->bounds.right==-8&&negative->bounds.bottom==-4902);
     }
+    {const int input[]={32767,32768,65535,65536,-32769},want[]={32767,-32768,-1,0,32767};
+        for(unsigned i=0;i<5;i++){
+            const uint32_t clocks[]={361,362,363,364};memcpy(script,clocks,sizeof(clocks));count=4;used=0;
+            NSDictionary *placement=@{@"attribute":@201,@"x":@0,@"y":@0,@"width":@16,@"height":@17,@"tag":@(input[i])};
+            mapPlacements=[NSMutableArray arrayWithObject:placement];[self makeNewSprites];AstroEnemy *tagged=enemies[0];
+            assert(used==4&&[tagged->placement[@"tag"] intValue]==want[i]);
+            assert([placement[@"tag"] intValue]==input[i]);
+        }
+    }
     const uint32_t bulletClocks[]={401,402,403,404};
     memcpy(script,bulletClocks,sizeof(bulletClocks));count=4;used=0;
     AstroShot shot={.type=1,.x=100,.y=180,.heading=90};

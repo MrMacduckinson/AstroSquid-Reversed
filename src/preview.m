@@ -577,6 +577,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     for(NSDictionary *placement in [mapPlacements copy]) {
         if(!(number(placement,@"x")<camera+740))continue;
         AstroEnemy *enemy=[self entityForPlacement:placement];
+        int tag=[placement[@"tag"] intValue];
+        if(tag!=(int16_t)tag){
+            NSMutableDictionary *stored=[placement mutableCopy];stored[@"tag"]=@((int16_t)tag);enemy->placement=stored;
+        }
         enemy->state.x=astro_ppc_i32(enemy->state.x);enemy->state.y=astro_ppc_i32(enemy->state.y);
         enemy->visual.x=enemy->state.x;enemy->visual.y=enemy->state.y;
         uint16_t left=(uint16_t)(int32_t)enemy->state.x;
