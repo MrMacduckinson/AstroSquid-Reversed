@@ -19,78 +19,63 @@ The Ten for X build is a separate comparison and runtime reference.
 
 ## Current state
 
-- Original reference runs and accepts registration on PowerPC Tiger.
-- REA 6.7.0 installed and used to inventory the original ZIP; native PEF is not
-  an admitted REA target. Actual PEF analysis uses Ghidra 12.1.4 directly.
-- Found 820 original procedure-name markers; 790 match recognized function
-  entries and were assigned to the analysis project.
-- Recovered 74 PICT images, 54 RGBA atlases, 295 sprite definitions, 134 object
-  attributes, 22 weapons, 29 AI scripts, 17 stage files and 12 background/UI scenes.
-- Graph validation covers 8126 level entities and all sprite/script references.
-- Native Cocoa/OpenGL renderer compiled and visually verified on x86_64 High
-  Sierra 10.13.6. It displays actual extracted sprites and level placements.
-- VECTORMAKE and VECTORSLOW recovered as portable C. Each passed 1000 cases
-  against original unmodified code executed on the G5; captured vectors also
-  pass on ARM64. Numeric tolerance is 1e-10, not a bit-identical game claim.
-- Recovered the 29 original AI scripts and interpreter. Compared 87 controlled
-  cases / 52200 ticks against original G5 code, including every fire argument,
-  animation state, timers and hit callbacks. The oracle controls time and
-  intercepts combat callbacks; this does not validate projectile/collision code.
-- Preview now executes these scripts on visible level objects. Activation,
-  parent relationships remain provisional. Center aiming also matches 1004
-  original G5 cases, including coincident centers and axis-aligned targets.
-- Ordinary FIREWEAPON patterns and FutureBASIC RNG match 1400 original G5 cases;
-  portable tests replay 140 captured cases.
-- Laser and lightning paths match 800 original G5 cases (160 captured replays),
-  including endpoints, damage, nearest targets, random state and chains stopped
-  when the first target dies. Damage callbacks run before chain selection.
-- Pickups match 1000 original G5 cases: health, weapon family/upgrades, special
-  ammunition and lives. These are connected to level pickup objects.
-- Projectile damage matches 2000 original G5 cases; 200 captured cases replay
-  health, removal, score, impulse and effect requests on each build platform.
-  Visual/audio effect creation was intercepted in the oracle.
-- Preview connects ordinary firing, enemy scripts and rectangle damage checks.
-  Map spawn distance and out-of-view removal now follow original constants.
-- Player/scenery damage and pushback match 1000 original G5 cases (200 replays).
-- Player animation, acceleration, drag and edge handling match 3200 original
-  G5 ticks (800 replays); firing was disabled in this isolated player oracle.
-  Complete collision order and parent relationships,
-  complete boss interactions and effects remain pending.
-- Connected campaign markers, boss-arena scrolling, final-stage entry, death and
-  respawn. This follows recovered control flow, with a portable campaign test;
-  a complete campaign playthrough against the original has not been verified.
-- Special attacks, original menus/cutscenes, death/debris effects and sound
-  effects remain unfinished. The preview must not be published as a full port.
+This remains a work in progress. The native host runs reconstructed gameplay,
+not the original PowerPC executable or an emulator. It builds and runs on the
+Intel reference iMac with macOS10.13.6 and on the ARM development Mac.
 
-The preview connects recovered gameplay routines with a native renderer. It is
-not the finished game. Collision iteration order and parent relationships still
-need comparison with the original; beam visuals are temporary straight lines.
-Generated decompiler pseudocode is not yet buildable recovered source.
+Recovered and checked against original instructions on the G5:
 
-## Extract and build the preview
+- Movement and drag:2000 comparisons; heading:1004.
+- All29 enemy scripts:52200 controlled ticks, including shot arguments.
+- Ordinary weapons:1400 cases; beam targeting/damage:800; projectile damage:2000.
+- Pickups:1000; player/scenery contacts:1000; player controls/animation:3200 ticks.
+- All16 special-attack tiers:320 cases, including polygon vertices/colors and RNG.
+- Death effects/debris/drop generation:402 cases; sprite geometry changes:1000.
+- Debris updates:5400; star movement:300000; complete beam geometry:400 streams.
 
-On a Mac with Python, Pillow, `sips`, and Xcode Command Line Tools:
+These isolated oracles intercept selected world/renderer/audio operations. They
+prove the compared routines, not the entire game or a complete campaign run.
+Captured original traces also replay on ARM and Intel.
+
+All74 PICT rasters now match original G5 QuickDraw pixels. The extractor selects
+ImageMagick for69 images and sips for5 compressed images, then checks native
+reference RGB hashes. A previous sips-only conversion silently destroyed the
+font and orb masks; regression checks now catch that failure. Recovered assets
+include54 atlases,295 sprite definitions,134 attributes,22 weapons,29 scripts,
+8126 map objects,17 stage files, all18 sound cues and3 music tracks.
+
+The host connects normal and special weapons, damage, pickups, effects, sprite
+animation, camera, campaign markers, death and respawn. It now uses the original
+star/parallax and beam geometry. Original menus and HUD are connected to the host: mouse navigation, New Game,
+Continue, pause/resume, volume controls and key reassignment. Briefing components
+are independently rendered; their campaign flow remains pending. Complete world update/collision ordering, final UI/settings/highscores,
+cutscene flow, a full campaign comparison and release packaging remain required.
+No finished port or release is claimed.
+
+## Build
+
+Assets are generated from the original application, including its resource fork
+and adjacent Data folder. On macOS with Xcode Command Line Tools, Python, Pillow,
+ImageMagick (`magick`) and the built-in `sips`:
 
 ```sh
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/python tools/extract_assets.py '/path/to/original/AstroSquid' assets
-.venv/bin/python tools/check_assets.py assets
-cp '/path/to/original/Data/Music1.mp3' assets/
+.venv/bin/python tools/prepare_assets.py '/path/to/original/AstroSquid' assets
 ./build.sh
 open 'build/AstroSquid Preview.app'
 ```
 
-Preview controls: arrows/WASD move the test player; Z/X move the camera; Space
-toggles automatic camera scrolling (enabled initially); N/P select a stage file; M toggles music;
-C fires; 1–4 select pellet/plasma/laser/lightning for testing; Return pauses; R restarts; Escape quits. These controls apply only to the preview.
+Controls: arrows move, Space fires, Option triggers a special attack, Escape
+pauses. Original menus support mouse navigation, volume adjustment and key
+reassignment. Settings are stored in the app preferences. Development weapon and
+stage shortcuts are enabled only in the explicit self-test.
 
-`./test.sh` replays captured original results for physics, aiming, weapons,
-beams, damage, pickups and player behavior. It also checks scripts, campaign
-rules and the extracted asset graph. `--self-test DIRECTORY` on the preview
-exercises movement, scripts, projectile and beam hits, level selection, rendering
-and muted audio decoding, writes evidence there, and exits. This avoids requiring
-system-wide accessibility access for the preview's own integration tests.
+`PYTHON=.venv/bin/python ./test.sh` replays original captures and checks resources,
+audio PCM integrity and all74 QuickDraw image references. The native executable's
+`--self-test DIRECTORY` exercises actual key handlers, movement, all4 special
+families, hits, effects, boss defeat/score, level selection, rendering and muted
+music playback; it writes evidence and exits. It does not prove a full campaign.
 
 ## Reproduce binary analysis
 

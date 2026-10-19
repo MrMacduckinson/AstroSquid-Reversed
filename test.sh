@@ -20,9 +20,25 @@ build/scenery_test tests/scenery_vectors.csv
 build/player_test tests/player_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/campaign_test.c src/campaign.c -o build/campaign_test
 build/campaign_test
+"${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/effects_test.c src/effects.c src/weapons.c src/physics.c -lm -o build/effects_test
+build/effects_test tests/effects_vectors.csv
+"${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/visual_test.c src/visual.c -lm -o build/visual_test
+build/visual_test tests/visual_vectors.csv
+"${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/special_test.c src/special.c src/beams.c src/weapons.c src/physics.c -lm -o build/special_test
+build/special_test tests/special_vectors.csv
+"${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/ui_test.c src/ui_model.c -lm -o build/ui_test
+build/ui_test
+"${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/debris_test.c src/debris.c src/physics.c -lm -o build/debris_test
+build/debris_test tests/debris_vectors.csv
+"${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/scene_test.c src/scene.c src/weapons.c -lm -o build/scene_test
+build/scene_test tests/scene_vectors.csv
+"${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/hud_test.c src/hud.c -lm -o build/hud_test
+build/hud_test tests/hud_vectors.csv
 if [ -f assets/game.json ]; then
   if [ -n "${PYTHON:-}" ]; then
     "$PYTHON" tools/check_assets.py assets
+    "$PYTHON" tests/audio_test.py
+    "$PYTHON" tests/ui_assets_test.py
   elif [ -x .venv/bin/python ]; then
     .venv/bin/python tools/check_assets.py assets
   else

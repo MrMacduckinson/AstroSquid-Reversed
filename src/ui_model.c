@@ -1,0 +1,62 @@
+#include "ui_model.h"
+#include <stdlib.h>
+#include <string.h>
+
+AstroUICommand astro_ui_command(const char *name)
+{
+    static const struct {const char *name,*destination;} links[] = {
+        {"Play","Play Menu"},{"Settings","Settings Menu"},{"Register","Register Menu"},
+        {"Highscores","Highscores Menu"},{"Continue","Continue Menu"},{"SetKeys","Keys Menu"},
+        {"Yeah","Main Menu"},{"Back","Main Menu"},{"Back2","Main Menu"},
+        {"Back3","Main Menu"},{"Back4","Main Menu"},{"Back5","Main Menu"},
+        {"Back6","Settings Menu"},{"Back7","Play Menu"}};
+    static const struct {const char *name;AstroUIAction action;} actions[] = {
+        {"New Game",ASTRO_UI_NEW_GAME},{"Quit",ASTRO_UI_QUIT},
+        {"PauseContinue",ASTRO_UI_RESUME},{"PauseQuit",ASTRO_UI_QUIT_GAME},
+        {"GameOverOK",ASTRO_UI_GAME_OVER_OK},{"SetSmooth",ASTRO_UI_SMOOTH},
+        {"SetSVolume",ASTRO_UI_SOUND_VOLUME},{"SetMVolume",ASTRO_UI_MUSIC_VOLUME},
+        {"Clear",ASTRO_UI_CLEAR_SCORES},{"RegOK",ASTRO_UI_REGISTER}};
+    static const char *keys[]={"SetKeyFire","SetKeySpecial","SetKeyUp",
+                               "SetKeyDown","SetKeyLeft","SetKeyRight"};
+    AstroUICommand result={ASTRO_UI_NONE,0,0,0,0};
+    size_t i;
+    if(!name)return result;
+    for(i=0;i<sizeof(links)/sizeof(*links);i++)if(!strcmp(name,links[i].name)){
+        result.action=ASTRO_UI_NAVIGATE;result.destination=links[i].destination;return result;
+    }
+    for(i=0;i<sizeof(actions)/sizeof(*actions);i++)if(!strcmp(name,actions[i].name)){
+        result.action=actions[i].action;
+        if(result.action==ASTRO_UI_NEW_GAME){result.stage=1;result.section=1;}
+        return result;
+    }
+    for(i=0;i<sizeof(keys)/sizeof(*keys);i++)if(!strcmp(name,keys[i])){
+        result.action=ASTRO_UI_KEY;result.key=(int)i;return result;
+    }
+    if(!strncmp(name,"Level",5)){
+        char *end;long level=strtol(name+5,&end,10);
+        if(*end==0&&level>=1&&level<=16){
+            result.action=ASTRO_UI_CONTINUE;
+            result.stage=(int)((level+1)/2);result.section=level%2?1:2;
+        }
+    }
+    return result;
+}
+
+void astro_ui_camera(const char *anchor,double x,double y,double width,double height,
+                     double *camera_x,double *camera_y)
+{
+    double cx=320-(x+width/2),cy=240-(y+height/2);
+    if(anchor){
+        if(!strcmp(anchor,"Highscores Menu")){cx-=200;cy-=140;}
+        else if(!strcmp(anchor,"Register Menu")){cx+=180;cy-=120;}
+        else if(!strcmp(anchor,"Continue Menu")){cx-=190;cy+=120;}
+    }
+    if(camera_x)*camera_x=cx;
+    if(camera_y)*camera_y=cy;
+}
+
+int astro_ui_contains(double x,double y,double width,double height,double px,double py)
+{
+    int left=(int)x,top=(int)y,right=left+(int)width,bottom=top+(int)height;
+    return right>left&&bottom>top&&px>=left&&py>=top&&px<right&&py<bottom;
+}

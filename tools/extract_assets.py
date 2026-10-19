@@ -3,6 +3,7 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
+import shutil
 from pathlib import Path
 import struct
 import subprocess
@@ -21,14 +22,28 @@ def export(application, output):
     atlas = output / 'atlases'
     for p in [pict, png, atlas]:
         p.mkdir(exist_ok=True)
+    decoder = shutil.which('magick')
+    if not decoder:
+        raise RuntimeError('ImageMagick magick is required: Apple sips loses indexed PICT masks/font')
+    golden = json.loads(Path(__file__).with_name('pict_raster_hashes.json').read_text())['pictures']
     pictures = [r for r in items if r['type'] == 'PICT']
     for r in pictures:
         (pict / f"{r['id']}.pict").write_bytes(bytes(512) + r['data'])
 
     def convert(r):
-        subprocess.run(['sips', '-s', 'format', 'png', str(pict / f"{r['id']}.pict"),
-                        '--out', str(png / f"{r['id']}.png")],
-                       check=True, capture_output=True)
+        reference = golden.get(str(r['id']))
+        verified = reference and hashlib.sha256(r['data']).hexdigest() == reference['pict_sha256']
+        source, destination = pict / f"{r['id']}.pict", png / f"{r['id']}.png"
+        # Five compressed-color PICTs need sips; all 74 choices match native G5 QuickDraw.
+        if verified and reference['decoder'] == 'sips':
+            command = ['sips', '-s', 'format', 'png', str(source), '--out', str(destination)]
+        else:
+            command = [decoder, str(source), str(destination)]
+        subprocess.run(command, check=True, capture_output=True)
+        if verified:
+            image = Image.open(destination).convert('RGB')
+            if image.size != (reference['width'], reference['height']) or hashlib.sha256(image.tobytes()).hexdigest() != reference['rgb_sha256']:
+                raise ValueError(f"PICT {r['id']}: decoder differs from original G5 QuickDraw pixels")
 
     with ThreadPoolExecutor(max_workers=4) as pool:
         list(pool.map(convert, pictures))
@@ -85,10 +100,13 @@ def export(application, output):
             for offset in range(0,len(b),308):
                 x,y,w,h = struct.unpack_from('>4d',b,offset)
                 kind = struct.unpack_from('>h',b,offset+32)[0]
+                animation_tick = struct.unpack_from('>i',b,offset+34)[0]
+                userdata = struct.unpack_from('>i',b,offset+296)[0]
                 sprite = struct.unpack_from('>h',b,offset+38)[0]
                 length = b[offset+40]
                 name = b[offset+41:offset+41+length].decode('mac_roman')
-                scene.append(dict(x=x,y=y,width=w,height=h,kind=kind,sprite=sprite,name=name))
+                scene.append(dict(x=x,y=y,width=w,height=h,kind=kind,depth=userdata,animation_tick=animation_tick,userdata=userdata,
+                                  sprite=sprite,name=name))
             result['scenes'][f.name] = scene
             continue
         b = f.read_bytes()
