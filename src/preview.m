@@ -71,7 +71,7 @@ typedef struct {AstroVisual visual;int layer;uint64_t birth;} LiveEffect;
     AstroScoreEditor scoreEditor;
     int campaignAction;
     uint32_t respawnTick,invulnerableUntil;
-    BOOL paused,gameOver;
+    BOOL paused,gameOver,gameOverPending;
     NSMutableArray *liveBeams;
     NSArray *presentedBeams;
     uint32_t presentedBeamSeed;
@@ -493,7 +493,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     inventory=(AstroInventory){10,0,1,1};
     NSString *stage=levels[selectedLevel];
     campaign=(AstroCampaign){[[stage substringFromIndex:5] intValue],[stage hasSuffix:@"A"]?1:2,0,0};
-    campaignAction=ASTRO_CAMPAIGN_NONE;respawnTick=invulnerableUntil=0;gameOver=NO;engineGlow=departureTrail=NO;
+    campaignAction=ASTRO_CAMPAIGN_NONE;respawnTick=invulnerableUntil=0;gameOver=NO;gameOverPending=NO;engineGlow=departureTrail=NO;
     playerWeapon=10;liveBeams=[NSMutableArray array];presentedBeams=@[];
     NSDictionary *level=game[@"levels"][levels[selectedLevel]];
     if(!starsInitialized) {astro_stars_init(stars,1,&randomSeed);starsInitialized=YES;}
@@ -827,10 +827,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if(!remove)continue;
         if(remove==-1) {
             if(player) {
-                AstroEnemy *body=[self entityForPlacement:@{@"attribute":@11,@"x":@(playerVisual.x),@"y":@(playerY),
-                    @"width":@(playerVisual.width),@"height":@(playerVisual.height),@"tag":@0}];
+                AstroEnemy *body=[AstroEnemy new];body->kind=playerCombat.kind;
+                body->placement=@{@"attribute":@11,@"tag":@0};body->definition=game[@"attributes"][@"11"];
                 body->visual=playerVisual;body->bounds=playerBounds;body->state.velocity=playerVelocity;[self addDeathEffects:body];
-                if(inventory.lives==0){gameOver=YES;if(!selftestPath)[self beginGameOver];}
+                if(inventory.lives==0){if(!gameOver&&!selftestPath)gameOverPending=YES;gameOver=YES;}
                 else {inventory.lives--;respawnTick=simulationTick+61;}
             } else {
                 [self addDeathEffects:enemy];
@@ -1120,6 +1120,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     uint32_t elapsed=stamp-observedWallTick;
     if(!elapsed)return;
     observedWallTick=stamp;simulationTick=stamp;
+    if(gameOverPending){gameOverPending=NO;[self beginGameOver];observedWallTick=[self currentGameTick];return;}
     BOOL idle=menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY;
     if(!menuVisible&&flow.phase!=ASTRO_FLOW_PLAY) {
         BOOL anyKey=NO;for(int i=0;i<128;i++)anyKey|=keys[i];
@@ -1505,8 +1506,23 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     ui.editingName=[[NSString alloc] initWithBytes:scoreEditor.name length:strlen(scoreEditor.name) encoding:NSMacOSRomanStringEncoding];
     ui.editingCursor=scoreEditor.cursor;
 }
+- (uint32_t)currentGameTick {
+    return (uint32_t)floor((NSProcessInfo.processInfo.systemUptime-clockOrigin)*60);
+}
+- (void)gameOverDelayTicks:(uint32_t)ticks {
+    [NSThread sleepForTimeInterval:ticks/60.0];
+}
 - (void)beginGameOver {
-    gameOver=YES;menuVisible=YES;[ui show:@"GameOver"];
+    gameOver=YES;gameOverPending=NO;menuVisible=NO;ui.editingHighscore=0;
+    AstroFlowPhase savedPhase=flow.phase;flow.phase=ASTRO_FLOW_PLAY;
+    for(int milliseconds=10;milliseconds<=100;milliseconds+=10){
+        simulationTick=[self currentGameTick];[self cleanupWorld];
+        camera+=tickedScroll;[self calculateActors];[self updateVisualEffects];
+        simulationRender=YES;[self display];simulationRender=NO;
+        [self gameOverDelayTicks:(uint32_t)(milliseconds*60/1000)];
+    }
+    flow.phase=savedPhase;simulationTick=[self currentGameTick];
+    menuVisible=YES;[ui show:@"GameOver"];[self drawPanelTransition];
     ui.editingHighscore=astro_scores_qualifies(highscores,score)?1:0;
     astro_score_editor_begin(&scoreEditor);[self refreshScoreEditor];
 }
