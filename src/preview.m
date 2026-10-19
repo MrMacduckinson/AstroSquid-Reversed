@@ -653,8 +653,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     AstroEnemy *enemy=[self entityForPlacement:placement];enemy->active=YES;
     enemy->kind=spawn->kind;enemy->layer=spawn->layer;enemy->state.frame=spawn->frame;
     enemy->state.velocity=spawn->velocity;
-    enemy->state.action_tick=simulationTick+(uint32_t)spawn->action_offset;
-    enemy->state.update_tick=enemy->state.animation_tick=simulationTick;
+    enemy->state.action_tick+=(uint32_t)spawn->action_offset;
     if(spawn->hit_points>0) enemy->hitPoints=spawn->hit_points;
     if(spawn->width>0) enemy->visual.width=spawn->width;
     if(spawn->height>0) enemy->visual.height=spawn->height;

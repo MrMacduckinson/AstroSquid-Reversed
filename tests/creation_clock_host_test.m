@@ -49,8 +49,19 @@ static unsigned used,count;
     assert(used==4&&bullet->kind==2&&bullet->layer==3);
     assert(bullet->state.update_tick==401&&bullet->state.animation_tick==402&&bullet->state.action_tick==403);
     assert(bullet->visual.next_tick==404+(uint32_t)spriteInfo[bullet->baseSprite].delay);
+    const int offsets[]={-30,0,29};
+    for(unsigned i=0;i<3;i++) {
+        const uint32_t clocks[]={501,502,i==0?10:UINT32_MAX-5,504};
+        memcpy(script,clocks,sizeof(clocks));count=4;used=0;
+        AstroSpecialSpawn spawn={.kind=4,.subtype=2,.x=100,.y=180,.frame=2,.scale=1,.action_offset=offsets[i]};
+        [self spawnSpecial:&spawn];AstroEnemy *particle=enemies[0];
+        assert(used==4&&particle->kind==4&&particle->state.frame==2);
+        assert(particle->state.update_tick==501&&particle->state.animation_tick==502);
+        assert(particle->state.action_tick==clocks[2]+(uint32_t)offsets[i]);
+        assert(particle->visual.next_tick==504+(uint32_t)spriteInfo[particle->baseSprite].delay);
+    }
     injecting=NO;
-    puts("PASS source-backed creation: four fresh clocks, deadline wrap, map batch and bullet retain timestamps, map order, strict edge and unordered NaN rejection");
+    puts("PASS source-backed creation: four fresh clocks, deadline wrap, map/bullet/special retain timestamps, signed special offsets with wrap, map order, edge/NaN rejection");
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
