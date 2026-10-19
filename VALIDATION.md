@@ -29,6 +29,16 @@ Full original-logic equivalence remains unproved. Current bounded evidence:
   OS clock/Delay:10cleanup/calc/animate/render iterations,29delay ticks,60panel
   redraws, then name entry. This does not prove a complete native GameOver world
   or rendered-state trace.
+- `astro_frame_interval` matches the original startup conversion for all65536
+  signed16 FPS values on both the development CPU and Intel iMac. The G5 oracle
+  executes the original Float2Int/store instruction slice in private memory
+  (`tools/ppc_fps_oracle.c`); no preferences are changed. The standard physics
+  test retains24 boundary cases, including FPS0 producing interval-1.
+- `tests/ui_interval_test.m` matches39 original G5 camera states at intervals2/3
+  bitwise, including the initial camera residual. Menu orb animation receives
+  the configured interval, while synchronous Pause/GameOver panels retain30/60
+  frames. Actual Intel GL rendering also passes at both intervals. This is
+  renderer support; host FPS preferences and scheduling are not yet connected.
 
 Original configured FPS intervals, parent-linked cases, production scheduling,
 full startup/menu state, extended campaigns and final packaging remain open.

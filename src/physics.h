@@ -1,5 +1,9 @@
 #ifndef ASTROSQUID_PHYSICS_H
 #define ASTROSQUID_PHYSICS_H
+#include <stdint.h>
+
+/* Original INITSAGAIA: PPC Float2Int followed by a signed 16-bit store. */
+int16_t astro_frame_interval(int16_t fps);
 
 typedef struct { double x, y; } AstroVelocity;
 

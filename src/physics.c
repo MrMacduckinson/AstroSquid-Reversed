@@ -5,6 +5,11 @@
 #include <stdint.h>
 #include <string.h>
 
+int16_t astro_frame_interval(int16_t fps) {
+    uint16_t low = (uint16_t)astro_ppc_i32(60.0 / (double)fps);
+    return (int16_t)(low <= INT16_MAX ? (int32_t)low : (int32_t)low - 65536);
+}
+
 static double fb_single(double value) {
     /* FB emits STFS without FRSP: retain high significand bits, not a C
        round-to-nearest cast. Normal finite values are the game's input range. */

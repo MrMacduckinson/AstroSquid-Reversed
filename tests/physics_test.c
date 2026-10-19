@@ -5,6 +5,19 @@
 #include <stdlib.h>
 
 int main(int argc,char **argv) {
+    /* Actual original INITSAGAIA conversion on G5, including raw malformed prefs. */
+    static const int16_t fps_cases[][2] = {
+        {-32768,0},{-61,0},{-60,-1},{-30,-2},{-2,-30},{-1,-60},
+        {0,-1},{1,60},{2,30},{3,20},{7,8},{10,6},{12,5},{15,4},
+        {20,3},{24,2},{25,2},{30,2},{31,1},{59,1},{60,1},
+        {61,0},{120,0},{32767,0}
+    };
+    for(unsigned i=0;i<sizeof(fps_cases)/sizeof(fps_cases[0]);i++) {
+        if(astro_frame_interval(fps_cases[i][0]) != fps_cases[i][1]) {
+            fprintf(stderr,"Original frame interval mismatch for FPS %d\n",fps_cases[i][0]);return 1;
+        }
+    }
+    puts("PASS: 24 original G5 FPS conversions, including zero and signed16 limits");
     if(argc!=3) { fprintf(stderr,"usage: physics_test vectors.csv headings.csv\n");return 2; }
     FILE *f=fopen(argv[1],"r");
     if(!f) { perror(argv[1]);return 2; }

@@ -27,7 +27,7 @@
         _data=[NSJSONSerialization JSONObjectWithData:bytes options:0 error:error];
         if(![_data[@"scenes"] isKindOfClass:[NSDictionary class]]||![_data[@"font"][@"advance"] isKindOfClass:[NSArray class]])return nil;
         _orbStates=[NSMutableDictionary dictionary];_registered=YES;_registeredName=@"";_editingName=@"";
-        _unlockedLevel=1;_smooth=YES;_soundVolume=.6;_musicVolume=1;
+        _frameInterval=1;_unlockedLevel=1;_smooth=YES;_soundVolume=.6;_musicVolume=1;
         _keyLabels=@[@"Space",@"Option",@"Up",@"Down",@"Left",@"Right"];
         _highscores=@[];astro_score_caret_begin(&_caret,0);
         [self show:@"Main Menu"];
@@ -60,7 +60,7 @@
     _transitioning=sameScene&&![_anchor isEqual:@"Credits"];
     if(!_transitioning){
         if([scene isEqual:@"Data B2"]){
-            double dx,dy;do {dx=(_targetX-_cameraX)/10;dy=(_targetY-_cameraY)/10;_cameraX+=dx;_cameraY+=dy;}while(fabs(dx)>=1||fabs(dy)>=1);
+            double dx,dy;do {dx=(_targetX-_cameraX)/(10.0/_frameInterval);dy=(_targetY-_cameraY)/(10.0/_frameInterval);_cameraX+=dx;_cameraY+=dy;}while(fabs(dx)>=1||fabs(dy)>=1);
         }else {_cameraX=_targetX;_cameraY=_targetY;}
     }
     if([anchor isEqual:@"Pause"]||[anchor isEqual:@"GameOver"]){
@@ -120,12 +120,12 @@
 - (void)advanceMenuCamera {
     _cameraStepX=0;_cameraStepY=0;
     if(!_transitioning||_panelFrames)return;
-    _cameraStepX=(_targetX-_cameraX)/10;_cameraStepY=(_targetY-_cameraY)/10;
+    _cameraStepX=(_targetX-_cameraX)/(10.0/_frameInterval);_cameraStepY=(_targetY-_cameraY)/(10.0/_frameInterval);
     _cameraX+=_cameraStepX;_cameraY+=_cameraStepY;
     if(fabs(_cameraStepX)<1&&fabs(_cameraStepY)<1){_targetX=_cameraX;_targetY=_cameraY;_transitioning=NO;_pressed=nil;}
 }
 - (void)animateMenuObjects {
-    for(NSDictionary *object in _objects)astro_ui_animate([_orbStates[object[@"name"]] mutableBytes],1);
+    for(NSDictionary *object in _objects)astro_ui_animate([_orbStates[object[@"name"]] mutableBytes],_frameInterval);
 }
 - (void)animateTicks:(unsigned)ticks {
     for(unsigned i=0;i<ticks;i++){

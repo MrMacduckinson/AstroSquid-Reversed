@@ -7,6 +7,8 @@ typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
 @interface AstroUIRenderer : NSObject
 @property(nonatomic,readonly) NSString *anchor;
 @property(nonatomic,readonly) BOOL transitioning;
+/* Original signed16 global+a52; default corresponds to FPS60. */
+@property(nonatomic) int16_t frameInterval;
 @property(nonatomic,readonly) double panelOffset;
 @property(nonatomic,readonly) double cameraX,cameraY,cameraStepX,cameraStepY;
 - (void)advanceMenuCamera;

@@ -95,4 +95,12 @@ int main(int argc,const char **argv){@autoreleasepool{
     caretTick=1020;[ui drawSprites:sprite texture:load];assert(ui.editingCaretVisible&&tickReads==7);
     caretTick=1021;[ui drawSprites:sprite texture:load];assert(!ui.editingCaretVisible&&tickReads==9);
     puts("PASS actual renderer caret: strict20tick clock, single toggle after long gap, panel frame independence and conditional clock reads");
+    for(int interval=2;interval<=3;interval++){
+        ui.frameInterval=interval;uint32_t seed=12345;[ui reloadMenuWithRandom:&seed];[ui show:@"Play Menu"];[ui animateTicks:120];assert(!ui.transitioning);
+        glClearColor(0,0,0,1);glClear(GL_COLOR_BUFFER_BIT);[ui drawSprites:sprite texture:load];glFinish();assert(glGetError()==GL_NO_ERROR);
+        glReadPixels(0,0,640,480,GL_RGBA,GL_UNSIGNED_BYTE,fontPixels.mutableBytes);unsigned visible=0;
+        for(unsigned i=0;i<640*480;i++)if(fp[4*i]>32||fp[4*i+1]>32||fp[4*i+2]>32)visible++;
+        assert(visible>100);printf("PASS actual UI GL frame interval%d visible%u\n",interval,visible);
+    }
+
 }}
