@@ -21,8 +21,8 @@ static const char *tracePhase;
 }
 @end
 static NSMapTable *entityIDs;
-static unsigned nextEntityID;
-static unsigned entityID(id object){return object==[NSNull null]?1:[[entityIDs objectForKey:object] unsignedIntValue];}
+static unsigned nextEntityID,playerTraceID=1;
+static unsigned entityID(id object){return object==[NSNull null]?playerTraceID:[[entityIDs objectForKey:object] unsignedIntValue];}
 @interface AstroTraceView : AstroView
 @end
 @implementation AstroTraceView
@@ -79,9 +79,9 @@ static unsigned entityID(id object){return object==[NSNull null]?1:[[entityIDs o
 }
 - (void)dumpWorldTrace:(NSString *)phase {
     unsigned char viewport[32]={0},scroll[16]={0},inv[10]={0},stats[12]={0};
-    be64(viewport,camera);be64(viewport+8,camera+640);be64(viewport+16,simulationTick?-0.0:0.0);be64(viewport+24,380);
+    be64(viewport,[phase isEqualToString:@"initial"]&&camera==0?0.0:camera);be64(viewport+8,camera+640);be64(viewport+16,[phase isEqualToString:@"initial"]?0.0:-0.0);be64(viewport+24,380);
     be64(scroll,tickedScroll);be64(scroll+8,0);be16(inv,inventory.weapon);be16(inv+2,inventory.upgrade);be16(inv+4,inventory.specials);be32(inv+6,actorVisits);be32(stats,score);
-    printf("G\t%u\t%s\t%08x\t1\t",simulationTick,phase.UTF8String,randomSeed);dump(viewport,32);putchar('\t');dump(scroll,16);putchar('\t');dump(inv,10);putchar('\t');dump(stats,12);putchar('\n');
+    printf("G\t%u\t%s\t%08x\t%u\t",simulationTick,phase.UTF8String,randomSeed,playerTraceID);dump(viewport,32);putchar('\t');dump(scroll,16);putchar('\t');dump(inv,10);putchar('\t');dump(stats,12);putchar('\n');
     for(NSUInteger i=0;i<world.count;i++){
         id object=world[i];BOOL player=object==[NSNull null];AstroEnemy *e=player?nil:object;
         unsigned eid=entityID(object);
@@ -99,12 +99,12 @@ static unsigned entityID(id object){return object==[NSNull null]?1:[[entityIDs o
         be64(bytes+72,st.velocity.x);be64(bytes+80,st.velocity.y);
         be16(bytes+88,player?playerCombat.hit_points:e->hitPoints);be16(bytes+90,player?playerCombat.layer:e->layer);
         be16(bytes+96,player?0:[e->placement[@"tag"] intValue]);
-        printf("E\t%u\t%s\t%u\t%u\t%u\t%u\t%u\t",simulationTick,phase.UTF8String,eid,player?1:(unsigned)e->renderBirth,player||!e->parent?0:entityID(e->parent),before,after);
+        printf("E\t%u\t%s\t%u\t%u\t%u\t%u\t%u\t",simulationTick,phase.UTF8String,eid,player?(unsigned)playerRenderBirth:(unsigned)e->renderBirth,player||!e->parent?0:entityID(e->parent),before,after);
         dump(bytes,62);dump(bytes+66,26);dump(bytes+96,2);putchar('\n');
     }
     NSMutableDictionary *renders=[NSMutableDictionary dictionary];
-    if([world containsObject:[NSNull null]]){LiveEffect item={playerVisual,6,playerRenderBirth};renders[@(item.birth)]=[NSData dataWithBytes:&item length:sizeof(item)];}
-    for(AstroEnemy *e in enemies){LiveEffect item={e->visual,e->renderLayer,e->renderBirth};renders[@(item.birth)]=[NSData dataWithBytes:&item length:sizeof(item)];}
+    if([world containsObject:[NSNull null]]&&!playerVisualDeleted){LiveEffect item={playerVisual,6,playerRenderBirth};renders[@(item.birth)]=[NSData dataWithBytes:&item length:sizeof(item)];}
+    for(AstroEnemy *e in enemies)if(!e->visualDeleted){LiveEffect item={e->visual,e->renderLayer,e->renderBirth};renders[@(item.birth)]=[NSData dataWithBytes:&item length:sizeof(item)];}
     for(NSData *item in visualEffects){const LiveEffect *effect=item.bytes;renders[@(effect->birth)]=item;}
     if(playerHitVisual.active){LiveEffect item={playerHitVisual.visual,playerHitLayer,playerHitBirth};renders[@(item.birth)]=[NSData dataWithBytes:&item length:sizeof(item)];}
     NSArray *order=[renders.allKeys sortedArrayUsingSelector:@selector(compare:)];
@@ -117,6 +117,8 @@ static unsigned entityID(id object){return object==[NSNull null]?1:[[entityIDs o
     }
 }
 @end
+
+#ifndef ASTRO_WORLD_TRACE_LIBRARY
 int main(int argc,const char **argv){@autoreleasepool{
     assert(argc>=2&&argc<=4);traceParents=argc==4&&!strcmp(argv[3],"parents");if(argc>=3){traceSteps=(unsigned)strtoul(argv[2],NULL,10);assert(traceSteps&&traceSteps<=36000);}
     [NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
@@ -124,3 +126,5 @@ int main(int argc,const char **argv){@autoreleasepool{
     AstroView *view=[[AstroTraceView alloc] initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];
     assert(view);[view initialWorldTrace];
 }}
+
+#endif

@@ -9,7 +9,7 @@ static uint32_t latestTick;
 static BOOL fixedWorldClock;
 static BOOL outerClockTest;
 static unsigned outerClockReads;
-static uint32_t outerClock(void){static const uint32_t ticks[]={131,133,134};assert(outerClockReads<3);return ticks[outerClockReads++];}
+static uint32_t outerClock(void){static const uint32_t ticks[]={131,133,134,135};assert(outerClockReads<4);return ticks[outerClockReads++];}
 static int expectedGunX,expectedGunY;
 static NSMutableString *events;
 @interface AstroSpecialPhaseView : AstroView
@@ -106,7 +106,7 @@ static NSMutableString *events;
     simulationTick=130;worldRenderTick=128;ui.frameInterval=3;
     specialReturnPending=NO;outerClockReads=0;unsigned previousFrames=outerFrames;
     observing=outerClockTest=YES;[self renderTick];observing=outerClockTest=NO;
-    assert(outerClockReads==3&&worldRenderTick==133&&simulationTick==134&&outerFrames==previousFrames+1);
+    assert(outerClockReads==4&&worldRenderTick==133&&simulationTick==134&&outerFrames==previousFrames+1);
     puts("PASS outer CALC completion uses distinct fresh render-compare/store and LM clocks");
 }
 @end

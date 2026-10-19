@@ -4,6 +4,8 @@
 
 /* Original INITSAGAIA: PPC Float2Int followed by a signed 16-bit store. */
 int16_t astro_frame_interval(int16_t fps);
+/* CALC advances the negated camera offset, then derives viewport left. */
+double astro_camera_advance(double left,double scroll);
 
 typedef struct { double x, y; } AstroVelocity;
 

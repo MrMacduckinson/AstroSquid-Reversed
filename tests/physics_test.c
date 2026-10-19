@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 int main(int argc,char **argv) {
+    if(!ieee_exact(astro_camera_advance(-0.0,0.0),-0.0)||!ieee_exact(astro_camera_advance(1.0,-1.0),-0.0)){fputs("Native negated camera zero mismatch\n",stderr);return 1;}
     /* Actual original INITSAGAIA conversion on G5, including raw malformed prefs. */
     static const int16_t fps_cases[][2] = {
         {-32768,0},{-61,0},{-60,-1},{-30,-2},{-2,-30},{-1,-60},

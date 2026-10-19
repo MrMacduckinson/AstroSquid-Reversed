@@ -10,10 +10,15 @@ int astro_visual_change(AstroVisual *v,int sprite,const AstroSpriteInfo *info,si
     v->x-=v->width/2;v->y-=v->height/2;
     return 1;
 }
-int astro_visual_step(AstroVisual *v,const AstroSpriteInfo *info,size_t count,uint32_t tick) {
+int astro_visual_step_clocked(AstroVisual *v,const AstroSpriteInfo *info,size_t count,
+                              uint32_t comparison,uint32_t store) {
     if(!v||!info||v->sprite<0||(size_t)v->sprite>=count) return -1;
     int next=info[v->sprite].next_frame;
-    if(!next||(int32_t)(tick-v->next_tick)<=0) return 1;
+    if(!next||(int32_t)v->next_tick>=(int32_t)comparison) return 1;
     if(next<0) return 0;
-    return astro_visual_change(v,next,info,count,tick)?1:-1;
+    return astro_visual_change(v,next,info,count,store)?1:-1;
+}
+
+int astro_visual_step(AstroVisual *v,const AstroSpriteInfo *info,size_t count,uint32_t tick) {
+    return astro_visual_step_clocked(v,info,count,tick,tick);
 }

@@ -36,6 +36,8 @@ build/campaign_test
 build/effects_test tests/effects_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/visual_test.c src/visual.c -lm -o build/visual_test
 build/visual_test tests/visual_vectors.csv
+"${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/visual_clock_test.c src/visual.c -o build/visual_clock_test
+build/visual_clock_test tests/visual_clock_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/special_test.c src/special.c src/beams.c src/weapons.c src/physics.c src/ppc_math.c -lm -o build/special_test
 build/special_test tests/special_vectors.csv
 build/special_test tests/stale_special_vectors.csv
@@ -47,6 +49,8 @@ build/ui_test
 build/ui_motion_test tests/ui_motion_vectors.csv tests/ui_panel_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/debris_test.c src/debris.c src/physics.c src/ppc_math.c -lm -o build/debris_test
 build/debris_test tests/debris_vectors.csv
+"${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/debris_clock_test.c src/debris.c src/physics.c src/ppc_math.c -lm -o build/debris_clock_test
+build/debris_clock_test --synthetic
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/scene_test.c src/scene.c src/weapons.c src/ppc_math.c -lm -o build/scene_test
 build/scene_test tests/scene_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/hud_test.c src/hud.c -lm -o build/hud_test
