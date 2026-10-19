@@ -2,13 +2,13 @@
 #define main astrosquid_application_main
 #include "../src/preview.m"
 #undef main
-static BOOL injecting;
+static BOOL injecting,sequence;
 static uint32_t now;
 static unsigned reads;
 @interface AstroMapPlayerView : AstroView
 @end
 @implementation AstroMapPlayerView
-- (uint32_t)playerClockTick {if(injecting){reads++;return now;}return [super playerClockTick];}
+- (uint32_t)playerClockTick {if(injecting){uint32_t tick=sequence?1000+reads:now;reads++;return tick;}return [super playerClockTick];}
 - (void)display {}
 @end
 @interface AstroView (MapPlayerCheck)
@@ -18,6 +18,19 @@ static unsigned reads;
 - (void)checkMapPlayers {
     [timer invalidate];timer=nil;[audio stop];audio.soundVolume=audio.musicVolume=0;
     memset(keys,0,sizeof(keys));injecting=YES;
+    selectedLevel=0;camera=0;simulationTick=100;sequence=YES;reads=0;[self resetEnemies];
+    assert(reads==4*enemies.count+4);uint32_t first=1000+reads-4;
+    assert(playerState.update_tick==first&&playerState.animation_tick==first+1&&lastPlayerShot==first+2);
+    assert(playerVisual.next_tick==first+3+(uint32_t)spriteInfo[1].delay);
+    for(AstroEnemy *e in enemies){assert(e->state.action_tick<first&&e->renderBirth<playerRenderBirth);}
+    assert(world[0]==[NSNull null]&&playerNextActor==world[1]);
+    [world removeObjectIdenticalTo:[NSNull null]];reads=0;camera=12.75;
+    [self createPlayerAtX:camera+30 y:190];
+    assert(reads==4&&playerState.update_tick==1000&&playerState.animation_tick==1001&&lastPlayerShot==1002);
+    assert(playerVisual.next_tick==1003+(uint32_t)spriteInfo[1].delay&&playerVisual.x==42);
+    assert(playerBounds.left==42&&playerBounds.right==113&&playerBounds.top==190&&playerBounds.bottom==210);
+    assert(previousPlayerBounds.left==0&&previousPlayerBounds.top==0&&previousPlayerBounds.right==0&&previousPlayerBounds.bottom==0);
+    assert(world[0]==[NSNull null]&&playerNextActor==world[1]);sequence=NO;
     unsigned checked=0,halves=0;
     for(NSUInteger index=0;index<levels.count;index++){
         selectedLevel=index;camera=0;simulationTick=now=100;[self resetEnemies];

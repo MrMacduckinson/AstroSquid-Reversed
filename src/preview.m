@@ -545,13 +545,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)resetEnemies {
     renderClock=0;enemies=[NSMutableArray array];world=[NSMutableArray array];mapPlacements=[NSMutableArray array];
-    lastPlayerShot=simulationTick;score=0;
+    score=0;
     playerCombat=(AstroCombatState){.kind=1,.hit_points=100};playerHitVisual=(AstroPlayerHitVisual){0};
     visualEffects=[NSMutableArray array];specialPolygons=[NSMutableArray array];specialFlashes=[NSMutableArray array];
     special=(AstroSpecial){0};specialLoopRunning=specialReturnPending=NO;specialTargetObjects=nil;specialTargetData=nil;
-    playerVisual=(AstroVisual){1,30,190,71,20,simulationTick+(uint32_t)spriteInfo[1].delay};playerEntityX=30;playerEntityY=190;
-    playerBounds=(AstroRect){30,190,101,210};previousPlayerBounds=playerBounds;
-    playerState=(AstroPlayer){{0,0},12,3,1,simulationTick,simulationTick};playerVelocity=(AstroVelocity){0,0};
     inventory=(AstroInventory){10,0,1,1};
     NSString *stage=levels[selectedLevel];
     campaign=(AstroCampaign){[[stage substringFromIndex:5] intValue],[stage hasSuffix:@"A"]?1:2,0,0};
@@ -568,7 +565,19 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     for(NSDictionary *placement in level[@"entities"]) {
         [mapPlacements addObject:placement];
     }
-    [self makeNewSprites];playerRenderBirth=++renderClock;playerNextActor=world.firstObject;[world insertObject:[NSNull null] atIndex:0];
+    [self makeNewSprites];
+    [self createPlayerAtX:30 y:190];
+}
+- (void)createPlayerAtX:(double)x y:(double)y {
+    playerState=(AstroPlayer){{0,0},12,3,1,0,0};playerVelocity=(AstroVelocity){0,0};
+    playerState.update_tick=[self playerClockTick];playerState.animation_tick=[self playerClockTick];
+    lastPlayerShot=[self playerClockTick];
+    x=astro_ppc_i32(x);y=astro_ppc_i32(y);playerVisualDeleted=NO;
+    playerVisual=(AstroVisual){1,x,y,spriteInfo[1].width,spriteInfo[1].height,[self playerClockTick]+(uint32_t)spriteInfo[1].delay};playerEntityX=x;playerEntityY=y;
+    playerX=x-camera;playerY=y;
+    playerBounds=(AstroRect){(int16_t)(int32_t)x,(int16_t)(int32_t)y,(int16_t)astro_ppc_i32(x+playerVisual.width),(int16_t)astro_ppc_i32(y+playerVisual.height)};
+    previousPlayerBounds=(AstroRect){0};
+    playerRenderBirth=++renderClock;playerNextActor=world.firstObject;[world insertObject:[NSNull null] atIndex:0];
 }
 - (void)prependEnemy:(AstroEnemy *)enemy {
     enemy->active=YES;enemy->nextActor=world.firstObject;[enemies insertObject:enemy atIndex:0];[world insertObject:enemy atIndex:0];
@@ -1154,12 +1163,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self calculateActors];
     if(respawnTick&&simulationTick>=respawnTick) {
         playerCombat=(AstroCombatState){.kind=-1,.hit_points=100};
-        playerX=30;playerY=190;playerVelocity=(AstroVelocity){0,0};
-        playerVisualDeleted=NO;playerVisual=(AstroVisual){1,playerX+camera,playerY,71,20,simulationTick};
-        playerEntityX=playerVisual.x;playerEntityY=playerVisual.y;
-        playerState=(AstroPlayer){{0,0},12,3,1,simulationTick,simulationTick};
+        [self createPlayerAtX:camera+30 y:190];
         inventory.upgrade=0;playerWeapon=inventory.weapon;playerSpawnTick=simulationTick;
-        playerRenderBirth=++renderClock;playerNextActor=world.firstObject;[world insertObject:[NSNull null] atIndex:0];
         invulnerableUntil=simulationTick+181;respawnTick=0;
     }
     if(invulnerableUntil&&simulationTick>=invulnerableUntil) {
