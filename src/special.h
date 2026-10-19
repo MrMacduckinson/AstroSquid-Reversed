@@ -27,6 +27,8 @@ typedef struct {
     void (*sound)(void *,int string_index,double x);
     /* Shared original render deadline (a4e); NULL keeps standalone state. */
     uint32_t *render_tick;
+    /* Optional shared player action field, stored before nested callbacks. */
+    uint32_t *action_tick;
     /* Due frames: world first (including its RNG), then special tail, present. */
     void (*render_world)(void *);
     void (*present)(void *);
@@ -49,7 +51,7 @@ typedef struct {
 int astro_special_run_nested(AstroSpecial *,AstroSpecialContext *,const AstroSpecialLoop *);
 /* 10..13 and30..33 create their full burst immediately;40..43 and50..53 use a31-tick window.
  * While active, keep player movement/input but treat player kind as-1. Copy
- * action_until into shared player.action_tick; both weapons still require the
+ * action_until into shared player.action_tick (or supply action_tick); both weapons still require the
  * original strict elapsed>60/rate gate. Advance the world
  * once before each step: cache gun coordinates BEFORE that world update,
  * then refresh targets after the complete world/parent pass. */

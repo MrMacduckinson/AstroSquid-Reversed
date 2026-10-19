@@ -1,29 +1,58 @@
-// Actual production nested-special orchestration; only GL/audio boundaries observed.
+// Actual synchronous production stack; only OS clock, keys, GL/audio observed.
 #define main astrosquid_application_main
 #include "../src/preview.m"
 #undef main
 static BOOL observing;
-static unsigned innerFrames,presents,outerFrames,animations,beams;
+static unsigned clockReads,innerFrames,presents,outerFrames,animations,posttails,beams,depth;
+static unsigned clockMode;
+static uint32_t latestTick;
+static BOOL fixedWorldClock;
+static BOOL outerClockTest;
+static unsigned outerClockReads;
+static uint32_t outerClock(void){static const uint32_t ticks[]={131,133,134};assert(outerClockReads<3);return ticks[outerClockReads++];}
 static int expectedGunX,expectedGunY;
 static NSMutableString *events;
 @interface AstroSpecialPhaseView : AstroView
 @end
 @implementation AstroSpecialPhaseView
+- (uint32_t)currentGameTick {if(outerClockTest)return outerClock();return observing?latestTick:simulationTick;}
+- (uint32_t)specialClockTick {
+    if(outerClockTest)return outerClock();
+    if(!specialLoopRunning||fixedWorldClock)return latestTick;
+    if(clockMode==6){static const uint32_t reads[]={100,100,100,131};assert(clockReads<4);latestTick=reads[clockReads++];}
+    else latestTick=100+clockReads++/1000;
+    return latestTick;
+}
+- (void)calculateSpecialContext:(AstroSpecialContext *)context world:(BeamContext *)worldContext {
+    // Match the native driver's CALC boundary: clock stays fixed inside this hook.
+    fixedWorldClock=YES;[super calculateSpecialContext:context world:worldContext];fixedWorldClock=NO;
+}
+- (void)animateSpecialWorld {fixedWorldClock=YES;[super animateSpecialWorld];fixedWorldClock=NO;}
+- (void)readSpecialKeys {}
+- (void)calculateActors {
+    if(observing){depth++;[events appendString:@"A"];}
+    [super calculateActors];if(observing)depth--;
+}
 - (void)inheritParentState {if(observing)[events appendString:@"I"];[super inheritParentState];}
+- (void)finishPlayerUpdateAtTick:(uint32_t)tick {
+    if(observing){assert(depth>0);posttails++;[events appendString:@"T"];assert(playerCombat.kind==(specialLoopRunning?-1:1));}
+    [super finishPlayerUpdateAtTick:tick];
+}
+- (void)prepareSpecialContext:(AstroSpecialContext *)context {
+    expectedGunX=playerBounds.left+74-15;expectedGunY=playerBounds.top+12+1;
+    [super prepareSpecialContext:context];
+}
 - (void)display {if(observing){outerFrames++;[events appendString:@"O"];}}
 - (void)renderSpecialWorld {
-    assert(observing&&worldRenderTick==simulationTick);
+    assert(observing&&specialLoopRunning&&depth==1);
     assert(!specialPolygons.count&&!specialFlashes.count);
-    innerFrames++;[events appendString:@"W"];
-    // A real world renderer can consume RNG before the special visual tail.
-    astro_random(&randomSeed,123);
+    innerFrames++;[events appendString:@"W"];astro_random(&randomSeed,123);
 }
 - (void)presentSpecialFrame {
-    assert(specialPolygons.count==2&&specialFlashes.count==5);
-    presents++;[events appendString:@"P"];
+    assert(specialPolygons.count==2&&specialFlashes.count==5);presents++;[events appendString:@"P"];
 }
 - (void)updateVisualEffects {
-    if(observing){animations++;[events appendString:@"L"];if(suspendedSpecialTail)assert(playerCombat.kind==-1);}
+    if(observing){animations++;[events appendString:@"L"];if(specialLoopRunning)assert(playerCombat.kind==-1);}
     [super updateVisualEffects];
 }
 - (void)addSpecialBeam:(const AstroBeam *)beam temporary:(int)temporary context:(BeamContext *)context {
@@ -37,42 +66,48 @@ static NSMutableString *events;
 @implementation AstroView (SpecialPhaseCheck)
 - (void)checkSpecialPhases {
     [timer invalidate];timer=nil;[audio stop];audio.soundVolume=audio.musicVolume=0;
-    selftestPath=@"special-phase-check";campaignTestPath=selftestPath;
-    int intervals[]={2,3,0,-1,3};
+    int intervals[]={2,3,0,-1,3,3,3};
     for(unsigned scenario=0;scenario<sizeof(intervals)/sizeof(intervals[0]);scenario++){
         [self resetEnemies];[enemies removeAllObjects];[mapPlacements removeAllObjects];
-        world=[NSMutableArray arrayWithObject:[NSNull null]];
-        backgrounds=@[];parallaxData=[NSMutableData data];memset(stars,0,sizeof(stars));
+        world=[NSMutableArray arrayWithObject:[NSNull null]];backgrounds=@[];parallaxData=[NSMutableData data];memset(stars,0,sizeof(stars));
         memset(keys,0,sizeof(keys));changingStage=NO;campaignAction=ASTRO_CAMPAIGN_NONE;
         flow.phase=ASTRO_FLOW_PLAY;menuVisible=NO;paused=gameOver=gameOverPending=NO;
-        camera=0;tickedScroll=0;simulationTick=100;worldRenderTick=scenario==0?99:100;
+        camera=0;tickedScroll=0;simulationTick=100;observedWallTick=100;worldRenderTick=scenario==0?99:scenario==5?98:100;
         ui.frameInterval=intervals[scenario];playerWeapon=40;inventory.specials=1;
         lastPlayerShot=0;respawnTick=0;invulnerableUntil=scenario==4?999:0;
-        playerVisual=(AstroVisual){1,100,180,71,20,100};
-        playerX=playerEntityX=100;playerY=playerEntityY=180;
+        playerVisual=(AstroVisual){1,100,180,71,20,100};playerX=playerEntityX=100;playerY=playerEntityY=180;
         playerBounds=(AstroRect){100,180,171,200};previousPlayerBounds=playerBounds;
         playerCombat=(AstroCombatState){.kind=1,.hit_points=200};
-        playerState=(AstroPlayer){.frame=12,.tilt=3,.state=1,.update_tick=100,.animation_tick=100};
+        playerState=(AstroPlayer){.frame=12,.tilt=3,.state=1,.update_tick=99,.animation_tick=100};
         playerVelocity=(AstroVelocity){2,0};randomSeed=12345;
-        innerFrames=presents=outerFrames=animations=beams=0;events=[NSMutableString string];
-        keys[58]=YES;observing=YES;[self calculateActors];[self renderTick];
-        assert(special.active&&suspendedSpecialTail&&!events.length);
-        for(unsigned step=0;step<31;step++){
-            expectedGunX=playerBounds.left+74-15;expectedGunY=playerBounds.top+12+1;
-            uint32_t now=simulationTick+1;BOOL due=(int32_t)(now-worldRenderTick)>=ui.frameInterval;
-            NSMutableString *expected=[NSMutableString stringWithString:@"IB"];
-            if(due)[expected appendString:@"WP"];[expected appendString:@"L"];
-            if(step==30){[expected appendString:@"I"];if(ui.frameInterval<=0)[expected appendString:@"O"];[expected appendString:@"L"];}
-            [events setString:@""];[self stepEnemies];[self renderTick];
-            assert([events isEqual:expected]);
-            if(step==0)assert(playerBounds.left!=100);
+        clockReads=innerFrames=presents=outerFrames=animations=posttails=beams=depth=0;events=[NSMutableString string];
+        clockMode=scenario;latestTick=100;fixedWorldClock=NO;
+        keys[controlKeys[1]]=YES;observing=YES;[self calculateActors];
+        assert(!special.active&&!specialLoopRunning&&playerCombat.kind==1);
+        assert(depth==0&&outerFrames==0&&animations==beams&&posttails==beams+1&&innerFrames==presents);
+        if(scenario==6)assert(beams==0&&clockReads==4);
+        else if(ui.frameInterval==3)assert(beams==30);
+        else assert(beams>=30&&beams<=31);
+        NSMutableString *expected=[NSMutableString stringWithString:@"A"];
+        unsigned seenFrames=0;
+        for(unsigned i=0;i<beams;i++){
+            [expected appendString:@"ATIB"];
+            if([events hasPrefix:[expected stringByAppendingString:@"W"]]){[expected appendString:@"WP"];seenFrames++;}
+            [expected appendString:@"L"];
         }
+        [expected appendString:@"TI"];assert([events isEqual:expected]&&seenFrames==innerFrames);
+        assert(playerState.update_tick==131&&simulationTick==131);
+        if(scenario==6)assert(lastPlayerShot==162);else if(ui.frameInterval==3)assert(lastPlayerShot==192);
+        unsigned previous=outerFrames;[self renderTick];assert(animations==beams+1);
+        if(ui.frameInterval<=0||scenario>=5)assert(outerFrames==previous+1);
         observing=NO;
-        assert(!special.active&&!suspendedSpecialTail&&playerCombat.kind==1);
-        assert(beams==31&&animations==32&&innerFrames==presents);
-        assert(outerFrames==(ui.frameInterval<=0?1u:0u));
-        printf("PASS actual host special interval%d: pre-CALC gun, shared render deadline, inner/outer LM and terminal resume\n",ui.frameInterval);
+        printf("PASS synchronous host interval%d: %u nested CALCs, cached gun, inner posttails/LM and outer continuation before parent pass\n",ui.frameInterval,beams);
     }
+    simulationTick=130;worldRenderTick=128;ui.frameInterval=3;
+    specialReturnPending=NO;outerClockReads=0;unsigned previousFrames=outerFrames;
+    observing=outerClockTest=YES;[self renderTick];observing=outerClockTest=NO;
+    assert(outerClockReads==3&&worldRenderTick==133&&simulationTick==134&&outerFrames==previousFrames+1);
+    puts("PASS outer CALC completion uses distinct fresh render-compare/store and LM clocks");
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{

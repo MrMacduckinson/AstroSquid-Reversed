@@ -62,11 +62,16 @@ static void plasma_projectile(AstroSpecialContext *c,int x,int y,int heading) {
         p.scale=(5.0+random_value(c,8))/10.0;spawn(c,&p);
     }
 }
+static void set_action(AstroSpecial *s,AstroSpecialContext *c,uint32_t value) {
+    s->action_until=value;
+    if(c->action_tick)*c->action_tick=value;
+}
 int astro_special_start(AstroSpecial *s,int weapon,int x,int y,int heading,uint32_t tick,AstroSpecialContext *c) {
     if(!s||s->active||!valid(c))return 0;
     if(!((weapon>=10&&weapon<=13)||(weapon>=30&&weapon<=33)||
          (weapon>=40&&weapon<=43)||(weapon>=50&&weapon<=53)))return 0;
-    *s=(AstroSpecial){.weapon=weapon,.started=tick,.last_tick=tick-1,.last_render_tick=tick-1,.action_until=tick+(uint32_t)c->frame_interval+59};
+    *s=(AstroSpecial){.weapon=weapon,.started=tick,.last_tick=tick-1,.last_render_tick=tick-1};
+    set_action(s,c,tick+(uint32_t)c->frame_interval+59);
     if(weapon<20){sound(c,299,x);burst(c,x,y);}
     else if(weapon<40){sound(c,299,x);plasma_projectile(c,x,y,heading);}
     else {s->active=1;if(weapon<50)sound(c,296,x);}
@@ -148,7 +153,7 @@ static void special_render(AstroSpecial *s,AstroSpecialContext *c,SpecialFrame f
     if(c->present)c->present(c->context);
 }
 static int apply_tick(AstroSpecial *s,uint32_t tick,AstroSpecialContext *c) {
-    s->action_until=tick+(uint32_t)c->frame_interval+59;
+    set_action(s,c,tick+(uint32_t)c->frame_interval+59);
     if(tick==s->last_tick)return 0;
     s->last_tick=tick;
     SpecialFrame frame=special_cpu(s,c);
@@ -170,7 +175,7 @@ int astro_special_start_nested(AstroSpecial *s,int weapon,int x,int y,int headin
     return 1;
 }
 int astro_special_step_nested(AstroSpecial *s,uint32_t tick,AstroSpecialContext *c) {
-    /* shortcut: host still uses scalar ticks; wire run_nested for original polling. */
+    /* Scalar replay API; production uses the clocked run_nested driver. */
     if(!s||!s->active||!valid(c))return 0;
     if((int32_t)(tick-s->started)<0||tick==s->last_tick)return ASTRO_SPECIAL_WAIT;
     apply_tick(s,tick,c);
@@ -183,7 +188,7 @@ int astro_special_run_nested(AstroSpecial *s,AstroSpecialContext *c,const AstroS
     s->started=loop->read_tick(c->context);
     do {
         loop->prepare(c->context,c);
-        s->action_until=loop->read_tick(c->context)+(uint32_t)c->frame_interval+59;
+        set_action(s,c,loop->read_tick(c->context)+(uint32_t)c->frame_interval+59);
         uint32_t comparison=loop->read_tick(c->context);
         if((int32_t)(comparison-*loop->cpu_tick)>0){
             *loop->cpu_tick=loop->read_tick(c->context);s->last_tick=*loop->cpu_tick;

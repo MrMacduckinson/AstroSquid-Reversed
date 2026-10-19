@@ -26,6 +26,7 @@ static unsigned entityID(id object){return object==[NSNull null]?1:[[entityIDs o
 @interface AstroTraceView : AstroView
 @end
 @implementation AstroTraceView
+- (uint32_t)currentGameTick {return simulationTick;}
 - (AstroEnemy *)entityForPlacement:(NSDictionary *)placement {
     AstroEnemy *e=[super entityForPlacement:placement];
     if(entityIDs)[entityIDs setObject:@(++nextEntityID) forKey:e];
@@ -64,7 +65,7 @@ static unsigned entityID(id object){return object==[NSNull null]?1:[[entityIDs o
     shot.x=200;shot.y=250;[self spawnShot:&shot source:1];
     [self dumpWorldTrace:@"initial"];
     memset(stars,0,sizeof(stars));backgrounds=@[];parallaxData=[NSMutableData data];
-    special=(AstroSpecial){0};suspendedSpecialTail=nil;respawnTick=invulnerableUntil=0;
+    special=(AstroSpecial){0};specialLoopRunning=NO;respawnTick=invulnerableUntil=0;
     campaignAction=ASTRO_CAMPAIGN_NONE;changingStage=NO;playerWeapon=10;
     selftestPath=nil;int controls[6]={55,58,126,125,123,124};memcpy(controlKeys,controls,sizeof(controls));
     for(traceTick=1;traceTick<=traceSteps;traceTick++){

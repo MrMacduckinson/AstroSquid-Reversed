@@ -50,19 +50,27 @@ Full original-logic equivalence remains unproved. Current bounded evidence:
   world render before special visuals, inner animation before restoring kind1,
   suppressed outer rendering while blocked, and terminal shared-deadline reuse.
   A pending respawn timer does not suppress the original unconditional kind1
-  restoration. Full application GL self-tests pass at intervals2/3.
+  restoration. The synchronous path checks both30-update and zero-update
+  completion, including a positive-interval outer render after return. Distinct
+  fresh outer render-compare/store/animation clocks are also checked.
+- `tests/player_tail_host_test.m` matches48 native G5 postfire states for every
+  shield/glow presence combination, signed frames and timer wrapping. The host
+  runs this continuation after synchronous special return, before the remaining
+  outer actors. A closed player update gate suppresses both firing and this
+  continuation; primary fire precedes fresh action/update clock stores.
 
 Original configured FPS intervals, parent-linked cases, production scheduling,
 full startup/menu state, extended campaigns and final packaging remain open.
-In particular, the original may finish a special between CPU updates when a
-separate TickCount read crosses the deadline; the asynchronous host's completion
-boundary still needs that clock-read behavior modeled and compared.
-The separate `astro_special_run_nested` driver now matches12 original polling
+The production timed-special path now uses `astro_special_run_nested`, matching
+the original separate clock reads and synchronous call stack. This driver matches12 original polling
 schedules and all62066 clock reads, with distinct compare/store times, a
 clock-consuming CALC hook, ordered effects/RNG and terminal deadlines. Its
 728-line fixture losslessly expands repeated clock records; every expanded read
-is checked. Actor internals, entity-kind writes and production integration are
-outside this driver test. The application still calls the scalar stepping API.
+is checked. Shared player action stores are checked before every clock/hook.
+Actor internals and entity-kind writes are outside this driver test. Host tests
+check their integration separately; this is not a full native coupled special
+world trace. Original per-actor clock reads, list lifetimes across nested cleanup,
+and unusual clock-jump/input reentry cases still need broader verification.
 
 ## Checks performed
 
