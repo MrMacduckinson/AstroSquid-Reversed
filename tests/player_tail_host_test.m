@@ -56,7 +56,8 @@ static unsigned prefixCount,prefixRead;
     assert(fires==0&&finishes==0&&clockReads==3&&playerState.update_tick==100);
     assert(playerHitVisual.visual.x==-123.25&&engineGlowRect.x==-19.25);
     playerState.update_tick=99;clockReads=0;[self stepPlayer];gateCheck=NO;
-    assert(fires==1&&finishes==1&&clockReads==6&&lastPlayerShot==107&&playerState.update_tick==105);
+    // The single Pellet1 also executes NEWSPRITE's three clocks and LMNEWSPRITE's clock.
+    assert(fires==1&&finishes==1&&clockReads==10&&lastPlayerShot==107&&playerState.update_tick==105);
     assert(playerState.animation_tick==95);
     assert(playerHitVisual.visual.x==playerBounds.left-5&&playerHitVisual.visual.y==playerBounds.top-5);
     memset(keys,0,sizeof(keys));engineGlow=NO;playerHitVisual.active=NO;

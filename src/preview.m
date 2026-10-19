@@ -512,13 +512,17 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     AstroEnemy *enemy=[AstroEnemy new];enemy->renderBirth=++renderClock;
     enemy->placement=placement; enemy->definition=game[@"attributes"][attribute];
     enemy->baseSprite=[enemy->definition[@"sprite"] intValue];
+    uint32_t updateTick=[self playerClockTick];
+    uint32_t animationTick=[self playerClockTick];
+    uint32_t actionTick=[self playerClockTick];
+    uint32_t visualTick=[self playerClockTick];
     enemy->visual=(AstroVisual){enemy->baseSprite,number(placement,@"x"),number(placement,@"y"),
-        number(placement,@"width"),number(placement,@"height"),simulationTick+(uint32_t)spriteInfo[enemy->baseSprite].delay};
+        number(placement,@"width"),number(placement,@"height"),visualTick+(uint32_t)spriteInfo[enemy->baseSprite].delay};
     enemy->bounds=(AstroRect){(int)enemy->visual.x,(int)enemy->visual.y,
         (int)(enemy->visual.x+enemy->visual.width),(int)(enemy->visual.y+enemy->visual.height)};
     enemy->previousBounds=(AstroRect){0};
     enemy->state=(AstroScriptState){.frame=1,.tilt=1,.state=1,
-        .update_tick=simulationTick,.animation_tick=simulationTick,.action_tick=simulationTick,
+        .update_tick=updateTick,.animation_tick=animationTick,.action_tick=actionTick,
         .x=number(placement,@"x"),.y=number(placement,@"y")};
     int group=attribute.intValue/10;enemy->subtype=attribute.intValue-group*10;
     enemy->kind=group>5&&group<20?5:group;
@@ -571,11 +575,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)makeNewSprites {
     for(NSDictionary *placement in [mapPlacements copy]) {
-        if(number(placement,@"x")>=camera+740)continue;
+        if(!(number(placement,@"x")<camera+740))continue;
         AstroEnemy *enemy=[self entityForPlacement:placement];
         enemy->state.x=(int)enemy->state.x;enemy->state.y=(int)enemy->state.y;
         enemy->visual.x=enemy->state.x;enemy->visual.y=enemy->state.y;
-        enemy->state.update_tick=enemy->state.animation_tick=enemy->state.action_tick=simulationTick;
         [self prependEnemy:enemy];[mapPlacements removeObjectIdenticalTo:placement];
     }
 }
@@ -623,8 +626,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     bullet->kind=attribute>30?5:2;bullet->subtype=attribute>30?attribute-50:shot->type;
     bullet->active=YES;bullet->renderLayer=6;
     bullet->layer=kind==5?2:(kind==1||kind==-1)?3:0;
-    bullet->state.update_tick=bullet->state.animation_tick=
-        bullet->state.action_tick=simulationTick;
     astro_vector_make(&bullet->state.velocity,shot->heading,number(attr,@"speed"));
     [self prependEnemy:bullet];emittedShots++;
  }
