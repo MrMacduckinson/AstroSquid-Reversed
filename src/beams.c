@@ -49,7 +49,7 @@ int astro_beam_shots(int weapon,int x,int y,int heading,int interval,
                     int kind,int parent,const AstroTarget *targets,size_t count,
                     double left,double top,double right,double bottom,uint32_t *seed,AstroBeam out[2],
                     void (*hit)(void *,const AstroBeam *),void *context) {
-    if(!out||(!targets&&count)||!seed||interval<1||left>=right||top>=bottom) return -1;
+    if(!out||(!targets&&count)||!seed||left>=right||top>=bottom) return -1;
     if(weapon>=50&&weapon<=53) {
         x=(int32_t)((uint32_t)x-10);y=(int32_t)((uint32_t)y+1);
         int target=nearest(x,y,90000,-1,kind,parent,targets,count);

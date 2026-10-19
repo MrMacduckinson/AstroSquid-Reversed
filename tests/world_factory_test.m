@@ -61,10 +61,23 @@ static NSUInteger operandLeft,operandRight;
     [self reloadMainMenu];assert(randomSeed==expectedSeed&&menuScroll.x==driftX&&menuScroll.y==driftY);
     assert(!memcmp(stars,expectedStars,sizeof(expectedStars)));
     splashVisible=NO;menuVisible=YES;[ui show:@"Play Menu"];
-    [self stepMenu];
-    astro_stars_move(expectedStars,ui.cameraX,ui.cameraY,-ui.cameraX,-ui.cameraY,640-ui.cameraX,480-ui.cameraY,
-        driftX,driftY,ui.cameraStepX,ui.cameraStepY,1,&expectedSeed,NULL,0,1);
-    assert(randomSeed==expectedSeed&&!memcmp(stars,expectedStars,sizeof(expectedStars)));
+    const int intervals[]={1,2,3,0,-1};
+    for(unsigned i=0;i<sizeof(intervals)/sizeof(*intervals);i++) {
+        ui.frameInterval=intervals[i];
+        [self stepMenu];
+        astro_stars_move(expectedStars,ui.cameraX,ui.cameraY,-ui.cameraX,-ui.cameraY,640-ui.cameraX,480-ui.cameraY,
+            driftX,driftY,ui.cameraStepX,ui.cameraStepY,ui.frameInterval,&expectedSeed,NULL,0,1);
+        assert(randomSeed==expectedSeed&&!memcmp(stars,expectedStars,sizeof(expectedStars)));
+    }
+    menuVisible=NO;changingStage=NO;world=[NSMutableArray array];backgrounds=@[];parallaxData=[NSMutableData data];camera=20;tickedScroll=3.25;
+    for(unsigned i=0;i<sizeof(intervals)/sizeof(*intervals);i++) {
+        ui.frameInterval=intervals[i];
+        [self calculateActors];
+        astro_stars_move(expectedStars,-camera,0,camera,0,camera+640,380,tickedScroll,0,0,0,ui.frameInterval,&expectedSeed,NULL,0,0);
+        assert(randomSeed==expectedSeed&&!memcmp(stars,expectedStars,sizeof(expectedStars)));
+    }
+    ui.frameInterval=1;
+    puts("PASS actual menu/game star callers preserve signed intervals1/2/3/0/-1 and complete star/RNG state");
     puts("PASS actual host menu orb/star/drift RNG order and camera-linked star movement");
     puts("PASS actual host scaled boss turret and creation-time projectile/debris/scenery layers vs original native fixtures");
 }

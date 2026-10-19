@@ -561,7 +561,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         NSMutableData *targetData=[self targetsForObjects:objects];AstroTarget *targets=targetData.mutableBytes;
         AstroBeam beams[2];BeamContext context={.view=self,.objects=objects,.targets=targets,
             .soundCue=identifier>=50?295:296,.soundX=x};
-        int emitted=astro_beam_shots(identifier,x,y,heading,1,kind,-1,targets,count,
+        int emitted=astro_beam_shots(identifier,x,y,heading,ui.frameInterval,kind,-1,targets,count,
             camera,0,camera+640,380,&randomSeed,beams,beamHit,&context);
         if(emitted<0) {NSLog(@"Invalid beam request");exit(1);}
         for(int i=0;i<emitted;i++) {
@@ -1058,7 +1058,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)calculateActors {
     actorVisits=0;
-    astro_stars_move(stars,-camera,0,camera,0,camera+640,380,tickedScroll,0,0,0,1,&randomSeed,
+    astro_stars_move(stars,-camera,0,camera,0,camera+640,380,tickedScroll,0,0,0,ui.frameInterval,&randomSeed,
         parallaxData.mutableBytes,backgrounds.count,0);
     [specialPolygons removeAllObjects];[specialFlashes removeAllObjects];
     NSIndexSet *expired=[liveBeams indexesOfObjectsPassingTest:
@@ -1193,7 +1193,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if([ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"]){[ui animateTicks:1];return;}
     [ui advanceMenuCamera];
     astro_stars_move(stars,ui.cameraX,ui.cameraY,-ui.cameraX,-ui.cameraY,640-ui.cameraX,480-ui.cameraY,
-        menuScroll.x,menuScroll.y,ui.cameraStepX,ui.cameraStepY,1,&randomSeed,NULL,0,1);
+        menuScroll.x,menuScroll.y,ui.cameraStepX,ui.cameraStepY,ui.frameInterval,&randomSeed,NULL,0,1);
     [self display];[ui animateMenuObjects];
 }
 - (void)tickWallClock {

@@ -21,6 +21,7 @@ build/combat_test tests/combat_vectors.csv
 build/beams_test tests/beam_vectors.csv
 build/beams_test tests/stale_beam_vectors.csv
 build/beams_test tests/edge_beam_vectors.csv
+build/beams_test tests/beam_interval_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/pickup_test.c src/combat.c -lm -o build/pickup_test
 build/pickup_test tests/pickup_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/scenery_test.c src/combat.c -lm -o build/scenery_test

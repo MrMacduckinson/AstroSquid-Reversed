@@ -9,13 +9,18 @@ static void destroy_first(void *context,const AstroBeam *beam) {
 }
 int main(int argc,char **argv) {
     assert(argc==2);FILE *f=fopen(argv[1],"r");assert(f);
-    char line[512];unsigned checked=0,stale_cases=0,legacy_differences=0,edge_cases=0;
+    char line[512];unsigned checked=0,stale_cases=0,legacy_differences=0,edge_cases=0,interval_cases=0;
+    unsigned char interval_seen[8][9]={{0}};
     while(fgets(line,sizeof(line),f)) {
         long long values[20];int length=0;
         for(char *p=strtok(line,",");p;p=strtok(NULL,",")) {
             assert(length<20);values[length++]=strtoll(p,NULL,10);
         }
         int id=(int)values[0],n=(int)values[1],expected=(int)values[2],edge=n>=200;
+        static const int signed_intervals[]={-32768,-3,-2,-1,0,1,2,3,32767};
+        assert(n>=0||(-n-1>=0&&-n-1<9));
+        int interval=n<0?signed_intervals[-n-1]:n%3+1;
+        if(n<0){int family=id<=43?id-40:id-46;assert(family>=0&&family<8);assert(!interval_seen[family][-n-1]++);}
         assert(expected>=0&&expected<=2&&length==4+7*expected);
         AstroTarget targets[6];
         for(int i=0;i<6;i++) {
@@ -31,7 +36,7 @@ int main(int argc,char **argv) {
         }
         AstroTarget legacy[6];memcpy(legacy,targets,sizeof(legacy));
         uint32_t seed=(uint32_t)n*123456789u;AstroBeam beams[2];
-        int count=astro_beam_shots(id,edge?(n%2?30000:-30000):70+n%100,edge?(n%4<2?30000:-30000):110+n%100,n*17,n%3+1,
+        int count=astro_beam_shots(id,edge?(n%2?30000:-30000):70+n%100,edge?(n%4<2?30000:-30000):110+n%100,n*17,interval,
             edge?1:n%2?1:5,-1,targets,6,0,0,640,380,&seed,beams,n%4==0?destroy_first:NULL,targets);
         assert(count==expected&&seed==(uint32_t)values[length-1]);
         for(int i=0;i<count;i++) {
@@ -44,14 +49,15 @@ int main(int argc,char **argv) {
         if(n>=100&&n<200) {
             for(int i=0;i<6;i++)legacy[i].bounds_valid=0;
             uint32_t old_seed=(uint32_t)n*123456789u;AstroBeam old[2];
-            int old_count=astro_beam_shots(id,70+n%100,110+n%100,n*17,n%3+1,
+            int old_count=astro_beam_shots(id,70+n%100,110+n%100,n*17,interval,
                 n%2?1:5,-1,legacy,6,0,0,640,380,&old_seed,old,n%4==0?destroy_first:NULL,legacy);
             if(old_count!=count||old_seed!=seed||memcmp(old,beams,count*sizeof(*beams)))legacy_differences++;
             stale_cases++;
         }
-        if(edge)edge_cases++;checked++;
+        if(edge)edge_cases++;if(n<0)interval_cases++;checked++;
     }
-    fclose(f);assert(checked==(edge_cases?32:160));
+    fclose(f);assert(checked==(edge_cases?32:interval_cases?72:160));
+    if(interval_cases){assert(interval_cases==checked);for(int i=0;i<8;i++)for(int j=0;j<9;j++)assert(interval_seen[i][j]==1);}
     if(stale_cases)assert(legacy_differences>0);
     AstroTarget targets[]={{.kind=5,.parent=-1,.x=100,.y=50,.width=20,.height=20},
                           {.kind=5,.parent=-1,.x=150,.y=50,.width=20,.height=20}};
