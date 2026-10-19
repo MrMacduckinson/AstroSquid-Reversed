@@ -17,7 +17,7 @@ for key, sprite in game["sprites"].items():
     struct.pack_into(">7h", sprites, int(key) * 14, *(sprite[field] for field in
         ("texture", "x", "y", "width", "height", "next_frame", "delay")))
 (output / "sprt.bin").write_bytes(sprites)
-for atlas in (0, 1, 2, 5, 10, 12, 18):
+for atlas in (0, 1, 2, 5, 7, 10, 12, 18):
     image = Image.open(assets / "atlases" / f"{atlas}.png").convert("RGBA")
     assert image.width == image.height
     (output / f"atlas{atlas}.rgba").write_bytes(struct.pack(">I", image.width) + image.tobytes())

@@ -355,9 +355,18 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         } texture:^GLuint(NSInteger n){return [self texture:n];}];
         if(campaignTestPath)glFlush();else [[self openGLContext] flushBuffer];return;
     }
+    AstroHUDState overlay={[world containsObject:[NSNull null]]&&!(flow.phase==ASTRO_FLOW_READY&&!initialReadyCard),playerCombat.hit_points,inventory.weapon,
+        inventory.upgrade,inventory.specials,inventory.lives,score};
+    // GAMELOOP paints HUD first; RENDERGAMEWINDOW can cover its shared edge.
+    if(!worldOverlay)[hud drawState:&overlay texture:^GLuint(NSInteger n){return [self texture:n];}
+        framebufferWidth:(GLsizei)bounds.size.width height:(GLsizei)bounds.size.height];
+    if(campaign.level<4||campaign.level==7) {
+        glDisable(GL_TEXTURE_2D);glDisable(GL_BLEND);glColor3d(0,0,0);glBegin(GL_QUADS);
+        glVertex2d(0,0);glVertex2d(640,0);glVertex2d(640,380);glVertex2d(0,380);glEnd();
+    }
     AstroSceneSink sink={(__bridge void *)self,sceneLine,sceneSprite,scenePoint,sceneTrail};
     astro_stars_draw(stars,0,campaign.level,tickedScroll,&sink);
-    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     const AstroParallax *parallax=parallaxData.bytes;
     for(NSUInteger i=0;i<backgrounds.count;i++) {
         NSDictionary *background=backgrounds[i];
@@ -424,11 +433,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     for(NSData *data in specialFlashes) {
         const AstroVisual *v=data.bytes;[self sprite:v->sprite x:v->x-camera y:v->y width:v->width height:v->height];
     }
-    AstroHUDState overlay={[world containsObject:[NSNull null]]&&!(flow.phase==ASTRO_FLOW_READY&&!initialReadyCard),playerCombat.hit_points,inventory.weapon,
-        inventory.upgrade,inventory.specials,inventory.lives,score};
-    [hud drawState:&overlay texture:^GLuint(NSInteger n){return [self texture:n];}
-        framebufferWidth:(GLsizei)bounds.size.width height:(GLsizei)bounds.size.height];
     if(worldOverlay) {
+        [hud drawState:&overlay texture:^GLuint(NSInteger n){return [self texture:n];}
+            framebufferWidth:(GLsizei)bounds.size.width height:(GLsizei)bounds.size.height];
         glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
         glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);glMatrixMode(GL_MODELVIEW);glLoadIdentity();
         [ui drawSprites:^(NSInteger n,double x,double y,double w,double h){[self sprite:n x:x y:y width:w height:h];}

@@ -35,7 +35,8 @@ static void port_sprite(const Object*o,double cx,double cy){
  glTexCoord2d(u,v+dv);glVertex2d(o->x+cx,o->y+cy+o->h);glEnd();
 }
 int main(int argc,char**argv){
- if(argc!=3)return 2;char path[2048];
+ if(argc!=3&&argc!=4)return 2;int hud_edge=argc==4;char path[2048];
+ if(hud_edge){objects[5].x=50;objects[5].y=374;}
 #ifdef __ppc__
  CGLPixelFormatAttribute pa[]={kCGLPFAPBuffer,kCGLPFAColorSize,24,kCGLPFAAlphaSize,8,0};
 #else
@@ -58,7 +59,7 @@ int main(int argc,char**argv){
 #endif
  printf("GL vendor%s renderer%s version%s\n",glGetString(GL_VENDOR),glGetString(GL_RENDERER),glGetString(GL_VERSION));
  snprintf(path,sizeof(path),"%s/sprt.bin",argv[1]);sprt=read_file(path);
- int atlas_ids[]={0,1,2,5,10,12,18};
+ int atlas_ids[]={0,1,2,5,7,10,12,18};
  for(unsigned i=0;i<sizeof(atlas_ids)/sizeof(atlas_ids[0]);i++){
   int id=atlas_ids[i];snprintf(path,sizeof(path),"%s/atlas%d.rgba",argv[1],id);unsigned char*b=read_file(path);int size=(int)be32(b);widths[id]=size;
   glGenTextures(1,textures+id);glBindTexture(GL_TEXTURE_2D,textures[id]);glPixelStorei(GL_UNPACK_ALIGNMENT,1);
@@ -86,6 +87,15 @@ int main(int argc,char**argv){
   glViewport(0,0,640,380);glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,379,0,-1,1);glMatrixMode(GL_MODELVIEW);glLoadIdentity();
   glDisable(GL_DITHER);glClearColor(0,0,0,1);glClear(GL_COLOR_BUFFER_BIT);glEnable(GL_TEXTURE_2D);glShadeModel(GL_FLAT);
 #ifdef __ppc__
+  if(hud_edge){
+   unsigned char border[312];memset(border,0,sizeof(border));
+   *(double*)(border+8)=449;*(double*)(border+16)=394;*(double*)(border+24)=7;*(int16_t*)(border+38)=404;
+   *(double*)(g+0xea2)=0;*(double*)(g+0xeaa)=0;
+   glViewport(0,-30,640,480);glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);glMatrixMode(GL_MODELVIEW);
+   glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);glColor3d(1,1,1);
+   invoke_fb(code+0x3a278,g,toc,border,NULL,NULL);
+   glViewport(0,0,640,380);glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,379,0,-1,1);glMatrixMode(GL_MODELVIEW);
+  }
   *(double*)(g+0xea2)=cx;*(double*)(g+0xeaa)=cy;*(int16_t*)(g+0xa82)=stage;invoke_fb(code+0x57afc,g,toc,NULL,NULL,NULL);
 #else
   if(stage<4||stage==7){glDisable(GL_BLEND);glBindTexture(GL_TEXTURE_2D,textures[0]);glBegin(GL_POINTS);for(int i=0;i<1000;i++){double gray=(i%100+1)/100.;glColor3d(gray,gray,gray);glVertex3d((i*37)%640+.25,(i*29)%380+.5,0);}glEnd();}
@@ -94,6 +104,7 @@ int main(int argc,char**argv){
 #endif
   glFinish();GLenum ge=glGetError();if(ge){printf("GLerror %u\n",ge);return 1;}
   glPixelStorei(GL_PACK_ALIGNMENT,1);glReadPixels(0,0,640,380,GL_RGBA,GL_UNSIGNED_BYTE,pixels);
+  if(glGetError()!=GL_NO_ERROR)return 1;
   snprintf(path,sizeof(path),"%s-%d-%d.rgba",argv[2],smooth,trial);FILE*f=fopen(path,"wb");if(!f||fwrite(pixels,1,640*380*4,f)!=640*380*4)return 2;fclose(f);
  }
  puts("PASS12 controlledfullplayfieldframebuffers written; originalPPC or portIntel path");return 0;

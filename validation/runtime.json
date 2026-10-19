@@ -1,20 +1,20 @@
 {
-  "emitted_beams" : 319,
+  "emitted_beams" : 296,
   "special_attacks" : 4,
-  "damage_hits" : 34,
-  "script_steps" : 358,
-  "emitted_effects" : 178,
+  "damage_hits" : 12,
+  "script_steps" : 407,
+  "emitted_effects" : 176,
   "stage_switched" : true,
   "passed" : true,
   "player_hit_points" : 30000,
-  "music_time" : 15.103650793650793,
+  "music_time" : 15.432335600907029,
   "controlled_runtime_fixture" : true,
   "player_moved" : true,
   "music_playing" : true,
-  "colored_pixels" : 45336,
+  "colored_pixels" : 44249,
   "frame_width" : 960,
-  "emitted_shots" : 120,
+  "emitted_shots" : 125,
   "frame_height" : 720,
   "textures_loaded" : 10,
-  "score" : 10300
+  "score" : 300
 }

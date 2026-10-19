@@ -1,0 +1,622 @@
+{
+  "scope": "12 controlled playfield composites: original PPC RENDERGAMEWINDOW/LMDRAWSPRITE versus actual production AstroView.drawRect, texture loader, stars and effect paths; not live campaign/HUD/menu pixel identity",
+  "method_limits": [
+    "Test-only category populates controlled live scene; inherited production renderer is called directly, not duplicate primitive math.",
+    "Backing1x640x480, GL_DITHER disabledboth. ActualoriginalHUDborder404 included; otherHUDcommands outsidefield. No fullwindowHUDfontcomparison."
+  ],
+  "production_linkage": true,
+  "original_gpu": "ATI Radeon 9600 OpenGL1.5 ATI-1.4.18, PowerPC Tiger",
+  "port_gpu": "AMD Radeon Pro560 OpenGL2.1 ATI-1.68.20, Intel HighSierra",
+  "tolerance": "Mean error below 1/255 per RGB channel and at least 99% pixels within 2/255; high-contrast raster-edge differences reported separately",
+  "passed": true,
+  "frames": [
+    {
+      "smooth": 0,
+      "trial": 0,
+      "stage": 1,
+      "camera": [
+        0,
+        0
+      ],
+      "changed_pixels": 73835,
+      "pixels_over_2": 1178,
+      "pixels_over_16": 105,
+      "max_rgb": 252,
+      "mean_rgb": [
+        0.2501274671052632,
+        0.2458141447368421,
+        0.24359375
+      ],
+      "over16_neighbor_max": 18,
+      "original_sha256": "5d04be8d92436b512e183c1dde2f9b5428761d7212696c8844b95d32a14f8ebd",
+      "port_sha256": "595e891e5e1db944e64852585b21498a162da540b0cb69339eae14597ae811c5"
+    },
+    {
+      "smooth": 0,
+      "trial": 1,
+      "stage": 4,
+      "camera": [
+        0,
+        0
+      ],
+      "changed_pixels": 73736,
+      "pixels_over_2": 1115,
+      "pixels_over_16": 48,
+      "max_rgb": 52,
+      "mean_rgb": [
+        0.22209292763157895,
+        0.2176685855263158,
+        0.21545641447368422
+      ],
+      "over16_neighbor_max": 9,
+      "original_sha256": "f29611f81b3d047baf0baa8b772fc039aef81acdd8fa496352938ecbb225819e",
+      "port_sha256": "9993b418c653139f41d1e872ed4eacf8c456f184cfc0ef0b85c4c8c6d1a2231e"
+    },
+    {
+      "smooth": 0,
+      "trial": 2,
+      "stage": 7,
+      "camera": [
+        0,
+        0
+      ],
+      "changed_pixels": 73835,
+      "pixels_over_2": 1178,
+      "pixels_over_16": 105,
+      "max_rgb": 252,
+      "mean_rgb": [
+        0.2501274671052632,
+        0.2458141447368421,
+        0.24359375
+      ],
+      "over16_neighbor_max": 18,
+      "original_sha256": "5d04be8d92436b512e183c1dde2f9b5428761d7212696c8844b95d32a14f8ebd",
+      "port_sha256": "595e891e5e1db944e64852585b21498a162da540b0cb69339eae14597ae811c5"
+    },
+    {
+      "smooth": 0,
+      "trial": 3,
+      "stage": 1,
+      "camera": [
+        -37.25,
+        -13.5
+      ],
+      "changed_pixels": 74170,
+      "pixels_over_2": 745,
+      "pixels_over_16": 59,
+      "max_rgb": 252,
+      "mean_rgb": [
+        0.23928042763157895,
+        0.23577713815789475,
+        0.2348643092105263
+      ],
+      "over16_neighbor_max": 6,
+      "original_sha256": "2e6bc34e0144f84b7f48726d2a00c4ea4086c66b2dd7665381a14db9aecedbf5",
+      "port_sha256": "ce4d5336526bc9177b46337f82bfa08390ed806f45b357f181f61880f5b3e30e"
+    },
+    {
+      "smooth": 0,
+      "trial": 4,
+      "stage": 4,
+      "camera": [
+        -37.25,
+        -13.5
+      ],
+      "changed_pixels": 74075,
+      "pixels_over_2": 682,
+      "pixels_over_16": 7,
+      "max_rgb": 18,
+      "mean_rgb": [
+        0.21296875,
+        0.20939555921052633,
+        0.20844161184210527
+      ],
+      "over16_neighbor_max": 2,
+      "original_sha256": "505528250ff047098f808fa4ef7e2434a5ab704f9e8de8317823f3da3c476b50",
+      "port_sha256": "e14500c6abe69b4f0efbbed0c5cffd0e6eed1a63ac3520eaf2b5ec9374e6b9d1"
+    },
+    {
+      "smooth": 0,
+      "trial": 5,
+      "stage": 7,
+      "camera": [
+        -37.25,
+        -13.5
+      ],
+      "changed_pixels": 74170,
+      "pixels_over_2": 745,
+      "pixels_over_16": 59,
+      "max_rgb": 252,
+      "mean_rgb": [
+        0.23928042763157895,
+        0.23577713815789475,
+        0.2348643092105263
+      ],
+      "over16_neighbor_max": 6,
+      "original_sha256": "2e6bc34e0144f84b7f48726d2a00c4ea4086c66b2dd7665381a14db9aecedbf5",
+      "port_sha256": "ce4d5336526bc9177b46337f82bfa08390ed806f45b357f181f61880f5b3e30e"
+    },
+    {
+      "smooth": 1,
+      "trial": 0,
+      "stage": 1,
+      "camera": [
+        0,
+        0
+      ],
+      "changed_pixels": 73670,
+      "pixels_over_2": 314,
+      "pixels_over_16": 56,
+      "max_rgb": 252,
+      "mean_rgb": [
+        0.23146792763157895,
+        0.23078536184210527,
+        0.22957236842105264
+      ],
+      "over16_neighbor_max": 6,
+      "original_sha256": "5a00e2f6a18b44213ab1f851a0ed94dd58bbd96791132938ead277ecb2fe272c",
+      "port_sha256": "b476c67fd55b5e8c24460b435e61ae63c77ecee604432217934f833809fe8892"
+    },
+    {
+      "smooth": 1,
+      "trial": 1,
+      "stage": 4,
+      "camera": [
+        0,
+        0
+      ],
+      "changed_pixels": 73571,
+      "pixels_over_2": 252,
+      "pixels_over_16": 0,
+      "max_rgb": 6,
+      "mean_rgb": [
+        0.2032360197368421,
+        0.20259457236842104,
+        0.20144736842105262
+      ],
+      "over16_neighbor_max": 0,
+      "original_sha256": "de5d0ac6803f7bc7a01dc09171212d5cb2795c6f2dd5527393dda6a6b8f63e72",
+      "port_sha256": "763621525335970e82b5bb49aa2eba8cd5d179e334c88a228c3bab88b4bc5498"
+    },
+    {
+      "smooth": 1,
+      "trial": 2,
+      "stage": 7,
+      "camera": [
+        0,
+        0
+      ],
+      "changed_pixels": 73670,
+      "pixels_over_2": 314,
+      "pixels_over_16": 56,
+      "max_rgb": 252,
+      "mean_rgb": [
+        0.23146792763157895,
+        0.23078536184210527,
+        0.22957236842105264
+      ],
+      "over16_neighbor_max": 6,
+      "original_sha256": "5a00e2f6a18b44213ab1f851a0ed94dd58bbd96791132938ead277ecb2fe272c",
+      "port_sha256": "b476c67fd55b5e8c24460b435e61ae63c77ecee604432217934f833809fe8892"
+    },
+    {
+      "smooth": 1,
+      "trial": 3,
+      "stage": 1,
+      "camera": [
+        -37.25,
+        -13.5
+      ],
+      "changed_pixels": 74359,
+      "pixels_over_2": 311,
+      "pixels_over_16": 52,
+      "max_rgb": 252,
+      "mean_rgb": [
+        0.23049342105263157,
+        0.23264802631578949,
+        0.22822779605263158
+      ],
+      "over16_neighbor_max": 6,
+      "original_sha256": "5b6d2cebeb7a8dce2bfcc2392c8e622fe1f9983fb6dba7eaa888347cff062a60",
+      "port_sha256": "b4e748cc37fadd53746da541d5d9052c91a1fad11d9d5816eb01a986ca66ed5f"
+    },
+    {
+      "smooth": 1,
+      "trial": 4,
+      "stage": 4,
+      "camera": [
+        -37.25,
+        -13.5
+      ],
+      "changed_pixels": 74255,
+      "pixels_over_2": 248,
+      "pixels_over_16": 0,
+      "max_rgb": 6,
+      "mean_rgb": [
+        0.20413240131578947,
+        0.20620065789473685,
+        0.20177220394736842
+      ],
+      "over16_neighbor_max": 0,
+      "original_sha256": "1f3557ae7fdfb8a7d75e7871a8153c41d094e752a11c6096fbd0c4bce9432355",
+      "port_sha256": "0a1e32edcd9e51e5208a2b94d5f11c2c59d818d1b586460317f6d609fbfcaacc"
+    },
+    {
+      "smooth": 1,
+      "trial": 5,
+      "stage": 7,
+      "camera": [
+        -37.25,
+        -13.5
+      ],
+      "changed_pixels": 74359,
+      "pixels_over_2": 311,
+      "pixels_over_16": 52,
+      "max_rgb": 252,
+      "mean_rgb": [
+        0.23049342105263157,
+        0.23264802631578949,
+        0.22822779605263158
+      ],
+      "over16_neighbor_max": 6,
+      "original_sha256": "5b6d2cebeb7a8dce2bfcc2392c8e622fe1f9983fb6dba7eaa888347cff062a60",
+      "port_sha256": "b4e748cc37fadd53746da541d5d9052c91a1fad11d9d5816eb01a986ca66ed5f"
+    }
+  ],
+  "capture_point": "Entire640x380 playfield after actualproductiondrawRect; native verifiedHUD404 command drawn by originalLMDRAWSPRITE before originalRENDERGAMEWINDOW; bullet47 at50,374 crossesloweredge. No masks.",
+  "edge_regression": {
+    "roi_raw_bottom_row": [
+      100,
+      0,
+      394,
+      1
+    ],
+    "threshold": "Everyframe meanRGB<1LSB",
+    "frames": [
+      {
+        "smooth": 0,
+        "trial": 0,
+        "mean_rgb": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max_rgb": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "smooth": 0,
+        "trial": 1,
+        "mean_rgb": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max_rgb": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "smooth": 0,
+        "trial": 2,
+        "mean_rgb": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max_rgb": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "smooth": 0,
+        "trial": 3,
+        "mean_rgb": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max_rgb": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "smooth": 0,
+        "trial": 4,
+        "mean_rgb": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max_rgb": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "smooth": 0,
+        "trial": 5,
+        "mean_rgb": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max_rgb": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "smooth": 1,
+        "trial": 0,
+        "mean_rgb": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max_rgb": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "smooth": 1,
+        "trial": 1,
+        "mean_rgb": [
+          0.003401360544217687,
+          0.003401360544217687,
+          0.003401360544217687
+        ],
+        "max_rgb": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "smooth": 1,
+        "trial": 2,
+        "mean_rgb": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max_rgb": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "smooth": 1,
+        "trial": 3,
+        "mean_rgb": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max_rgb": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "smooth": 1,
+        "trial": 4,
+        "mean_rgb": [
+          0.003401360544217687,
+          0.003401360544217687,
+          0.003401360544217687
+        ],
+        "max_rgb": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "smooth": 1,
+        "trial": 5,
+        "mean_rgb": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max_rgb": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "passed": true
+  },
+  "negative_control": {
+    "method": "Test-only extra actual production HUD.drawState after world recreates wrong HUD-last order; original references unchanged.",
+    "roi_frames": [
+      {
+        "smooth": 0,
+        "trial": 0,
+        "mean_rgb": [
+          28.051020408163264,
+          4.051020408163265,
+          22.051020408163264
+        ],
+        "max_rgb": [
+          33,
+          9,
+          27
+        ]
+      },
+      {
+        "smooth": 0,
+        "trial": 1,
+        "mean_rgb": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max_rgb": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "smooth": 0,
+        "trial": 2,
+        "mean_rgb": [
+          28.051020408163264,
+          4.051020408163265,
+          22.051020408163264
+        ],
+        "max_rgb": [
+          33,
+          9,
+          27
+        ]
+      },
+      {
+        "smooth": 0,
+        "trial": 3,
+        "mean_rgb": [
+          28.051020408163264,
+          4.051020408163265,
+          22.051020408163264
+        ],
+        "max_rgb": [
+          33,
+          9,
+          27
+        ]
+      },
+      {
+        "smooth": 0,
+        "trial": 4,
+        "mean_rgb": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "max_rgb": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "smooth": 0,
+        "trial": 5,
+        "mean_rgb": [
+          28.051020408163264,
+          4.051020408163265,
+          22.051020408163264
+        ],
+        "max_rgb": [
+          33,
+          9,
+          27
+        ]
+      },
+      {
+        "smooth": 1,
+        "trial": 0,
+        "mean_rgb": [
+          28.0578231292517,
+          4.057823129251701,
+          22.0578231292517
+        ],
+        "max_rgb": [
+          33,
+          9,
+          27
+        ]
+      },
+      {
+        "smooth": 1,
+        "trial": 1,
+        "mean_rgb": [
+          0.003401360544217687,
+          0.003401360544217687,
+          0.003401360544217687
+        ],
+        "max_rgb": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "smooth": 1,
+        "trial": 2,
+        "mean_rgb": [
+          28.0578231292517,
+          4.057823129251701,
+          22.0578231292517
+        ],
+        "max_rgb": [
+          33,
+          9,
+          27
+        ]
+      },
+      {
+        "smooth": 1,
+        "trial": 3,
+        "mean_rgb": [
+          28.0578231292517,
+          4.057823129251701,
+          22.0578231292517
+        ],
+        "max_rgb": [
+          33,
+          9,
+          27
+        ]
+      },
+      {
+        "smooth": 1,
+        "trial": 4,
+        "mean_rgb": [
+          0.003401360544217687,
+          0.003401360544217687,
+          0.003401360544217687
+        ],
+        "max_rgb": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "smooth": 1,
+        "trial": 5,
+        "mean_rgb": [
+          28.0578231292517,
+          4.057823129251701,
+          22.0578231292517
+        ],
+        "max_rgb": [
+          33,
+          9,
+          27
+        ]
+      }
+    ],
+    "focused_gate_rejected": true,
+    "broad_gate_alone_passed": true
+  }
+}

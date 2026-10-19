@@ -98,7 +98,9 @@ test bundle, without changing player preferences.
 
 The validation does not establish pixel-identical live campaign frames across
 GPUs or an unaided full playthrough. The original painter order and all 74 source
-rasters have separate original-machine checks. See `VALIDATION.md` for the final
+rasters have separate original-machine checks. Twelve controlled full playfields
+also compare the actual production renderer on Intel against original code on
+the G5, including a focused HUD-edge regression test. See `VALIDATION.md` for the
 release evidence and its scope.
 
 ## Regenerate assets from the original

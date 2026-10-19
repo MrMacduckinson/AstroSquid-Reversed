@@ -31,20 +31,48 @@ No game, GUI, OpenGL or audio test is launched on the primary development Mac.
   shield, uses weapon 53 and steers using normal directional inputs; no stage
   teleport. This proves the complete route works, not ordinary-player difficulty.
 
-## Controlled original-renderer comparison
+## Actual production renderer versus original PPC
 
-`tests/framebuffer_reference_metrics.json` records 12 complete 640×380 playfield
-composites. The G5 executes the original unmodified renderer and sprite drawer;
-the Intel harness duplicates source-cross-checked port sprite/star math with
-the same RGBA atlases and scene inputs (controlled dithering disabled). It is a standalone renderer check, not a production
-application capture. Both representatives are included under `validation/`.
+`tests/production_framebuffer_reference_metrics.json` records 12 complete
+640×380 playfields. The G5 executes the unmodified original renderer and sprite
+drawer. The Intel test directly includes the application's source and calls its
+actual `AstroView.drawRect`, texture loader, stars, object ordering and effects;
+it does not duplicate those production drawing functions. Scene state is
+controlled, backing resolution is pinned to 640×480, and dithering is disabled on
+both GPUs. Readback is the entire playfield after the complete production draw.
+Original HUD border sprite 404 is drawn before the original world, with a bullet
+crossing the shared edge. Both representative images are under `validation/`.
 
-Across the two GPUs, every frame has at least 99.46% of pixels within 2/255 RGB,
-and mean per-channel error is at most 0.252/255. Sparse star/nearest-filter edges
-can differ sharply by one pixel. The comparison covers selected stages, camera
-offsets, filters and overlapping layers; it excludes live campaign, HUD, menus
-and randomized beam frames. Actual production rendering is checked separately by
-the application self-test. No pixel-identity claim is made.
+Every frame has at least 99.515625% of pixels within 2/255 RGB; mean per-channel
+error is at most 0.250128/255. Sparse point/nearest-filter edges can differ by a
+pixel across GPUs. A separate shared-edge regression gate requires mean error
+below 1/255: ten frames match exactly; two differ by at most 1/255. A negative
+control deliberately redrawing the HUD after the world fails this focused gate.
+This caught and verified the corrected gameplay HUD/world ordering. Pause keeps
+its original world-then-HUD overlay order.
+
+This is a complete controlled playfield comparison, not a pixel-identity claim
+for live campaign captures or the entire window's HUD text and menus. Original
+HUD commands and all 74 rasters have separate native checks. The earlier
+standalone duplicate-math experiment remains in
+`tests/framebuffer_reference_metrics.json`, clearly labelled as indirect evidence.
+
+Build the production render test on the Intel target (OpenGL/audio initialization
+is involved; do not run on the primary Mac):
+
+```sh
+clang -fobjc-arc -O2 -Wno-deprecated-declarations tests/production_framebuffer.m \
+  src/*.c src/audio.m src/ui_renderer.m src/hud_renderer.m \
+  -framework Cocoa -framework OpenGL -framework AVFoundation \
+  -o build/production_framebuffer
+build/production_framebuffer assets /tmp/astrosquid-frames --hud-edge
+```
+
+Generate original inputs with `tools/prepare_framebuffer_inputs.py` and run
+`tools/ppc_framebuffer_oracle.c` on the G5 with its `--hud-edge` flag. The native
+oracle requires the original application/analysis and generated `imports.h` from
+`tools/prepare_script_oracle.py`. Compare corresponding raw frames with
+`tools/compare_framebuffers.py FRAME_DIRECTORY OUTPUT_JSON --hud-edge`.
 
 ## Reproduce runtime checks on the target Mac
 
@@ -60,7 +88,7 @@ required assertion fails. Full campaign takes several minutes on the reference
 iMac. Do not run two interactive application checks simultaneously.
 
 The final Intel campaign result is `validation/campaign.json`: 17 stages,
-214398 simulation ticks and ending reached. `validation/runtime.json` records
+214398 simulation ticks and ending reached, including the final HUD/world ordering fix. `validation/runtime.json` records
 the final actual-application self-test; assertions also run for the normal
 lifecycle and input cases described above.
 
