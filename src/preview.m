@@ -91,7 +91,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     uint32_t worldRenderTick,visualRateTick;
     int16_t visualFrames;
     double visualRate;
-    BOOL visualDebug,wallClockPoll;
+    BOOL visualDebug,wallClockPoll,nestedWorldRender;
     uint32_t simulationTick,lastSpawnTick;
     NSUInteger scriptSteps;
     uint32_t actorVisits;
@@ -397,6 +397,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [self presentFrame];return;
     }
     BOOL worldOverlay=menuVisible&&([ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"]);
+    BOOL hudAfterWorld=worldOverlay||nestedWorldRender;
     if(menuVisible&&!worldOverlay) {
         glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
         glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);
@@ -415,7 +416,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     AstroHUDState overlay={[world containsObject:[NSNull null]]&&!(flow.phase==ASTRO_FLOW_READY&&!initialReadyCard),playerCombat.hit_points,inventory.weapon,
         inventory.upgrade,inventory.specials,inventory.lives,score};
     // GAMELOOP paints HUD first; RENDERGAMEWINDOW can cover its shared edge.
-    if(!worldOverlay)[hud drawState:&overlay texture:^GLuint(NSInteger n){return [self texture:n];}
+    if(!hudAfterWorld)[hud drawState:&overlay texture:^GLuint(NSInteger n){return [self texture:n];}
         framebufferWidth:(GLsizei)bounds.size.width height:(GLsizei)bounds.size.height];
     if(campaign.level<4||campaign.level==7) {
         glDisable(GL_TEXTURE_2D);glDisable(GL_BLEND);glColor3d(0,0,0);glBegin(GL_QUADS);
@@ -479,9 +480,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [self sprite:v->sprite x:v->x-camera y:v->y width:v->width height:v->height];
     }
     if(!simulationRender)[self drawSpecialOverlays];
-    if(worldOverlay) {
+    if(hudAfterWorld) {
         [hud drawState:&overlay texture:^GLuint(NSInteger n){return [self texture:n];}
             framebufferWidth:(GLsizei)bounds.size.width height:(GLsizei)bounds.size.height];
+    }
+    if(worldOverlay) {
         glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
         glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);glMatrixMode(GL_MODELVIEW);glLoadIdentity();
         [ui drawSprites:^(NSInteger n,double x,double y,double w,double h){[self sprite:n x:x y:y width:w height:h];}
@@ -1287,7 +1290,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     tickedScroll=camera-old;
     simulationTick=observedWallTick-1;
     if(waiting)[self stepWorldWithoutFlow];else [self stepEnemies];
-    [self renderTick];
+    BOOL previous=nestedWorldRender;nestedWorldRender=waiting;
+    @try {[self renderTick];} @finally {nestedWorldRender=previous;}
 }
 - (void)advanceFlowWithKey:(BOOL)anyKey {
     AstroFlowPhase previous=flow.phase;astro_flow_step(&flow,anyKey);
