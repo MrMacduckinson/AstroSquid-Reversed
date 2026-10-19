@@ -1,4 +1,5 @@
 #include "physics.h"
+#include "ppc_math.h"
 #include <math.h>
 #include <float.h>
 #include <stdint.h>
@@ -26,8 +27,8 @@ void astro_vector_make(AstroVelocity *velocity, double degrees, double amount) {
     if (degrees < 0.0) degrees += 360.0;
     double radians = pi * degrees / 180.0;
     if (radians < 0.0) radians += pi * 2.0;
-    velocity->x += amount * cos(radians);
-    velocity->y -= amount * sin(radians);
+    velocity->x += amount * astro_ppc_cos(radians);
+    velocity->y -= amount * astro_ppc_sin(radians);
 }
 
 void astro_vector_slow(AstroVelocity *velocity, double friction) {
@@ -43,11 +44,11 @@ void astro_vector_slow(AstroVelocity *velocity, double friction) {
 
 int astro_heading(double x,double y,double width,double height,
                   double target_x,double target_y,double target_width,double target_height) {
-    double dx=(int)((int)target_x+target_width/2)-(int)((int)x+width/2);
-    double dy=(int)((int)target_y+target_height/2)-(int)((int)y+height/2);
+    double dx=(double)astro_ppc_i32(astro_ppc_i32(target_x)+target_width/2)-astro_ppc_i32(astro_ppc_i32(x)+width/2);
+    double dy=(double)astro_ppc_i32(astro_ppc_i32(target_y)+target_height/2)-astro_ppc_i32(astro_ppc_i32(y)+height/2);
     /* Original ATN2 uses this rounded literal, not 180/pi. */
-    double angle=atan(-dy/dx)*57.29578;
+    double angle=astro_ppc_atan(-dy/dx)*57.29578;
     if(dx<0) angle+=180;
     if(angle<0) angle+=360;
-    return isfinite(angle)?(int)angle:INT32_MIN;
+    return astro_ppc_i32(angle);
 }

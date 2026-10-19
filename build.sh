@@ -3,10 +3,12 @@ set -euo pipefail
 cd "$(dirname "$0")"
 app="build/AstroSquid.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources/assets/atlases"
-clang -fobjc-arc -O2 -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations \
-  -mmacosx-version-min=10.13 src/preview.m src/physics.c src/script.c src/weapons.c src/combat.c src/beams.c src/player.c src/campaign.c src/flow.c src/transition.c src/scores.c src/visual.c src/hit_visual.c src/effects.c src/special.c src/debris.c src/scene.c src/audio.m src/ui_model.c src/ui_renderer.m src/hud.c src/hud_renderer.m -framework Cocoa -framework OpenGL \
+clang -fobjc-arc -O2 -ffp-contract=off -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations \
+  -mmacosx-version-min=10.13 src/preview.m src/physics.c src/ppc_math.c src/script.c src/weapons.c src/combat.c src/beams.c src/player.c src/campaign.c src/flow.c src/transition.c src/scores.c src/visual.c src/hit_visual.c src/effects.c src/special.c src/debris.c src/scene.c src/audio.m src/ui_model.c src/ui_renderer.m src/hud.c src/hud_renderer.m -framework Cocoa -framework OpenGL \
   -framework AVFoundation -o "$app/Contents/MacOS/AstroSquid"
 mkdir -p "$app/Contents/Resources/assets/ui"
+mkdir -p "$app/Contents/Resources/licenses"
+cp licenses/* "$app/Contents/Resources/licenses/"
 cp assets/AstroSquid.icns "$app/Contents/Resources/"
 cp assets/ui/ui.json "$app/Contents/Resources/assets/ui/"
 cp assets/game.json assets/audio.json "$app/Contents/Resources/assets/"

@@ -20,6 +20,10 @@ static unsigned char *read_file(const char *name,size_t *size) {
     fclose(f); return data;
 }
 
+static double observed_radians,observed_cos,observed_sin;
+static double capture_cos(double x){observed_radians=x;observed_cos=cos(x);return observed_cos;}
+static double capture_sin(double x){observed_sin=sin(x);return observed_sin;}
+static uint64_t double_bits(double x){uint64_t b;memcpy(&b,&x,8);return b;}
 static uint32_t rng=0x12345678;
 static double random_value(void) {
     rng=rng*1664525u+1013904223u;
@@ -27,13 +31,15 @@ static double random_value(void) {
 }
 
 int main(int argc,char **argv) {
-    if(argc!=3 && argc!=4) { fprintf(stderr,"usage: oracle original.pef literals.bin [vectors.csv]\n"); return 2; }
+    if(argc!=3 && argc!=4 && argc!=5) { fprintf(stderr,"usage: oracle original.pef literals.bin [vectors.csv [hex_vectors.csv]]\n"); return 2; }
     FILE *vectors=NULL;
-    if(argc==4) {
+    if(argc>=4) {
         vectors=fopen(argv[3],"w");
         if(!vectors) { perror(argv[3]); return 2; }
         fputs("initial_x,initial_y,degrees,amount,friction,make_x,make_y,slow_x,slow_y\n",vectors);
     }
+    FILE *hex=NULL;if(argc==5){hex=fopen(argv[4],"w");if(!hex){perror(argv[4]);return 2;}
+        fputs("initial_x,initial_y,degrees,amount,friction,radians,cos,sin,make_x,make_y,slow_x,slow_y\n",hex);}
     size_t pef_size,literal_size;
     unsigned char *pef=read_file(argv[1],&pef_size);
     unsigned char *literals=read_file(argv[2],&literal_size);
@@ -41,8 +47,8 @@ int main(int argc,char **argv) {
     unsigned char *code=pef+128;
     unsigned char *globals=calloc(1,0x1300);
     uint32_t *toc=calloc(1,0x800);
-    uint32_t cos_descriptor[2]={(uint32_t)(uintptr_t)cos,0};
-    uint32_t sin_descriptor[2]={(uint32_t)(uintptr_t)sin,0};
+    uint32_t cos_descriptor[2]={(uint32_t)(uintptr_t)capture_cos,0};
+    uint32_t sin_descriptor[2]={(uint32_t)(uintptr_t)capture_sin,0};
     unsigned cos_offset=*(uint32_t *)(code+0x67324)&0xffff;
     unsigned sin_offset=*(uint32_t *)(code+0x6904c)&0xffff;
     toc[cos_offset/4]=(uint32_t)(uintptr_t)cos_descriptor;
@@ -62,7 +68,7 @@ int main(int argc,char **argv) {
         invoke_fb(code+0x52098,globals,toc,object,&angle,&amount);
         astro_vector_make(&expected,angle,amount);
         double x=*(double *)(object+0x48),y=*(double *)(object+0x50);
-        if(fabs(x-expected.x)>1e-10||fabs(y-expected.y)>1e-10) {
+        if(double_bits(x)!=double_bits(expected.x)||double_bits(y)!=double_bits(expected.y)) {
             printf("VECTORMAKE mismatch case %u: %.17g %.17g versus %.17g %.17g\n",i,x,y,expected.x,expected.y);return 1;
         }
         double make_x=x,make_y=y;
@@ -70,13 +76,15 @@ int main(int argc,char **argv) {
         invoke_fb(code+0x522e8,globals,toc,object,&friction,NULL);
         astro_vector_slow(&expected,friction);
         x=*(double *)(object+0x48);y=*(double *)(object+0x50);
-        if(fabs(x-expected.x)>1e-10||fabs(y-expected.y)>1e-10) {
+        if(double_bits(x)!=double_bits(expected.x)||double_bits(y)!=double_bits(expected.y)) {
             printf("VECTORSLOW mismatch case %u friction %.17g: %.17g %.17g versus %.17g %.17g\n",i,friction,x,y,expected.x,expected.y);return 1;
         }
+        if(hex){double values[12]={initial_x,initial_y,angle,amount,friction,observed_radians,observed_cos,observed_sin,make_x,make_y,x,y};
+            for(unsigned j=0;j<12;j++)fprintf(hex,"%s%016llx",j?",":"",(unsigned long long)double_bits(values[j]));fputc('\n',hex);}
         if(vectors) fprintf(vectors,"%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g\n",
             initial_x,initial_y,angle,amount,friction,make_x,make_y,x,y);
     }
-    if(vectors) fclose(vectors);
+    if(vectors) fclose(vectors);if(hex)fclose(hex);
     printf("PASS: 1000 VECTORMAKE and 1000 VECTORSLOW cases against original code on real PowerPC\n");
     return 0;
 }
