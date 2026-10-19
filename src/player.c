@@ -1,8 +1,7 @@
 #include "player.h"
-void astro_player_step(AstroPlayer *p,uint32_t tick,unsigned keys,int speed,
-                       AstroRect b,double width,double height,AstroViewport viewport,int ending) {
-    if((int32_t)(tick-p->animation_tick)>10) {
-        p->animation_tick=tick;
+void astro_player_animate(AstroPlayer *p,uint32_t comparison,uint32_t store,unsigned keys) {
+    if((int32_t)(comparison-p->animation_tick)>10) {
+        p->animation_tick=store;
         if(keys&ASTRO_KEY_RIGHT) p->animation_tick-=5;
         if(p->state==1) {
             if(p->tilt<3) {p->tilt++;p->frame+=5;}
@@ -12,7 +11,9 @@ void astro_player_step(AstroPlayer *p,uint32_t tick,unsigned keys,int speed,
         if(!(keys&ASTRO_KEY_LEFT)||p->frame-(p->tilt-1)*5<5) p->frame++;
         if(p->frame>p->tilt*5) p->frame-=5;
     }
-    if((int32_t)(tick-p->update_tick)<1) return;
+}
+void astro_player_move(AstroPlayer *p,unsigned keys,int speed,AstroRect b,
+                       double width,double height,AstroViewport viewport,int ending) {
     double amount=speed/2.0;
     if(keys&ASTRO_KEY_UP) {astro_vector_make(&p->velocity,90,amount);p->state=2;}
     if(keys&ASTRO_KEY_DOWN) {astro_vector_make(&p->velocity,270,amount);p->state=3;}
@@ -26,5 +27,12 @@ void astro_player_step(AstroPlayer *p,uint32_t tick,unsigned keys,int speed,
         if(b.top+p->velocity.y<viewport.top+margin&&p->velocity.y<0) p->velocity.y=0;
         if(b.bottom+p->velocity.y>viewport.bottom-margin&&p->velocity.y>0) p->velocity.y=0;
     }
-    astro_vector_slow(&p->velocity,.1);p->update_tick=tick;
+    astro_vector_slow(&p->velocity,.1);
+}
+void astro_player_step(AstroPlayer *p,uint32_t tick,unsigned keys,int speed,
+                       AstroRect b,double width,double height,AstroViewport viewport,int ending) {
+    astro_player_animate(p,tick,tick,keys);
+    if((int32_t)(tick-p->update_tick)<1)return;
+    astro_player_move(p,keys,speed,b,width,height,viewport,ending);
+    p->update_tick=tick;
 }

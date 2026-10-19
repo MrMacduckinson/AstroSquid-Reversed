@@ -27,6 +27,8 @@ build/pickup_test tests/pickup_vectors.csv
 build/scenery_test tests/scenery_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/player_test.c src/player.c src/physics.c src/ppc_math.c -lm -o build/player_test
 build/player_test tests/player_vectors.csv
+"${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/player_clock_test.c src/player.c src/physics.c src/ppc_math.c -lm -o build/player_clock_test
+build/player_clock_test tests/player_clock_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/campaign_test.c src/campaign.c -o build/campaign_test
 build/campaign_test
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/effects_test.c src/effects.c src/weapons.c src/physics.c src/ppc_math.c -lm -o build/effects_test

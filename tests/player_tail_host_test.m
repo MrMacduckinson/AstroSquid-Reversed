@@ -7,10 +7,12 @@ static void same(double actual,unsigned long long want){uint64_t bits;memcpy(&bi
 static BOOL gateCheck;
 static uint32_t gateClock;
 static unsigned fires,finishes,clockReads;
+static uint32_t prefixClocks[4];
+static unsigned prefixCount,prefixRead;
 @interface AstroPlayerTailView : AstroView
 @end
 @implementation AstroPlayerTailView
-- (uint32_t)playerClockTick {if(gateCheck){clockReads++;return gateClock;}return [super playerClockTick];}
+- (uint32_t)playerClockTick {if(prefixCount){assert(prefixRead<prefixCount);return prefixClocks[prefixRead++];}if(gateCheck){clockReads++;return gateClock;}return [super playerClockTick];}
 - (void)fireWeapon:(int)weapon x:(int)x y:(int)y heading:(int)heading source:(int)kind {
     if(gateCheck){assert(playerState.update_tick==99);fires++;gateClock=105;}
     [super fireWeapon:weapon x:x y:y heading:heading source:kind];
@@ -51,12 +53,22 @@ static unsigned fires,finishes,clockReads;
     playerHitVisual.active=YES;playerHitVisual.visual.x=-123.25;playerHitVisual.visual.y=456.5;
     engineGlow=YES;engineGlowRect=(AstroTransitionRect){-19.25,23.5,7.75,9.5};
     gateCheck=YES;gateClock=100;fires=finishes=clockReads=0;[self stepPlayer];
-    assert(fires==0&&finishes==0&&clockReads==1&&playerState.update_tick==100);
+    assert(fires==0&&finishes==0&&clockReads==2&&playerState.update_tick==100);
     assert(playerHitVisual.visual.x==-123.25&&engineGlowRect.x==-19.25);
     playerState.update_tick=99;clockReads=0;[self stepPlayer];gateCheck=NO;
-    assert(fires==1&&finishes==1&&clockReads==4&&lastPlayerShot==107&&playerState.update_tick==105);
+    assert(fires==1&&finishes==1&&clockReads==5&&lastPlayerShot==107&&playerState.update_tick==105);
     assert(playerState.animation_tick==95);
     assert(playerHitVisual.visual.x==playerBounds.left-5&&playerHitVisual.visual.y==playerBounds.top-5);
+    memset(keys,0,sizeof(keys));engineGlow=NO;playerHitVisual.active=NO;
+    playerState.animation_tick=90;playerState.update_tick=100;
+    prefixClocks[0]=100;prefixClocks[1]=101;prefixClocks[2]=109;prefixCount=3;prefixRead=0;
+    [self stepPlayer];assert(prefixRead==3&&playerState.animation_tick==90&&playerState.update_tick==109);
+    playerState.animation_tick=90;playerState.update_tick=107;
+    prefixClocks[0]=101;prefixClocks[1]=107;prefixClocks[2]=107;prefixRead=0;
+    int beforeFrame=playerState.frame;
+    [self stepPlayer];assert(prefixRead==3&&playerState.animation_tick==107&&playerState.update_tick==107&&playerState.frame!=beforeFrame);
+    prefixCount=0;
+    puts("PASS actual host separate animation/update comparisons and distinct animation store clock");
     puts("PASS actual player closed gate suppresses fire/posttail; open gate defers update store and samples clocks after synchronous fire");
 }
 @end

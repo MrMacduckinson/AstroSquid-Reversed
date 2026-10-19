@@ -867,14 +867,15 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(keys[controlKeys[2]])controls|=ASTRO_KEY_UP;
     if(keys[controlKeys[3]])controls|=ASTRO_KEY_DOWN;
     if(changingStage&&!transition.allow_input)controls=transition.controls;
-    uint32_t updateBefore=playerState.update_tick,entryTick=[self playerClockTick];
-    BOOL entered=(int32_t)(entryTick-updateBefore)>0;
+    uint32_t comparison=[self playerClockTick],store=playerState.animation_tick;
+    if((int32_t)(comparison-playerState.animation_tick)>10)store=[self playerClockTick];
+    astro_player_animate(&playerState,comparison,store,controls);
+    comparison=[self playerClockTick];
+    if((int32_t)(comparison-playerState.update_tick)<=0)return;
     playerState.velocity=playerVelocity;
-    astro_player_step(&playerState,entryTick,controls,1,playerBounds,playerVisual.width,playerVisual.height,
+    astro_player_move(&playerState,controls,1,playerBounds,playerVisual.width,playerVisual.height,
         (AstroViewport){camera,0,camera+640,380},changingStage);
     playerVelocity=playerState.velocity;playerCombat.velocity=playerVelocity;
-    if(!entered)return;
-    playerState.update_tick=updateBefore;
     if((!changingStage||transition.allow_input)&&keys[selftestPath?8:controlKeys[0]]&&!special.active&&(int32_t)([self playerClockTick]-lastPlayerShot)>
         60.0/[game[@"weapons"][[NSString stringWithFormat:@"%d",playerWeapon]][@"rate"] doubleValue]) {
         [self fireWeapon:playerWeapon x:astro_ppc_i32(38+(playerBounds.left+playerBounds.right)/2.0)
