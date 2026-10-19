@@ -745,9 +745,12 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 
 - (void)showPlayerHit:(BOOL)scenery {
-    [audio playStringCue:ASTRO_PLAYER_HIT_SOUND position:(playerBounds.left-camera)/640];
-    int result=scenery?astro_player_scenery_hit_visual(&playerHitVisual,playerBounds,spriteInfo,1001,simulationTick):
-        astro_player_hit_visual(&playerHitVisual,playerBounds,spriteInfo,1001,simulationTick);
+    [self showPlayerHit:scenery bounds:playerBounds];
+}
+- (void)showPlayerHit:(BOOL)scenery bounds:(AstroRect)bounds {
+    [audio playStringCue:ASTRO_PLAYER_HIT_SOUND position:(bounds.left-camera)/640];
+    int result=scenery?astro_player_scenery_hit_visual(&playerHitVisual,bounds,spriteInfo,1001,simulationTick):
+        astro_player_hit_visual(&playerHitVisual,bounds,spriteInfo,1001,simulationTick);
     if(!result){NSLog(@"Invalid player hit visual");exit(1);}
     if(result==1){playerHitBirth=++renderClock;playerHitLayer=scenery?ASTRO_PLAYER_SCENERY_HIT_LAYER:ASTRO_PLAYER_HIT_LAYER;}
 }
@@ -770,6 +773,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     } else {
         AstroEnemy *enemy=context->objects[beam->target];
         AstroCombatState target=[self combatFor:enemy];
+        if(enemy->kind==1){
+            astro_bullet_hits_player(&b,&target);[self applyCombat:target to:enemy];
+            if(target.hit_points>0)[self showPlayerHit:NO bounds:enemy->bounds];
+            context->targets[beam->target].remove=target.remove;
+        }
         if(enemy->kind==5||(enemy->kind>19&&enemy->kind<30)) {
             astro_bullet_hits_enemy(&b,&target,[enemy->definition[@"kill_score"] intValue],&score);
             if(target.hit_points!=enemy->hitPoints) damageHits++;
@@ -880,8 +888,14 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             a.left>=b.right||b.left>=a.right||a.top>=b.bottom||b.top>=a.bottom)continue;
         if((kind==2||kind==5)&&targetKind==1) {
             AstroCombatState attacker=[self combatFor:source];
-            [self hitPlayerWithCombat:&attacker];[self applyCombat:attacker to:source];
-            playerVelocity=playerCombat.velocity;
+            if(playerTarget){[self hitPlayerWithCombat:&attacker];playerVelocity=playerCombat.velocity;}
+            else {
+                AstroCombatState victim=[self combatFor:target];
+                BOOL hit=!attacker.remove&&(attacker.layer==1||attacker.layer==2);
+                astro_bullet_hits_player(&attacker,&victim);[self applyCombat:victim to:target];
+                if(hit&&victim.hit_points>0)[self showPlayerHit:NO bounds:b];
+            }
+            [self applyCombat:attacker to:source];
         } else if(kind==2&&(targetKind==5||(targetKind>=20&&targetKind<=29))) {
             AstroCombatState bullet=[self combatFor:source],victim=[self combatFor:target];
             int impact=astro_bullet_hits_enemy(&bullet,&victim,[target->definition[@"kill_score"] intValue],&score);
@@ -890,16 +904,19 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             [self applyCombat:bullet to:source];[self applyCombat:victim to:target];
         } else if(kind==1&&targetKind==40) {
             int old=target->state.remove;
-            astro_pickup(&playerCombat,[target->placement[@"attribute"] intValue]%10,target->hitPoints,&target->state.remove,&inventory);
+            AstroCombatState collector=playerSource?playerCombat:[self combatFor:source];
+            astro_pickup(&collector,[target->placement[@"attribute"] intValue]%10,target->hitPoints,&target->state.remove,&inventory);
+            if(playerSource)playerCombat=collector;else [self applyCombat:collector to:source];
             if(!old&&target->state.remove)[audio playStringCue:[target->placement[@"attribute"] intValue]%10==1?302:
-                [target->placement[@"attribute"] intValue]%10==9?304:303 position:playerX/640];
+                [target->placement[@"attribute"] intValue]%10==9?304:303 position:(a.left-camera)/640];
             playerWeapon=inventory.weapon+inventory.upgrade;
         } else if(kind==1&&targetKind>=20&&targetKind<=29) {
-            AstroCombatState scenery=[self combatFor:target];playerCombat.velocity=playerVelocity;
+            AstroCombatState scenery=[self combatFor:target],actor=playerSource?playerCombat:[self combatFor:source];
+            if(playerSource)actor.velocity=playerVelocity;
             BOOL hit=!scenery.remove;
-            astro_player_hits_scenery(&playerCombat,a,&scenery,b);[self applyCombat:scenery to:target];
-            if(hit&&playerCombat.hit_points>0)[self showPlayerHit:YES];
-            playerVelocity=playerCombat.velocity;
+            astro_player_hits_scenery(&actor,a,&scenery,b);[self applyCombat:scenery to:target];
+            if(playerSource){playerCombat=actor;playerVelocity=actor.velocity;}else [self applyCombat:actor to:source];
+            if(hit&&actor.hit_points>0)[self showPlayerHit:YES bounds:a];
         }
     }
 }
