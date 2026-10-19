@@ -40,7 +40,8 @@ Only OS/environment boundaries are controlled:
 
 Zero all globals and allocate FutureBASIC evaluation heap1MiB. Configure literal
 pool, pi, integer-conversion constants, original tables, and zero3001×4 double
-star buffer. Global viewport=(0,0,640,380), scroll=(1,0), interval1, seed0x12345678,
+star buffer. Original startup window width/height globals0xed6/0xed8=640/480
+(as initialized by thunk1001a93c); required for finite death-sound pan. Global viewport=(0,0,640,380), scroll=(1,0), interval1, seed0x12345678,
 weapon10, upgrade0, specials2; all unspecified globals remain zero.
 
 At TickCount0, call original NEWSPRITE in this creation order:
@@ -119,15 +120,28 @@ The validator checks field widths and bidirectional entity/LM list consistency
 for each phase. The comparator reports first differing record, field and raw byte
 offset; a self-comparison verifies plumbing only, not host fidelity.
 
-## Production host initial-state comparison
+## Production host comparison
 
-`tests/world_trace_host.m` includes the production AstroView and invokes its
-actual entity/projectile constructors in the scenario order above. Compile with
-the same C/Objective-C sources and framework flags as build.sh, substituting this
-file for src/preview.m. Run the result **only on the remote Intel iMac**, passing
-`assets` as its argument. It currently emits the initial snapshot and first calc phase; it does
-not yet implement subsequent cleanup/animate capture. Use tick0 plus tick1 calc
-records from the native fixture as the comparison input. All31 G/E/R/S records match,
-including all90 nonpointer entity bytes, render state and list links. The first phase uses actual stepEnemies with no initially marked objects, so its
-leading cleanup is a no-op. No claim about later cleanup, animation or ticks
-follows from this bounded equality.
+`tests/world_trace_host.m` includes production AstroView and invokes actual
+entity/projectile factories and the shared production `calculateActors`,
+`cleanupWorld`, `updateVisualEffects` methods. Its subclass only assigns canonical
+entity IDs; its audio subclass observes cue names/pan instead of playing hardware
+audio, exactly like the native boundary observer. Render IDs come from actual
+creation births, independently of entity IDs. The serializer walks every active
+entity and render record, preserving each list's creation/removal ordering.
+
+Compile with the same sources/framework flags as build.sh, substituting
+`tests/world_trace_host.m` for `src/preview.m`. Run **only on the remote Intel
+ iMac**: `world_trace_host assets 30 > host.tsv` (default30; optional1..36000).
+`python3 tools/world_trace.py tests/world_trace_native.txt host.tsv` must match
+all6588 records. A180-tick original capture also matches all26808 records.
+The scenario's original and portable phase order is calc→cleanup→animate.
+Production frame scheduling, map spawning, pause, respawn, transitions and actual
+GPU drawing are separate gates; this harness does not claim to verify them.
+
+Two integration corrections were exposed by this trace: creation-time subtype
+survives kind mutation (asteroid debris subtype161; homing projectile attribute−50),
+and original DOPLAYERSPRITE1005ed70 fires from truncated `(left+right)/2+38`,
+not the port's previous `+20`. Literal55f is exactly38. Player firing Y is the
+truncated double midpoint. Constructor, phase and audio observations all use
+production methods, without replacement AI/collision/effects/RNG routines.

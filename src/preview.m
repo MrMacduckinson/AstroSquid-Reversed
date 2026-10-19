@@ -36,7 +36,7 @@ typedef struct {AstroVisual visual;int layer;uint64_t birth;} LiveEffect;
     AstroScriptState state;
     NSDictionary *placement, *definition;
     NSData *program;
-    int kind,layer,renderLayer,hitPoints,baseSprite;
+    int kind,subtype,layer,renderLayer,hitPoints,baseSprite;
     AstroVisual visual;
     AstroRect bounds,previousBounds;
     BOOL active;
@@ -463,7 +463,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     enemy->state=(AstroScriptState){.frame=1,.tilt=1,.state=1,
         .update_tick=simulationTick,.animation_tick=simulationTick,.action_tick=simulationTick,
         .x=number(placement,@"x"),.y=number(placement,@"y")};
-    int group=attribute.intValue/10;
+    int group=attribute.intValue/10;enemy->subtype=attribute.intValue-group*10;
     enemy->kind=group>5&&group<20?5:group;
     enemy->layer=enemy->kind==5||(enemy->kind>=20&&enemy->kind<30)?2:0;
     enemy->renderLayer=enemy->kind==5?5:(enemy->kind>=20&&enemy->kind<30)?4:
@@ -563,7 +563,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         @"x":@((int)(shot->x-width/2)),@"y":@((int)(shot->y-height/2)),
         @"width":@(width),@"height":@(height)};
     AstroEnemy *bullet=[self entityForPlacement:placement];
-    bullet->kind=attribute>30?5:2;bullet->active=YES;bullet->renderLayer=6;
+    bullet->kind=attribute>30?5:2;bullet->subtype=attribute>30?attribute-50:shot->type;
+    bullet->active=YES;bullet->renderLayer=6;
     bullet->layer=kind==5?2:(kind==1||kind==-1)?3:0;
     bullet->state.update_tick=bullet->state.animation_tick=
         bullet->state.action_tick=simulationTick;
@@ -695,7 +696,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     NSDictionary *placement=@{@"attribute":@(effect->attribute),@"x":@(effect->x),@"y":@(effect->y),
         @"width":@(width),@"height":@(height),@"tag":@0};
     AstroEnemy *enemy=[self entityForPlacement:placement];enemy->active=YES;
-    enemy->kind=effect->kind;enemy->state.frame=effect->frame;
+    enemy->kind=effect->kind;enemy->subtype=effect->attribute-(effect->type==ASTRO_EFFECT_PICKUP?400:40);
+    enemy->state.frame=effect->frame;
     enemy->renderLayer=6;enemy->layer=0;
     enemy->state.velocity=effect->velocity;
     enemy->state.update_tick=enemy->state.animation_tick=simulationTick;
@@ -810,7 +812,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if((!changingStage||transition.allow_input)&&keys[selftestPath?8:controlKeys[0]]&&!special.active&&(int32_t)(simulationTick-lastPlayerShot)>
         60.0/[game[@"weapons"][[NSString stringWithFormat:@"%d",playerWeapon]][@"rate"] doubleValue]) {
         lastPlayerShot=simulationTick;
-        [self fireWeapon:playerWeapon x:(playerBounds.left+playerBounds.right)/2+20 y:(playerBounds.top+playerBounds.bottom)/2 heading:0 source:1];
+        [self fireWeapon:playerWeapon x:astro_ppc_i32(38+(playerBounds.left+playerBounds.right)/2.0)
+            y:astro_ppc_i32((playerBounds.top+playerBounds.bottom)/2.0) heading:0 source:1];
     }
     BOOL startSpecial=(!changingStage||transition.allow_input)&&keys[selftestPath?58:controlKeys[1]]&&!special.active&&inventory.specials>0&&
         (int32_t)(simulationTick-lastPlayerShot)>
@@ -949,8 +952,25 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         } else [self beginStageTransition];
     }
     if(changingStage)[self stepStageTransition];
-    simulationTick++;actorVisits=0;
+    simulationTick++;
     if(!changingStage||transition.simulate_world)[self cleanupWorld];
+    [self calculateActors];
+    if(respawnTick&&simulationTick>=respawnTick) {
+        playerCombat=(AstroCombatState){.kind=-1,.hit_points=100};
+        playerX=30;playerY=190;playerVelocity=(AstroVelocity){0,0};
+        playerVisual=(AstroVisual){1,playerX+camera,playerY,71,20,simulationTick};
+        playerEntityX=playerVisual.x;playerEntityY=playerVisual.y;
+        playerState=(AstroPlayer){{0,0},12,3,1,simulationTick,simulationTick};
+        inventory.upgrade=0;playerWeapon=inventory.weapon;playerSpawnTick=simulationTick;
+        playerRenderBirth=++renderClock;[world insertObject:[NSNull null] atIndex:0];
+        invulnerableUntil=simulationTick+181;respawnTick=0;
+    }
+    if(invulnerableUntil&&simulationTick>=invulnerableUntil) {
+        invulnerableUntil=0;if(!special.active)playerCombat.kind=1;
+    }
+}
+- (void)calculateActors {
+    actorVisits=0;
     astro_stars_move(stars,-camera,0,camera,0,camera+640,380,tickedScroll,0,0,0,1,&randomSeed,
         parallaxData.mutableBytes,backgrounds.count,0);
     [specialPolygons removeAllObjects];[specialFlashes removeAllObjects];
@@ -968,19 +988,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         }
     }
     if(nestedPass)specialResumePending=([self stepSpecial:NO]&ASTRO_SPECIAL_RESUME)!=0;
-    if(respawnTick&&simulationTick>=respawnTick) {
-        playerCombat=(AstroCombatState){.kind=-1,.hit_points=100};
-        playerX=30;playerY=190;playerVelocity=(AstroVelocity){0,0};
-        playerVisual=(AstroVisual){1,playerX+camera,playerY,71,20,simulationTick};
-        playerEntityX=playerVisual.x;playerEntityY=playerVisual.y;
-        playerState=(AstroPlayer){{0,0},12,3,1,simulationTick,simulationTick};
-        inventory.upgrade=0;playerWeapon=inventory.weapon;playerSpawnTick=simulationTick;
-        playerRenderBirth=++renderClock;[world insertObject:[NSNull null] atIndex:0];
-        invulnerableUntil=simulationTick+181;respawnTick=0;
-    }
-    if(invulnerableUntil&&simulationTick>=invulnerableUntil) {
-        invulnerableUntil=0;if(!special.active)playerCombat.kind=1;
-    }
 }
 - (void)renderTick {
     simulationRender=YES;[self display];simulationRender=NO;

@@ -29,14 +29,14 @@ static NSUInteger operandLeft,operandRight;
     for(int i=0;i<4;i++){
         AstroShot shot={.type=types[i],.x=300,.y=200,.heading=0};
         [self spawnShot:&shot source:5];AstroEnemy *e=enemies[0];
-        assert(e->kind==5&&e->renderLayer==6&&e->layer==2);
+        assert(e->kind==5&&e->subtype==types[i]-30&&e->renderLayer==6&&e->layer==2);
     }
     AstroDeathEffect effect={.type=ASTRO_EFFECT_DEBRIS,.kind=20,.attribute=201,
         .x=300,.y=200,.width=24,.height=25,.frame=1};
     [self emitDeathEffect:&effect];AstroEnemy *debris=enemies[0];
-    assert(debris->kind==20&&debris->renderLayer==6&&debris->layer==0);
+    assert(debris->kind==20&&debris->subtype==161&&debris->renderLayer==6&&debris->layer==0);
     AstroEnemy *scenery=[self entityForPlacement:@{@"attribute":@201,@"x":@0,@"y":@0,@"width":@24,@"height":@25}];
-    assert(scenery->kind==20&&scenery->renderLayer==4&&scenery->layer==2);
+    assert(scenery->kind==20&&scenery->subtype==1&&scenery->renderLayer==4&&scenery->layer==2);
     assert(scenery->state.update_tick==simulationTick&&scenery->state.animation_tick==simulationTick&&scenery->state.action_tick==simulationTick);
     AstroRect emptyBounds={0};assert(!memcmp(&scenery->previousBounds,&emptyBounds,sizeof(emptyBounds)));
     astro_score_editor_begin(&scoreEditor);memset(scoreEditor.name,'A',255);scoreEditor.name[255]=0;scoreEditor.cursor=255;
