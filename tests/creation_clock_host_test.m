@@ -42,6 +42,15 @@ static unsigned used,count;
     assert(a->visual.next_tick==204+(uint32_t)spriteInfo[a->baseSprite].delay);
     assert(b->visual.next_tick==304+(uint32_t)spriteInfo[b->baseSprite].delay);
     assert(a->state.x==30&&a->state.y==40&&b->state.x==31&&b->state.y==41);
+    assert(a->bounds.left==0&&a->bounds.top==40&&a->bounds.right==120&&a->bounds.bottom==30777);
+    assert(b->bounds.left==0&&b->bounds.top==41&&b->bounds.right==121&&b->bounds.bottom==31034);
+    {const uint32_t clocks[]={351,352,353,354};
+        memcpy(script,clocks,sizeof(clocks));count=4;used=0;
+        mapPlacements=[NSMutableArray arrayWithObject:@{@"attribute":@201,@"x":@(-91.5),@"y":@(-311.5),@"width":@83,@"height":@35}];
+        [self makeNewSprites];AstroEnemy *negative=enemies[0];
+        assert(used==4&&negative->state.x==-91&&negative->state.y==-311);
+        assert(negative->bounds.left==-2&&negative->bounds.top==-311&&negative->bounds.right==-8&&negative->bounds.bottom==-4902);
+    }
     const uint32_t bulletClocks[]={401,402,403,404};
     memcpy(script,bulletClocks,sizeof(bulletClocks));count=4;used=0;
     AstroShot shot={.type=1,.x=100,.y=180,.heading=90};
@@ -79,7 +88,7 @@ static unsigned used,count;
         assert(used==1&&created->visual.next_tick==script[0]+(uint32_t)spriteInfo[1].delay+(uint32_t)delta);
     }
     injecting=NO;
-    puts("PASS source-backed creation: four clocks, map/bullet/special timestamps, signed offsets/wrap, death debris/pickup clocks, ten explosion offsets, map order/edge/NaN");
+    puts("PASS source-backed creation: clocks, special/death offsets, map order/edge/NaN and exact initial overlapping Rect writes for positive/negative fractional placements");
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{

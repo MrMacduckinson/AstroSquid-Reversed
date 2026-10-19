@@ -577,8 +577,15 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     for(NSDictionary *placement in [mapPlacements copy]) {
         if(!(number(placement,@"x")<camera+740))continue;
         AstroEnemy *enemy=[self entityForPlacement:placement];
-        enemy->state.x=(int)enemy->state.x;enemy->state.y=(int)enemy->state.y;
+        enemy->state.x=astro_ppc_i32(enemy->state.x);enemy->state.y=astro_ppc_i32(enemy->state.y);
         enemy->visual.x=enemy->state.x;enemy->visual.y=enemy->state.y;
+        uint16_t left=(uint16_t)(int32_t)enemy->state.x;
+        uint16_t bottom=(uint16_t)astro_ppc_i32(enemy->state.y+spriteInfo[enemy->baseSprite].height);
+        uint16_t mapBottom=(uint16_t)astro_ppc_i32(number(placement,@"y")+number(placement,@"height"));
+        // Original sth at entity+39 overlaps left.low and bottom.high in the big-endian Rect.
+        enemy->bounds=(AstroRect){(int16_t)((left&0xff00)|(mapBottom>>8)),(int16_t)(int32_t)enemy->state.y,
+            (int16_t)astro_ppc_i32(number(placement,@"x")+number(placement,@"width")),
+            (int16_t)((bottom&0xff)|((mapBottom&0xff)<<8))};
         [self prependEnemy:enemy];[mapPlacements removeObjectIdenticalTo:placement];
     }
 }
