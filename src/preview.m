@@ -40,6 +40,7 @@ typedef struct {AstroVisual visual;int layer;uint64_t birth;} LiveEffect;
     AstroVisual visual;
     AstroRect bounds,previousBounds;
     BOOL active;
+    __unsafe_unretained AstroEnemy *parent;
     uint64_t renderBirth;
 }
 @end
@@ -77,6 +78,7 @@ typedef struct {AstroVisual visual;int layer;uint64_t birth;} LiveEffect;
     BOOL simulationRender;
     uint32_t simulationTick,lastSpawnTick;
     NSUInteger scriptSteps;
+    uint32_t actorVisits;
     NSString *assetPath;
     NSTimer *timer;
     AstroAudio *audio;
@@ -138,6 +140,7 @@ typedef struct {AstroVisual visual;int layer;uint64_t birth;} LiveEffect;
 - (void)playBeamSound:(int)index x:(int)x;
 - (void)drawSceneSprite:(const AstroSceneSprite *)sprite;
 - (void)fireWeapon:(int)weapon x:(int)x y:(int)y heading:(int)heading source:(int)kind;
+- (void)moveChildren:(AstroEnemy *)parent heading:(int)heading amount:(double)amount;
 @end
 
 static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValue]; }
@@ -145,6 +148,10 @@ static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValu
 static void enemyFire(void *context,int weapon,int x,int y,int heading) {
     EnemyContext *source=context;
     [source->view fireWeapon:weapon x:x y:y heading:heading source:5];
+}
+
+static void enemyMoveChildren(void *context,int heading,double amount) {
+    EnemyContext *source=context;[source->view moveChildren:source->enemy heading:heading amount:amount];
 }
 
 static void enemyHit(void *context) {
@@ -831,7 +838,15 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [world removeObjectIdenticalTo:object];if(!player)[enemies removeObjectIdenticalTo:enemy];
     }
 }
+- (void)moveChildren:(AstroEnemy *)parent heading:(int)heading amount:(double)amount {
+    for(id object in world){
+        actorVisits++;
+        if(object!=[NSNull null]&&((AstroEnemy *)object)->parent==parent)
+            astro_vector_make(&((AstroEnemy *)object)->state.velocity,heading,amount);
+    }
+}
 - (void)stepActor:(id)object {
+    actorVisits++;
     if(object==[NSNull null]){[self stepPlayer];return;}
     AstroEnemy *enemy=object;
     AstroScriptState *state=&enemy->state;
@@ -855,7 +870,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             .player_x=playerEntityX,.player_y=playerEntityY,
             .animated=[enemy->definition[@"animated"] intValue],
             .weapon=[enemy->definition[@"weapon"] intValue],
-            .userdata=&source,.fire=enemyFire,.hit_player=enemyHit,
+            .userdata=&source,.fire=enemyFire,.move_children=enemyMoveChildren,.hit_player=enemyHit,
             .gun_x=astro_script_gun_coordinate(enemy->bounds.left,[enemy->definition[@"turret_x"] intValue],
                 enemy->visual.width,spriteInfo[enemy->visual.sprite].width),
             .gun_y=astro_script_gun_coordinate(enemy->bounds.top,[enemy->definition[@"turret_y"] intValue],
@@ -934,7 +949,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         } else [self beginStageTransition];
     }
     if(changingStage)[self stepStageTransition];
-    simulationTick++;
+    simulationTick++;actorVisits=0;
     if(!changingStage||transition.simulate_world)[self cleanupWorld];
     astro_stars_move(stars,-camera,0,camera,0,camera+640,380,tickedScroll,0,0,0,1,&randomSeed,
         parallaxData.mutableBytes,backgrounds.count,0);

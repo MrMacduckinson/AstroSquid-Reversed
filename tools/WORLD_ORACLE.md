@@ -125,8 +125,9 @@ offset; a self-comparison verifies plumbing only, not host fidelity.
 actual entity/projectile constructors in the scenario order above. Compile with
 the same C/Objective-C sources and framework flags as build.sh, substituting this
 file for src/preview.m. Run the result **only on the remote Intel iMac**, passing
-`assets` as its argument. It currently emits the initial snapshot only; it does
-not yet implement calc/cleanup/animate capture. Use the tick0 records from the
-native fixture as the comparison input. Every initial G/E/R record matches,
-including all90 nonpointer entity bytes, render state and list links. No claim
-about subsequent ticks follows from that initial-state equality.
+`assets` as its argument. It currently emits the initial snapshot and first calc phase; it does
+not yet implement subsequent cleanup/animate capture. Use tick0 plus tick1 calc
+records from the native fixture as the comparison input. All31 G/E/R/S records match,
+including all90 nonpointer entity bytes, render state and list links. The first phase uses actual stepEnemies with no initially marked objects, so its
+leading cleanup is a no-op. No claim about later cleanup, animation or ticks
+follows from this bounded equality.
