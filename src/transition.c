@@ -75,12 +75,15 @@ void astro_transition_step(AstroTransition *t,uint32_t tick,AstroRect p,double w
         t->phase=ASTRO_TRANSITION_TRAIL;t->simulate_world=0;t->player_frame=15;
         t->events|=ASTRO_TRANSITION_TRAIL_SPRITE|ASTRO_TRANSITION_BANG_SOUND;
     }
-    if(t->phase==ASTRO_TRANSITION_TRAIL) {
-        // Original renders only MOVESTARS here: player/world freeze until the card.
-        t->scale-=.005;
-        if(t->scale<.001) {t->phase=ASTRO_TRANSITION_CARD;t->events|=ASTRO_TRANSITION_MENU_MUSIC;}
-    }
+    /* Trail scale advances only on actual render frames, not CPU steps. */
 }
+int astro_transition_render_trail(AstroTransition *t) {
+    if(t->phase!=ASTRO_TRANSITION_TRAIL)return 0;
+    t->scale-=.005;
+    if(t->scale<.001){t->phase=ASTRO_TRANSITION_CARD;t->events|=ASTRO_TRANSITION_MENU_MUSIC;}
+    return 1;
+}
+
 void astro_transition_accept_card(AstroTransition *t) {
     if(t->phase!=ASTRO_TRANSITION_CARD)return;
     t->scale=1;t->pending|=ASTRO_TRANSITION_CLEAR_WORLD;t->phase=ASTRO_TRANSITION_DONE;

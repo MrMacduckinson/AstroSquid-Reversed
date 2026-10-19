@@ -27,6 +27,9 @@ typedef struct {
 void astro_transition_begin(AstroTransition *t,int mode,uint32_t tick,double scroll_x);
 void astro_transition_step(AstroTransition *t,uint32_t tick,AstroRect player_bounds,
                           double width,double height,AstroRect viewport,double camera_x,double camera_y);
+/* Call only inside the shared render gate, before MOVESTARS/drawing. A final
+ * frame still renders; consume CARD/music events after presentation. */
+int astro_transition_render_trail(AstroTransition *t);
 /* END card must wait for a user key; this performs the final cleanup/reset. */
 void astro_transition_accept_card(AstroTransition *t);
 /* Sprite115EngineGlow tracks player animation; Sprite116 trail is frozen once

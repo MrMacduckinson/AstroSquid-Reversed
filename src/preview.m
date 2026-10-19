@@ -1049,6 +1049,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
     if(changingStage)[self stepStageTransition];
     simulationTick++;
+    if(changingStage&&!transition.simulate_world){tickedScroll=transition.scroll_x;return;}
     if(!changingStage||transition.simulate_world)[self cleanupWorld];
     [self calculateActors];
     if(respawnTick&&simulationTick>=respawnTick) {
@@ -1097,7 +1098,17 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     uint32_t comparison=[self playerClockTick];
     if((int32_t)(comparison-worldRenderTick)>=ui.frameInterval){
         worldRenderTick=[self playerClockTick];simulationTick=worldRenderTick;
+        BOOL trail=changingStage&&transition.phase==ASTRO_TRANSITION_TRAIL;
+        if(trail){
+            astro_transition_render_trail(&transition);tickedScroll=transition.scroll_x;
+            astro_stars_move(stars,-camera,0,camera,0,camera+640,380,tickedScroll,0,0,0,ui.frameInterval,&randomSeed,
+                parallaxData.mutableBytes,backgrounds.count,0);
+        }
         simulationRender=YES;[self display];simulationRender=NO;
+        if(trail&&transition.phase==ASTRO_TRANSITION_CARD){
+            [audio playMusic:1];
+            astro_flow_stage_end(&flow,campaign.level,campaign.half,pendingCampaign.level,pendingCampaign.half,pendingCampaign.complete);
+        }
     }
     if(!menuVisible&&flow.phase==ASTRO_FLOW_PLAY&&(!changingStage||transition.simulate_world)) {
         simulationTick=[self playerClockTick];[self updateVisualEffects];
@@ -1215,17 +1226,26 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)stepMenu {
     if(splashVisible)return;
-    if([ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"]){[ui animateTicks:1];return;}
+    if([ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"]){[self display];[ui animateTicks:1];return;}
     [ui advanceMenuCamera];
     astro_stars_move(stars,ui.cameraX,ui.cameraY,-ui.cameraX,-ui.cameraY,640-ui.cameraX,480-ui.cameraY,
         menuScroll.x,menuScroll.y,ui.cameraStepX,ui.cameraStepY,ui.frameInterval,&randomSeed,NULL,0,1);
     [self display];[ui animateMenuObjects];
 }
+- (void)pollMenu {
+    if(splashVisible)return;
+    uint32_t comparison=[self currentGameTick];
+    if((int32_t)(comparison-observedWallTick)<ui.frameInterval)return;
+    BOOL overlay=[ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"];
+    if(!overlay)observedWallTick=[self currentGameTick];
+    [self stepMenu];
+    if(overlay)observedWallTick=[self currentGameTick];
+}
 - (void)tickWallClock {
     uint32_t stamp=(uint32_t)floor((NSProcessInfo.processInfo.systemUptime-clockOrigin)*60);
     uint32_t elapsed=stamp-observedWallTick;
-    if(!elapsed)return;
-    observedWallTick=stamp;simulationTick=stamp;
+    if(!elapsed&&!menuVisible)return;
+    if(!menuVisible)observedWallTick=stamp;simulationTick=stamp;
     if(gameOverPending){gameOverPending=NO;[self beginGameOver];observedWallTick=[self currentGameTick];return;}
     BOOL idle=menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY;
     if(!menuVisible&&flow.phase!=ASTRO_FLOW_PLAY) {
@@ -1240,8 +1260,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         tickedScroll=camera-old;simulationTick=stamp-1;[self stepEnemies];[self renderTick];
     }
     if(editingKey>=0&&NSProcessInfo.processInfo.systemUptime>=keyCaptureDeadline){editingKey=-1;[self refreshKeyLabels];}
-    if(menuVisible)[self stepMenu];
-    if(idle)[self setNeedsDisplay:YES];
+    if(menuVisible)[self pollMenu];
+    if(idle&&!menuVisible)[self setNeedsDisplay:YES];
     self.window.title=@"AstroSquid";
 }
 - (void)tick:(NSTimer *)sender {
@@ -1254,7 +1274,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         BOOL anyKey=NO;for(int i=0;i<128;i++)anyKey|=keys[i];[self advanceFlowWithKey:anyKey];
     }
     if(editingKey>=0&&NSProcessInfo.processInfo.systemUptime>=keyCaptureDeadline){editingKey=-1;[self refreshKeyLabels];}
-    if(menuVisible) [self stepMenu];
+    if(menuVisible) [self pollMenu];
     if(paused||gameOver||menuVisible||flow.phase!=ASTRO_FLOW_PLAY) tickRemainder=0;
     while(tickRemainder>=1.0/60.0&&flow.phase==ASTRO_FLOW_PLAY&&!menuVisible&&!paused) {
         tickRemainder-=1.0/60.0;
@@ -1269,7 +1289,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(!selftestPath) self.window.title=[NSString stringWithFormat:@"AstroSquid — %@ — HP %d · Lives %d · Score %d%@",
         levels[selectedLevel],playerCombat.hit_points,inventory.lives,score,
         gameOver?@" · GAME OVER (R)":campaign.complete?@" · COMPLETE":paused?@" · PAUSED":@""];
-    if(menuVisible||flow.phase!=ASTRO_FLOW_PLAY)[self setNeedsDisplay:YES];
+    if(!menuVisible&&flow.phase!=ASTRO_FLOW_PLAY)[self setNeedsDisplay:YES];
     if(selftestPath) {
         if(playerX>selftestStartX+10) selftestMoved=YES;
         selftestTicks++;
@@ -1391,7 +1411,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         int steps=0;
         while(flow.phase==ASTRO_FLOW_PLAY&&steps++<1200) {
             double old=camera;if(transition.simulate_world)camera+=transition.scroll_x;tickedScroll=camera-old;
-            [self stepEnemies];
+            [self stepEnemies];[self renderTick];
         }
         assert(steps<1200);
         if(half==1)assert(flow.phase==ASTRO_FLOW_READY&&[levels[selectedLevel] isEqual:@"Data 1B"]);

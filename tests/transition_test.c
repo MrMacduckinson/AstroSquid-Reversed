@@ -2,9 +2,31 @@
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <string.h>
 static AstroRect view={0,0,640,380},centered={300,170,340,210};
 static void step(AstroTransition *t,uint32_t tick,AstroRect p) {astro_transition_step(t,tick,p,40,40,view,0,0);}
-int main(void) {
+/* Every event from the original trail instruction range is replayed in order;
+ * the clock/render host remains explicit, with separate compare/store reads. */
+static uint64_t word(double value){uint64_t u;memcpy(&u,&value,8);return u;}
+static uint32_t native_tick(FILE*f,unsigned*reads){char row[256];unsigned tick;assert(fgets(row,sizeof(row),f));assert(sscanf(row,"T,%u",&tick)==1);(*reads)++;return tick;}
+static void native_event(FILE*f,char tag,AstroTransition*t,uint32_t deadline){char row[256];unsigned long long scale,sx,camera;unsigned tick;assert(fgets(row,sizeof(row),f));assert(row[0]==tag);assert(sscanf(row+2,"%llx,%u,%llx,%llx",&scale,&tick,&sx,&camera)==4);assert(word(t->scale)==scale&&deadline==tick&&word(t->scroll_x)==sx&&word(1234.25)==camera);}
+static void native_trail(const char*path){
+ FILE*f=fopen(path,"r");assert(f);char row[256];unsigned cases=0,total_reads=0,frames=0,polls=0,skipped=0;
+ while(fgets(row,sizeof(row),f)){int id,interval;unsigned long long scale;assert(sscanf(row,"CASE,%d,%d,%llx",&id,&interval,&scale)==3);assert(id==(int)cases);uint64_t u=scale;double initial;memcpy(&initial,&u,8);
+  AstroTransition t={.mode=ASTRO_TRANSITION_END,.phase=ASTRO_TRANSITION_TRAIL,.scale=initial,.scroll_x=217.79533378093692,.simulate_world=0};uint32_t deadline=100;unsigned reads=0;native_tick(f,&reads);
+  do {
+   uint64_t before=word(t.scale);step(&t,0,centered);assert(word(t.scale)==before&&t.phase==ASTRO_TRANSITION_TRAIL&&!t.simulate_world);
+   uint32_t comparison=native_tick(f,&reads);polls++;
+   if((int32_t)(comparison-deadline)>=interval){deadline=native_tick(f,&reads);assert(astro_transition_render_trail(&t));native_event(f,'M',&t,deadline);native_event(f,'W',&t,deadline);native_event(f,'P',&t,deadline);native_event(f,'K',&t,deadline);frames++;}else{assert(word(t.scale)==before);skipped++;}
+   native_event(f,'V',&t,deadline);
+  }while(!(t.scale<.001));
+  assert(t.phase==ASTRO_TRANSITION_CARD&&t.events==ASTRO_TRANSITION_MENU_MUSIC);native_event(f,'E',&t,deadline);assert(fgets(row,sizeof(row),f));unsigned expected;assert(sscanf(row,"FINAL,%u",&expected)==1&&reads==expected);assert(!astro_transition_render_trail(&t));total_reads+=reads;cases++;
+ }
+ assert(feof(f));fclose(f);assert(cases==24&&skipped);printf("PASS:%u native END trail schedules,%u clock reads,%u polls,%u exact scale/render/M-W-P-K-V frames; no CPU scale advance\n",cases,total_reads,polls,frames);
+}
+int main(int argc,char**argv) {
+    assert(argc<3);native_trail(argc==2?argv[1]:"tests/trail_transition_vectors.csv");
     AstroTransition t;
     astro_transition_begin(&t,ASTRO_TRANSITION_MID,100,0);
     step(&t,100,(AstroRect){0,0,40,40});assert(t.controls==(ASTRO_KEY_RIGHT|ASTRO_KEY_DOWN));
@@ -24,6 +46,7 @@ int main(void) {
     int acceleration=0,trail=0;uint32_t tick;
     for(tick=64;tick<1000&&t.phase!=ASTRO_TRANSITION_CARD;tick++) {
         int old=t.phase;step(&t,tick,centered);
+        if(t.phase==ASTRO_TRANSITION_TRAIL)assert(astro_transition_render_trail(&t));
         if(old==ASTRO_TRANSITION_ACCEL&&t.deadline==tick+11)acceleration++;
         if(t.events&ASTRO_TRANSITION_TRAIL_SPRITE) {assert(t.player_frame==15&&!t.simulate_world);trail++;}
     }
