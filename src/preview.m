@@ -1093,7 +1093,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         }
         scriptSteps++;
     }
-    if(enemy->kind==2&&state->state==1&&simulationTick>state->update_tick)state->update_tick=simulationTick;
+    if(enemy->kind==2&&state->state==1){
+        uint32_t comparison=[self playerClockTick];
+        if((int32_t)(comparison-state->update_tick)>0)state->update_tick=[self playerClockTick];
+    }
     if(enemy->kind==4||enemy->kind==20) {
         AstroDebris debris={enemy->kind,state->state,state->frame,state->remove,state->update_tick,
             state->animation_tick,state->action_tick,state->velocity};
