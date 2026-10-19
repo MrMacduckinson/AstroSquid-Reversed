@@ -770,8 +770,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)showPlayerHit:(BOOL)scenery bounds:(AstroRect)bounds {
     [audio playStringCue:ASTRO_PLAYER_HIT_SOUND position:(bounds.left-camera)/640];
-    int result=scenery?astro_player_scenery_hit_visual(&playerHitVisual,bounds,spriteInfo,1001,simulationTick):
-        astro_player_hit_visual(&playerHitVisual,bounds,spriteInfo,1001,simulationTick);
+    uint32_t visualTick=[self playerClockTick];
+    int result=scenery?astro_player_scenery_hit_visual(&playerHitVisual,bounds,spriteInfo,1001,visualTick):
+        astro_player_hit_visual(&playerHitVisual,bounds,spriteInfo,1001,visualTick);
     if(!result){NSLog(@"Invalid player hit visual");exit(1);}
     if(result==1){playerHitBirth=++renderClock;playerHitLayer=scenery?ASTRO_PLAYER_SCENERY_HIT_LAYER:ASTRO_PLAYER_HIT_LAYER;}
 }
