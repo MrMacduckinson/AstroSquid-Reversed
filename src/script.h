@@ -32,8 +32,10 @@ typedef struct {
     void (*hit_player)(void *userdata);
 } AstroScriptContext;
 
+int astro_script_gun_coordinate(int edge,int turret,double size,int original_size);
+
 int astro_parse_instruction(const char *text,AstroInstruction *out);
-/* Recovered DOSCRIPTEDSPRITE control flow; whole-game integration is pending. */
+/* Original DOSCRIPTEDSPRITE scheduling and instruction semantics. */
 int astro_script_step(AstroScriptState *state,const AstroInstruction *script,
                       size_t count,uint32_t tick,const AstroScriptContext *context);
 #endif

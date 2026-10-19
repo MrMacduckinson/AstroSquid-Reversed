@@ -11,6 +11,9 @@ static void fire(void *unused,int weapon,int x,int y,int angle) {
 }
 
 int main(void) {
+    assert(astro_script_gun_coordinate(700,33,125,78)==752);
+    assert(astro_script_gun_coordinate(200,55,186,123)==283);
+    assert(astro_script_gun_coordinate(-700,33,125,78)==-647);
     AstroInstruction p[6],op;
     const char *commands[]={"000|Move|180|012","120|Move|270|010","010|Move|090|010",
         "120|Move|090|010","010|Move|270|010","RETURN"};

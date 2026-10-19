@@ -1,6 +1,11 @@
 #include "script.h"
+#include "ppc_math.h"
 #include <stdlib.h>
 #include <string.h>
+
+int astro_script_gun_coordinate(int edge,int turret,double size,int original_size) {
+    return astro_ppc_i32(turret*(size/original_size)+edge);
+}
 
 static int number3(const char *s,int *value) {
     int start=s[0]=='-'?1:0,n=0;
@@ -95,8 +100,8 @@ int astro_script_step(AstroScriptState *s,const AstroInstruction *script,
                 break;
             case ASTRO_NEAR: {
                 double dx=s->x-c->player_x+30,dy=s->y-c->player_y+15;
-                int distance_squared=(int)(dx*dx+dy*dy);
-                if(c->player_present&&distance_squared<direction*direction) {
+                int32_t distance_squared=astro_ppc_i32(dx*dx+dy*dy);
+                if(c->player_present&&distance_squared<(int32_t)((uint32_t)direction*(uint32_t)direction)) {
                     if(op->value_kind==ASTRO_AIM) {
                         if(c->hit_player) c->hit_player(c->userdata);
                         s->remove=-1;

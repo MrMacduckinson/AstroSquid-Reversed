@@ -14,6 +14,7 @@
 
 static uint32_t descriptors[484][2];
 static uint32_t tick;
+static uint64_t ieee_word(double x){uint64_t u;memcpy(&u,&x,8);return u;}
 static unsigned native_shots,ported_shots;
 static unsigned native_hits,ported_hits;
 typedef struct {int weapon,x,y,heading;} Shot;
@@ -109,7 +110,9 @@ int main(int argc,char **argv) {
         int first_frame=*(int16_t *)(attributes+attribute*30+22);
         int width=*(int16_t *)(sprites+first_frame*14+6);
         int height=*(int16_t *)(sprites+first_frame*14+8);
-        for(int variant=0;variant<3;variant++) {
+        for(int variant=0;variant<6;variant++) {
+            double visual_width=variant>=3?125:width,visual_height=variant>=3?186:height;
+            int player_variant=variant%3;
             unsigned char entity[128],render[312],player[128],player_render[312];
             memset(entity,0,sizeof(entity));memset(render,0,sizeof(render));
             memset(player,0,sizeof(player));memset(player_render,0,sizeof(player_render));
@@ -117,24 +120,24 @@ int main(int argc,char **argv) {
             set_short(entity,20,scriptID);set_short(entity,22,1);set_short(entity,24,1);set_short(entity,26,1);
             set_short(entity,60,first_frame-1);set_short(entity,68,attribute);
             set_pointer(entity,62,render);set_double(entity,44,700);set_double(entity,52,200);
-            set_double(render,0,700);set_double(render,8,200);set_double(render,16,width);set_double(render,24,height);set_short(render,38,first_frame);
-            set_short(entity,36,200);set_short(entity,38,700);set_short(entity,40,200+height);set_short(entity,42,700+width);
+            set_double(render,0,700);set_double(render,8,200);set_double(render,16,visual_width);set_double(render,24,visual_height);set_short(render,38,first_frame);
+            set_short(entity,36,200);set_short(entity,38,700);set_short(entity,40,200+visual_height);set_short(entity,42,700+visual_width);
             set_pointer(globals,0xa76,entity);set_pointer(globals,0x38c,heap);
-            double px=variant==1?-1500:730,py=variant==1?100:215;
+            double px=player_variant==1?-1500:730,py=player_variant==1?100:215;
             set_pointer(player,62,player_render);set_double(player,44,px);set_double(player,52,py);
             set_double(player_render,16,71);set_double(player_render,24,20);set_short(player_render,38,1);
             set_short(player,36,(int)py);set_short(player,38,(int)px);
             set_short(player,40,(int)py+20);set_short(player,42,(int)px+71);
-            set_pointer(globals,0xa7a,variant?player:NULL);
+            set_pointer(globals,0xa7a,player_variant?player:NULL);
             AstroScriptState state;memset(&state,0,sizeof(state));
             state.frame=1;state.tilt=1;state.state=1;state.x=700;state.y=200;
             AstroScriptContext context;memset(&context,0,sizeof(context));
             context.animated=*(int16_t *)(attributes+attribute*30+20);context.fire=port_fire;context.hit_player=port_hit;
-            context.player_present=variant!=0;context.player_x=px;context.player_y=py;
+            context.player_present=player_variant!=0;context.player_x=px;context.player_y=py;
             context.weapon=*(int16_t *)(attributes+attribute*30+4);
-            context.gun_x=700+*(int16_t *)(attributes+attribute*30+14);
-            context.gun_y=200+*(int16_t *)(attributes+attribute*30+16);
-            if(variant) context.target_heading=(int)invoke_fb(code+0x58978,globals,toc,entity,player,NULL);
+            context.gun_x=astro_script_gun_coordinate(700,*(int16_t *)(attributes+attribute*30+14),visual_width,width);
+            context.gun_y=astro_script_gun_coordinate(200,*(int16_t *)(attributes+attribute*30+16),visual_height,height);
+            if(player_variant) context.target_heading=(int)invoke_fb(code+0x58978,globals,toc,entity,player,NULL);
             native_shots=0;ported_shots=0;native_hits=0;ported_hits=0;
             for(tick=1;tick<=600;tick++) {
                 invoke_fb(code+0x61c40,globals,toc,entity,NULL,NULL);
@@ -143,7 +146,7 @@ int main(int argc,char **argv) {
                 int line=*(int16_t *)(entity+22),frame=*(int16_t *)(entity+24);
                 int tilt=*(int16_t *)(entity+26),status=*(int16_t *)(entity+4),remove=*(int16_t *)(entity+70);
                 uint32_t next=*(uint32_t *)(entity+16);
-                if(fabs(x-state.velocity.x)>1e-10||fabs(y-state.velocity.y)>1e-10||line!=(int)state.line+1||frame!=state.frame||tilt!=state.tilt||status!=state.state||remove!=state.remove||next!=state.action_tick||native_shots!=ported_shots||native_hits!=ported_hits||memcmp(native_log,ported_log,native_shots*sizeof(Shot))) {
+                if(ieee_word(x)!=ieee_word(state.velocity.x)||ieee_word(y)!=ieee_word(state.velocity.y)||line!=(int)state.line+1||frame!=state.frame||tilt!=state.tilt||status!=state.state||remove!=state.remove||next!=state.action_tick||*(uint32_t *)(entity+8)!=state.update_tick||*(uint32_t *)(entity+12)!=state.animation_tick||native_shots!=ported_shots||native_hits!=ported_hits||memcmp(native_log,ported_log,native_shots*sizeof(Shot))) {
                     printf("Mismatch script %d variant %d heading %d tick %u\n",scriptID,variant,context.target_heading,tick);
                     printf(" original v=(%.9g,%.9g) line=%d frame=%d tilt=%d state=%d remove=%d next=%u shots=%u\n",x,y,line,frame,tilt,status,remove,next,native_shots);
                     printf(" port     v=(%.9g,%.9g) line=%lu frame=%d tilt=%d state=%d remove=%d next=%u shots=%u\n",state.velocity.x,state.velocity.y,(unsigned long)state.line+1,state.frame,state.tilt,state.state,state.remove,state.action_tick,ported_shots);return 1;
@@ -152,7 +155,7 @@ int main(int argc,char **argv) {
             cases_checked++;
         }
         scripts_checked++;
-        printf("PASS script %d: absent/far/near player, 600 ticks each\n",scriptID);
+        printf("PASS script %d: absent/far/near player, natural/scaled visuals, 600 ticks each\n",scriptID);
     }
     CloseResFile(resourceFile);
     printf("PASS: %u scripts, %u cases, %u original/portable ticks (controlled clock/fire callbacks)\n",scripts_checked,cases_checked,cases_checked*600);
