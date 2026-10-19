@@ -37,6 +37,8 @@ static NSUInteger operandLeft,operandRight;
     assert(debris->kind==20&&debris->renderLayer==6&&debris->layer==0);
     AstroEnemy *scenery=[self entityForPlacement:@{@"attribute":@201,@"x":@0,@"y":@0,@"width":@24,@"height":@25}];
     assert(scenery->kind==20&&scenery->renderLayer==4&&scenery->layer==2);
+    assert(scenery->state.update_tick==simulationTick&&scenery->state.animation_tick==simulationTick&&scenery->state.action_tick==simulationTick);
+    AstroRect emptyBounds={0};assert(!memcmp(&scenery->previousBounds,&emptyBounds,sizeof(emptyBounds)));
     astro_score_editor_begin(&scoreEditor);memset(scoreEditor.name,'A',255);scoreEditor.name[255]=0;scoreEditor.cursor=255;
     assert([self editScoreByte:'B']&&alerts==1&&operandLeft==255&&operandRight==1);
     assert(scoreEditor.cursor==256&&strlen(scoreEditor.name)==255&&!scoreEditor.alert);
@@ -51,6 +53,19 @@ static NSUInteger operandLeft,operandRight;
     [self resumePause];assert(redraws==60&&!paused&&!menuVisible);
     assert(simulationTick==stopped&&randomSeed==seed);
     puts("PASS actual host Pause entry/resume:30+30 redraws, frozen world clock/RNG");
+    uint32_t expectedSeed=12345;randomSeed=expectedSeed;
+    NSDictionary *uiData=[NSJSONSerialization JSONObjectWithData:[NSData dataWithContentsOfFile:[assetPath stringByAppendingPathComponent:@"ui/ui.json"]] options:0 error:NULL];
+    for(NSDictionary *object in uiData[@"scenes"][@"Data B2"]){int sprite=[object[@"sprite"] intValue];if(sprite==900||sprite==901)astro_random(&expectedSeed,60);}
+    AstroStar expectedStars[3000];astro_stars_init(expectedStars,1,&expectedSeed);
+    double driftX=astro_random(&expectedSeed,8)-4,driftY=astro_random(&expectedSeed,8)-4;
+    [self reloadMainMenu];assert(randomSeed==expectedSeed&&menuScroll.x==driftX&&menuScroll.y==driftY);
+    assert(!memcmp(stars,expectedStars,sizeof(expectedStars)));
+    splashVisible=NO;menuVisible=YES;[ui show:@"Play Menu"];
+    [self stepMenu];
+    astro_stars_move(expectedStars,ui.cameraX,ui.cameraY,-ui.cameraX,-ui.cameraY,640-ui.cameraX,480-ui.cameraY,
+        driftX,driftY,ui.cameraStepX,ui.cameraStepY,1,&expectedSeed,NULL,0,1);
+    assert(randomSeed==expectedSeed&&!memcmp(stars,expectedStars,sizeof(expectedStars)));
+    puts("PASS actual host menu orb/star/drift RNG order and camera-linked star movement");
     puts("PASS actual host scaled boss turret and creation-time projectile/debris/scenery layers vs original native fixtures");
 }
 @end

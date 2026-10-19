@@ -7,7 +7,7 @@
     NSDictionary *_data;
     NSArray *_objects;
     NSString *_anchor,*_hover,*_pressed;
-    double _cameraX,_cameraY;
+    double _cameraX,_cameraY,_cameraStepX,_cameraStepY;
     unsigned _ticks;
     double _targetX,_targetY;
     BOOL _transitioning;
@@ -18,6 +18,7 @@
 @synthesize anchor=_anchor;
 @synthesize transitioning=_transitioning;
 @synthesize panelOffset=_panelOffset;
+@synthesize cameraX=_cameraX,cameraY=_cameraY,cameraStepX=_cameraStepX,cameraStepY=_cameraStepY;
 - (instancetype)initWithAssets:(NSString *)assets error:(NSError **)error {
     if((self=[super init])){
         NSData *bytes=[NSData dataWithContentsOfFile:[assets stringByAppendingPathComponent:@"ui/ui.json"] options:0 error:error];
@@ -115,6 +116,16 @@
 - (NSString *)mouseUpX:(double)x y:(double)y {
     _pressed=nil;_hover=[self hitX:x y:y];return nil;
 }
+- (void)advanceMenuCamera {
+    _cameraStepX=0;_cameraStepY=0;
+    if(!_transitioning||_panelFrames)return;
+    _cameraStepX=(_targetX-_cameraX)/10;_cameraStepY=(_targetY-_cameraY)/10;
+    _cameraX+=_cameraStepX;_cameraY+=_cameraStepY;
+    if(fabs(_cameraStepX)<1&&fabs(_cameraStepY)<1){_targetX=_cameraX;_targetY=_cameraY;_transitioning=NO;_pressed=nil;}
+}
+- (void)animateMenuObjects {
+    for(NSDictionary *object in _objects)astro_ui_animate([_orbStates[object[@"name"]] mutableBytes],1);
+}
 - (void)animateTicks:(unsigned)ticks {
     _ticks+=ticks;
     for(unsigned i=0;i<ticks;i++){
@@ -126,12 +137,8 @@
             }
             if(!--_panelFrames){_transitioning=NO;if(_panelStep>0)_panelOffset=0;}
             continue;
-        }else if(_transitioning){
-            double dx=(_targetX-_cameraX)/10,dy=(_targetY-_cameraY)/10;
-            _cameraX+=dx;_cameraY+=dy;
-            if(fabs(dx)<1&&fabs(dy)<1){_targetX=_cameraX;_targetY=_cameraY;_transitioning=NO;_pressed=nil;}
-        }
-        for(NSDictionary *object in _objects)astro_ui_animate([_orbStates[object[@"name"]] mutableBytes],1);
+        }else [self advanceMenuCamera];
+        [self animateMenuObjects];
     }
 }
 - (double)textWidth:(NSString *)text size:(double)size {
