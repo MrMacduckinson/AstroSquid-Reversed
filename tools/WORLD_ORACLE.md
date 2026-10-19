@@ -118,3 +118,15 @@ python3 tools/world_trace.py tests/world_trace_native.txt HOST_TRACE.tsv
 The validator checks field widths and bidirectional entity/LM list consistency
 for each phase. The comparator reports first differing record, field and raw byte
 offset; a self-comparison verifies plumbing only, not host fidelity.
+
+## Production host initial-state comparison
+
+`tests/world_trace_host.m` includes the production AstroView and invokes its
+actual entity/projectile constructors in the scenario order above. Compile with
+the same C/Objective-C sources and framework flags as build.sh, substituting this
+file for src/preview.m. Run the result **only on the remote Intel iMac**, passing
+`assets` as its argument. It currently emits the initial snapshot only; it does
+not yet implement calc/cleanup/animate capture. Use the tick0 records from the
+native fixture as the comparison input. Every initial G/E/R record matches,
+including all90 nonpointer entity bytes, render state and list links. No claim
+about subsequent ticks follows from that initial-state equality.
