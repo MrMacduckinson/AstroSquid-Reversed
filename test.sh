@@ -10,6 +10,14 @@ build/script_test
 build/weapons_test tests/weapon_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/combat_test.c src/combat.c -lm -o build/combat_test
 build/combat_test tests/combat_vectors.csv
+"${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/beams_test.c src/beams.c src/weapons.c -lm -o build/beams_test
+build/beams_test tests/beam_vectors.csv
+"${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/pickup_test.c src/combat.c -lm -o build/pickup_test
+build/pickup_test tests/pickup_vectors.csv
+"${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/scenery_test.c src/combat.c -lm -o build/scenery_test
+build/scenery_test tests/scenery_vectors.csv
+"${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/player_test.c src/player.c src/physics.c -lm -o build/player_test
+build/player_test tests/player_vectors.csv
 if [ -f assets/game.json ]; then
   if [ -n "${PYTHON:-}" ]; then
     "$PYTHON" tools/check_assets.py assets

@@ -39,14 +39,22 @@ The Ten for X build is a separate comparison and runtime reference.
   parent relationships remain provisional. Center aiming also matches 1004
   original G5 cases, including coincident centers and axis-aligned targets.
 - Ordinary FIREWEAPON patterns and FutureBASIC RNG match 1400 original G5 cases;
-  portable tests replay 140 captured cases. Laser/bolt branches remain pending.
+  portable tests replay 140 captured cases.
+- Laser and lightning paths match 800 original G5 cases (160 captured replays),
+  including endpoints, damage, nearest targets, random state and chains stopped
+  when the first target dies. Damage callbacks run before chain selection.
+- Pickups match 1000 original G5 cases: health, weapon family/upgrades, special
+  ammunition and lives. These are connected to level pickup objects.
 - Projectile damage matches 2000 original G5 cases; 200 captured cases replay
   health, removal, score, impulse and effect requests on each build platform.
   Visual/audio effect creation was intercepted in the oracle.
 - Preview connects ordinary firing, enemy scripts and rectangle damage checks.
   Map spawn distance and out-of-view removal now follow original constants.
-  Complete collision order, player/scenery contacts, parent relationships,
-  pickup behavior, stage transitions, bosses and effects remain pending.
+- Player/scenery damage and pushback match 1000 original G5 cases (200 replays).
+- Player animation, acceleration, drag and edge handling match 3200 original
+  G5 ticks (800 replays); firing was disabled in this isolated player oracle.
+  Complete collision order and parent relationships,
+  stage transitions, complete boss interactions and effects remain pending.
 
 The preview is a renderer and host-input smoke test. It is not the finished game.
 It uses the recovered movement primitives; complete player behavior and camera
@@ -69,7 +77,7 @@ open 'build/AstroSquid Preview.app'
 
 Preview controls: arrows/WASD move the test player; Z/X move the camera; Space
 toggles automatic camera scrolling; N/P select a stage file; M toggles music;
-C fires the basic weapon; Escape quits. These controls apply only to the preview.
+C fires; 1–4 select pellet/plasma/laser/lightning for testing; Escape quits. These controls apply only to the preview.
 
 `./test.sh` checks the recovered physics against the captured original results
 checks script parsing/scheduling and validates the complete extracted asset graph. `--self-test DIRECTORY` on the

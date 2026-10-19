@@ -6,6 +6,12 @@
 #include "script.h"
 #include "weapons.h"
 #include "combat.h"
+#include "beams.h"
+#include "player.h"
+
+@class AstroView;
+typedef struct { __unsafe_unretained AstroView *view; __unsafe_unretained NSArray *objects; AstroTarget *targets; } BeamContext;
+typedef struct { AstroBeam beam; uint32_t expires; } LiveBeam;
 
 @interface AstroEnemy : NSObject {
 @public
@@ -27,7 +33,10 @@
     AstroCombatState playerCombat;
     uint32_t randomSeed,lastPlayerShot;
     int score;
-    NSUInteger emittedShots,damageHits;
+    NSUInteger emittedShots,damageHits,emittedBeams;
+    int playerWeapon;
+    AstroInventory inventory;
+    NSMutableArray *liveBeams;
     uint32_t simulationTick;
     NSUInteger scriptSteps;
     NSString *assetPath;
@@ -40,6 +49,7 @@
     double previousTime;
     double tickRemainder;
     AstroVelocity playerVelocity;
+    AstroPlayer playerState;
     BOOL automatic;
     NSString *selftestPath;
     NSInteger selftestTicks;
@@ -47,6 +57,7 @@
 }
 - (instancetype)initWithFrame:(NSRect)frame assets:(NSString *)path;
 - (void)beginSelfTest:(NSString *)path;
+- (void)applyBeam:(const AstroBeam *)beam context:(BeamContext *)context;
 - (void)fireWeapon:(int)weapon x:(int)x y:(int)y heading:(int)heading source:(int)kind;
 @end
 
@@ -54,6 +65,11 @@ static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValu
 
 static void enemyFire(void *context,int weapon,int x,int y,int heading) {
     [(__bridge AstroView *)context fireWeapon:weapon x:x y:y heading:heading source:5];
+}
+
+static void beamHit(void *context,const AstroBeam *beam) {
+    BeamContext *world=context;
+    [world->view applyBeam:beam context:world];
 }
 
 @implementation AstroView
@@ -185,7 +201,15 @@ static void enemyFire(void *context,int weapon,int x,int y,int heading) {
         NSInteger sprite=[enemy->definition[@"sprite"] integerValue]+enemy->state.frame-1;
         [self sprite:sprite x:x y:y width:w height:h];
     }
-    if(!playerCombat.remove) [self sprite:1 x:playerX y:playerY width:0 height:0];
+    if(!playerCombat.remove) [self sprite:playerState.frame x:playerX y:playerY width:0 height:0];
+    glDisable(GL_TEXTURE_2D);glLineWidth(2);
+    for(NSData *data in liveBeams) {
+        const LiveBeam *live=data.bytes;const AstroBeam *beam=&live->beam;
+        if(beam->weapon<50) glColor4d(1,.2,.1,1); else glColor4d(.4,.7,1,1);
+        // shortcut: straight beam visualization until original effect renderer is restored.
+        glBegin(GL_LINES);glVertex2d(beam->x-camera,beam->y);
+        glVertex2d(beam->end_x-camera,beam->end_y);glEnd();
+    }
     [[self openGLContext] flushBuffer];
 }
 - (AstroEnemy *)entityForPlacement:(NSDictionary *)placement {
@@ -214,6 +238,9 @@ static void enemyFire(void *context,int weapon,int x,int y,int heading) {
     enemies=[NSMutableArray array]; pendingEnemies=[NSMutableArray array];
     simulationTick=0;randomSeed=1;lastPlayerShot=0;score=0;
     playerCombat=(AstroCombatState){.kind=1,.hit_points=100};
+    playerState=(AstroPlayer){{0,0},12,3,1,0,0};playerVelocity=(AstroVelocity){0,0};
+    inventory=(AstroInventory){10,0,1,1};
+    playerWeapon=10;liveBeams=[NSMutableArray array];
     NSDictionary *level=game[@"levels"][levels[selectedLevel]];
     for(NSDictionary *placement in level[@"entities"]) {
         if([placement[@"attribute"] intValue]==11) continue;
@@ -221,8 +248,28 @@ static void enemyFire(void *context,int weapon,int x,int y,int heading) {
     }
 }
 - (void)fireWeapon:(int)identifier x:(int)x y:(int)y heading:(int)heading source:(int)kind {
-    // shortcut: laser/bolt branches await their own recovered collision traversal.
-    if(identifier>=40&&identifier<=53) return;
+    if(identifier>=40&&identifier<=53) {
+        NSArray *objects=[enemies copy];
+        size_t count=objects.count+1;
+        AstroTarget *targets=calloc(count,sizeof(*targets));
+        if(!targets) {NSLog(@"Cannot allocate beam targets");exit(1);}
+        for(NSUInteger i=0;i<objects.count;i++) {
+            AstroEnemy *enemy=objects[i];
+            targets[i]=(AstroTarget){enemy->active?enemy->kind:2,-1,enemy->state.remove,
+                enemy->state.x,enemy->state.y,number(enemy->placement,@"width"),number(enemy->placement,@"height")};
+        }
+        targets[count-1]=(AstroTarget){1,-1,playerCombat.remove,playerX+camera,playerY,71,20};
+        AstroBeam beams[2];BeamContext context={self,objects,targets};
+        int emitted=astro_beam_shots(identifier,x,y,heading,1,kind,-1,targets,count,
+            camera,0,camera+640,380,&randomSeed,beams,beamHit,&context);
+        free(targets);
+        if(emitted<0) {NSLog(@"Invalid beam request");exit(1);}
+        for(int i=0;i<emitted;i++) {
+            LiveBeam live={beams[i],simulationTick+1};
+            [liveBeams addObject:[NSData dataWithBytes:&live length:sizeof(live)]];
+        }
+        emittedBeams+=emitted;return;
+    }
     NSDictionary *definition=game[@"weapons"][[NSString stringWithFormat:@"%d",identifier]];
     if(!definition) return;
     AstroWeapon weapon={.pattern=[definition[@"header_field_2"] intValue]};
@@ -253,6 +300,23 @@ static void enemyFire(void *context,int weapon,int x,int y,int heading) {
         [pendingEnemies addObject:bullet];emittedShots++;
     }
 }
+- (void)applyBeam:(const AstroBeam *)beam context:(BeamContext *)context {
+    if(beam->target<0) return;
+    AstroCombatState b={.kind=999,.layer=1,.hit_points=beam->damage};
+    if((NSUInteger)beam->target==context->objects.count) {
+        astro_bullet_hits_player(&b,&playerCombat);
+        context->targets[beam->target].remove=playerCombat.remove;
+    } else {
+        AstroEnemy *enemy=context->objects[beam->target];
+        AstroCombatState target=[self combatFor:enemy];
+        if(enemy->kind==5||(enemy->kind>19&&enemy->kind<30)) {
+            astro_bullet_hits_enemy(&b,&target,[enemy->definition[@"kill_score"] intValue],&score);
+            if(target.hit_points!=enemy->hitPoints) damageHits++;
+            [self applyCombat:target to:enemy];
+            context->targets[beam->target].remove=target.remove;
+        }
+    }
+}
 - (AstroCombatState)combatFor:(AstroEnemy *)enemy {
     return (AstroCombatState){.kind=enemy->kind,.layer=enemy->layer,
         .hit_points=enemy->hitPoints,.remove=enemy->state.remove,.velocity=enemy->state.velocity};
@@ -263,6 +327,30 @@ static void enemyFire(void *context,int weapon,int x,int y,int heading) {
 }
 - (void)checkCombat {
     NSRect player=NSMakeRect(playerX+camera,playerY,71,20);
+    for(AstroEnemy *pickup in enemies) {
+        if(!pickup->active||pickup->state.remove||pickup->kind!=40||playerCombat.remove) continue;
+        NSRect bounds=NSMakeRect((int)pickup->state.x,(int)pickup->state.y,
+            number(pickup->placement,@"width"),number(pickup->placement,@"height"));
+        if(NSIntersectsRect(bounds,player)) {
+            astro_pickup(&playerCombat,[pickup->placement[@"attribute"] intValue]%10,
+                pickup->hitPoints,&pickup->state.remove,&inventory);
+            playerWeapon=inventory.weapon+inventory.upgrade;
+        }
+    }
+    playerCombat.velocity=playerVelocity;
+    for(AstroEnemy *scenery in enemies) {
+        if(!scenery->active||scenery->state.remove||scenery->kind<20||scenery->kind>29||playerCombat.remove) continue;
+        double x=scenery->state.x,y=scenery->state.y;
+        double w=number(scenery->placement,@"width"),h=number(scenery->placement,@"height");
+        if(NSIntersectsRect(player,NSMakeRect((int)x,(int)y,w,h))) {
+            AstroCombatState s=[self combatFor:scenery];
+            AstroRect a={(int)(playerX+camera),(int)playerY,(int)(playerX+camera+71),(int)(playerY+20)};
+            AstroRect b={(int)x,(int)y,(int)(x+w),(int)(y+h)};
+            astro_player_hits_scenery(&playerCombat,a,&s,b);
+            [self applyCombat:s to:scenery];
+        }
+    }
+    playerVelocity=playerCombat.velocity;
     for(AstroEnemy *bullet in enemies) {
         if(!bullet->active||bullet->state.remove||(bullet->kind!=2&&bullet->kind!=5)) continue;
         NSRect bounds=NSMakeRect((int)bullet->state.x,(int)bullet->state.y,
@@ -287,6 +375,11 @@ static void enemyFire(void *context,int weapon,int x,int y,int heading) {
 }
 - (void)stepEnemies {
     simulationTick++;
+    NSIndexSet *expired=[liveBeams indexesOfObjectsPassingTest:
+        ^BOOL(NSData *data,NSUInteger index,BOOL *stop) {
+            const LiveBeam *live=data.bytes;return live->expires<simulationTick;
+        }];
+    [liveBeams removeObjectsAtIndexes:expired];
     for(AstroEnemy *enemy in enemies) {
         AstroScriptState *state=&enemy->state;
         if(state->remove) continue;
@@ -336,19 +429,22 @@ static void enemyFire(void *context,int weapon,int x,int y,int heading) {
     while(tickRemainder>=1.0/60.0) {
         tickRemainder-=1.0/60.0;
         [self stepEnemies];
-        if(keys[8]&&!playerCombat.remove&&simulationTick-lastPlayerShot>10) {
+        if(keys[8]&&!playerCombat.remove&&simulationTick-lastPlayerShot>
+            60.0/[game[@"weapons"][[NSString stringWithFormat:@"%d",playerWeapon]][@"rate"] doubleValue]) {
             lastPlayerShot=simulationTick;
-            [self fireWeapon:10 x:(int)(playerX+camera)+74 y:(int)playerY+12 heading:0 source:1];
+            [self fireWeapon:playerWeapon x:(int)(playerX+camera)+74 y:(int)playerY+12 heading:0 source:1];
         }
         playerX+=playerVelocity.x; playerY+=playerVelocity.y;
-        // Original player acceleration and drag: DOPLAYERSPRITE literals.
-        if(keys[123]||keys[0]) astro_vector_make(&playerVelocity,180,.5);
-        if(keys[124]||keys[2]) astro_vector_make(&playerVelocity,0,.5);
-        if(keys[126]||keys[13]) astro_vector_make(&playerVelocity,90,.5);
-        if(keys[125]||keys[1]) astro_vector_make(&playerVelocity,270,.5);
-        astro_vector_slow(&playerVelocity,.1);
-        // Preview bounds are temporary; original collision handling is pending.
-        playerX=fmax(0,fmin(playerX,560)); playerY=fmax(0,fmin(playerY,360));
+        unsigned controls=0;
+        if(keys[123]||keys[0]) controls|=ASTRO_KEY_LEFT;
+        if(keys[124]||keys[2]) controls|=ASTRO_KEY_RIGHT;
+        if(keys[126]||keys[13]) controls|=ASTRO_KEY_UP;
+        if(keys[125]||keys[1]) controls|=ASTRO_KEY_DOWN;
+        playerState.velocity=playerVelocity;
+        AstroRect bounds={(int)(playerX+camera),(int)playerY,(int)(playerX+camera+71),(int)(playerY+20)};
+        astro_player_step(&playerState,simulationTick,controls,1,bounds,71,20,
+            (AstroRect){(int)camera,0,(int)(camera+640),380},0);
+        playerVelocity=playerState.velocity;
     }
     if(keys[7]||automatic) camera+=120*dt;
     if(keys[6]) camera=fmax(0,camera-120*dt);
@@ -356,6 +452,8 @@ static void enemyFire(void *context,int weapon,int x,int y,int heading) {
     if(selftestPath) {
         selftestTicks++;
         if(selftestTicks==20) [self keyUp:[self testEvent:NSKeyUp code:124]];
+        if(selftestTicks==40) [self keyDown:[self testEvent:NSKeyDown code:20]];
+        if(selftestTicks==60) [self keyDown:[self testEvent:NSKeyDown code:21]];
         if(selftestTicks==90) [self finishSelfTest];
     }
 }
@@ -405,8 +503,8 @@ static void enemyFire(void *context,int weapon,int x,int y,int heading) {
     [png writeToFile:[selftestPath stringByAppendingPathComponent:@"frame.png"] atomically:YES];
     BOOL moved=playerX>selftestStartX+10;
     BOOL audio=music.isPlaying && music.currentTime>0;
-    BOOL passed=damageHits>0 && emittedShots>0 && scriptSteps>0 && moved && selectedLevel==1 && colored>100 && textures.count>0 && audio;
-    NSDictionary *report=@{@"passed":@(passed),@"script_steps":@(scriptSteps),@"emitted_shots":@(emittedShots),@"damage_hits":@(damageHits),
+    BOOL passed=emittedBeams>0 && damageHits>0 && emittedShots>0 && scriptSteps>0 && moved && selectedLevel==1 && colored>100 && textures.count>0 && audio;
+    NSDictionary *report=@{@"passed":@(passed),@"script_steps":@(scriptSteps),@"emitted_shots":@(emittedShots),@"damage_hits":@(damageHits),@"emitted_beams":@(emittedBeams),
         @"player_hit_points":@(playerCombat.hit_points),@"score":@(score),@"player_moved":@(moved),
         @"stage_switched":@(selectedLevel==1),@"music_time":@(music.currentTime),
         @"music_playing":@(music.isPlaying),@"colored_pixels":@(colored),
@@ -426,6 +524,13 @@ static void enemyFire(void *context,int weapon,int x,int y,int heading) {
         camera=0;
         [self resetEnemies];
         self.window.title=[NSString stringWithFormat:@"AstroSquid reconstruction preview — %@",levels[selectedLevel]];
+    }
+    if(key==18) playerWeapon=10;
+    if(key==19) playerWeapon=30;
+    if(key==20) playerWeapon=40;
+    if(key==21) playerWeapon=50;
+    if(key==18||key==19||key==20||key==21) {
+        inventory.weapon=playerWeapon;inventory.upgrade=0;
     }
     if(key==49) automatic=!automatic;
     if(key==46) { if(music.isPlaying) [music pause]; else [music play]; }
