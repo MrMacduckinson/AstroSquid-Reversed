@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 int main(int argc,char **argv) {
-    if(argc!=2) { fprintf(stderr,"usage: physics_test vectors.csv\n");return 2; }
+    if(argc!=3) { fprintf(stderr,"usage: physics_test vectors.csv headings.csv\n");return 2; }
     FILE *f=fopen(argv[1],"r");
     if(!f) { perror(argv[1]);return 2; }
     char header[256];
@@ -26,5 +26,15 @@ int main(int argc,char **argv) {
     if(!feof(f)||count!=1000) { fprintf(stderr,"Incomplete or malformed vector file\n");return 1; }
     fclose(f);
     puts("PASS: 2000 recovered-physics results match original G5 captures (tolerance 1e-10)");
+    f=fopen(argv[2],"r");if(!f) {perror(argv[2]);return 2;}
+    int ax,ay,aw,ah,bx,by,bw,bh,expected;count=0;
+    while(fscanf(f,"%d,%d,%d,%d,%d,%d,%d,%d,%d",&ax,&ay,&aw,&ah,&bx,&by,&bw,&bh,&expected)==9) {
+        if(astro_heading(ax,ay,aw,ah,bx,by,bw,bh)!=expected) {
+            fprintf(stderr,"Original heading mismatch at row %u\n",count+1);return 1;
+        }
+        count++;
+    }
+    if(!feof(f)||count!=1004) return 1;
+    fclose(f);puts("PASS: 1004 original G5 heading captures, including coincident centers and axes");
     return 0;
 }

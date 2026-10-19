@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 app="build/AstroSquid Preview.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources/assets/atlases"
 clang -fobjc-arc -O2 -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations \
-  -mmacosx-version-min=10.13 src/preview.m src/physics.c src/script.c -framework Cocoa -framework OpenGL \
+  -mmacosx-version-min=10.13 src/preview.m src/physics.c src/script.c src/weapons.c src/combat.c -framework Cocoa -framework OpenGL \
   -framework AVFoundation -o "$app/Contents/MacOS/AstroSquidPreview"
 cp assets/game.json "$app/Contents/Resources/assets/"
 cp assets/atlases/*.png "$app/Contents/Resources/assets/atlases/"

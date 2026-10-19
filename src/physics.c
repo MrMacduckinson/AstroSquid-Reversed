@@ -40,3 +40,14 @@ void astro_vector_slow(AstroVelocity *velocity, double friction) {
         velocity->y = 0.0;
     }
 }
+
+int astro_heading(double x,double y,double width,double height,
+                  double target_x,double target_y,double target_width,double target_height) {
+    double dx=(int)((int)target_x+target_width/2)-(int)((int)x+width/2);
+    double dy=(int)((int)target_y+target_height/2)-(int)((int)y+height/2);
+    /* Original ATN2 uses this rounded literal, not 180/pi. */
+    double angle=atan(-dy/dx)*57.29578;
+    if(dx<0) angle+=180;
+    if(angle<0) angle+=360;
+    return isfinite(angle)?(int)angle:INT32_MIN;
+}

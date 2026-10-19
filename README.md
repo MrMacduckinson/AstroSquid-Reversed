@@ -36,8 +36,17 @@ The Ten for X build is a separate comparison and runtime reference.
   animation state, timers and hit callbacks. The oracle controls time and
   intercepts combat callbacks; this does not validate projectile/collision code.
 - Preview now executes these scripts on visible level objects. Activation,
-  parent relationships and aiming integration are provisional; combat callbacks
-  are not connected yet. Full gameplay, collisions, bosses and effects remain pending.
+  parent relationships remain provisional. Center aiming also matches 1004
+  original G5 cases, including coincident centers and axis-aligned targets.
+- Ordinary FIREWEAPON patterns and FutureBASIC RNG match 1400 original G5 cases;
+  portable tests replay 140 captured cases. Laser/bolt branches remain pending.
+- Projectile damage matches 2000 original G5 cases; 200 captured cases replay
+  health, removal, score, impulse and effect requests on each build platform.
+  Visual/audio effect creation was intercepted in the oracle.
+- Preview connects ordinary firing, enemy scripts and rectangle damage checks.
+  Map spawn distance and out-of-view removal now follow original constants.
+  Complete collision order, player/scenery contacts, parent relationships,
+  pickup behavior, stage transitions, bosses and effects remain pending.
 
 The preview is a renderer and host-input smoke test. It is not the finished game.
 It uses the recovered movement primitives; complete player behavior and camera
@@ -60,7 +69,7 @@ open 'build/AstroSquid Preview.app'
 
 Preview controls: arrows/WASD move the test player; Z/X move the camera; Space
 toggles automatic camera scrolling; N/P select a stage file; M toggles music;
-Escape quits. These controls apply only to the preview.
+C fires the basic weapon; Escape quits. These controls apply only to the preview.
 
 `./test.sh` checks the recovered physics against the captured original results
 checks script parsing/scheduling and validates the complete extracted asset graph. `--self-test DIRECTORY` on the

@@ -4,12 +4,16 @@
 #import <AVFoundation/AVFoundation.h>
 #include "physics.h"
 #include "script.h"
+#include "weapons.h"
+#include "combat.h"
 
 @interface AstroEnemy : NSObject {
 @public
     AstroScriptState state;
     NSDictionary *placement, *definition;
     NSData *program;
+    int kind,layer,hitPoints;
+    BOOL active;
 }
 @end
 @implementation AstroEnemy
@@ -19,7 +23,11 @@
     NSDictionary *game;
     NSMutableDictionary *textures;
     NSArray *levels;
-    NSMutableArray *enemies;
+    NSMutableArray *enemies,*pendingEnemies;
+    AstroCombatState playerCombat;
+    uint32_t randomSeed,lastPlayerShot;
+    int score;
+    NSUInteger emittedShots,damageHits;
     uint32_t simulationTick;
     NSUInteger scriptSteps;
     NSString *assetPath;
@@ -39,9 +47,14 @@
 }
 - (instancetype)initWithFrame:(NSRect)frame assets:(NSString *)path;
 - (void)beginSelfTest:(NSString *)path;
+- (void)fireWeapon:(int)weapon x:(int)x y:(int)y heading:(int)heading source:(int)kind;
 @end
 
 static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValue]; }
+
+static void enemyFire(void *context,int weapon,int x,int y,int heading) {
+    [(__bridge AstroView *)context fireWeapon:weapon x:x y:y heading:heading source:5];
+}
 
 @implementation AstroView
 - (instancetype)initWithFrame:(NSRect)frame assets:(NSString *)path {
@@ -144,16 +157,16 @@ static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValu
 - (void)drawRect:(NSRect)dirty {
     [[self openGLContext] makeCurrentContext];
     NSRect bounds = [self convertRectToBacking:self.bounds];
-    glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
+    glViewport(0,(GLint)(bounds.size.height*30/480),(GLsizei)bounds.size.width,(GLsizei)(bounds.size.height*380/480));
     glClear(GL_COLOR_BUFFER_BIT);
-    glMatrixMode(GL_PROJECTION); glLoadIdentity(); glOrtho(0,640,480,0,-1,1);
+    glMatrixMode(GL_PROJECTION); glLoadIdentity(); glOrtho(0,640,380,0,-1,1);
     glMatrixMode(GL_MODELVIEW); glLoadIdentity();
     glDisable(GL_TEXTURE_2D); glColor4d(.4,.5,.6,1); glPointSize(1);
     glBegin(GL_POINTS);
     for (unsigned i=0;i<600;i++) {
         unsigned seed=i*2654435761u;
         double x=fmod((seed%640)-camera*.15+640*100,640);
-        glVertex2d(x,70+(seed/640)%380);
+        glVertex2d(x,(seed/640)%380);
     }
     glEnd();
     NSDictionary *level = game[@"levels"][levels[selectedLevel]];
@@ -164,56 +177,139 @@ static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValu
                width:number(background,@"width") height:number(background,@"height")];
     }
     for (AstroEnemy *enemy in enemies) {
-        if(enemy->state.remove) continue;
+        if(enemy->state.remove||!enemy->active) continue;
         NSDictionary *entity=enemy->placement;
         double x=enemy->state.x-camera,y=enemy->state.y;
         double w=number(entity,@"width"),h=number(entity,@"height");
-        if(x+w<0||x>640||y+h<70||y>450) continue;
+        if(x+w<0||x>640||y+h<0||y>380) continue;
         NSInteger sprite=[enemy->definition[@"sprite"] integerValue]+enemy->state.frame-1;
         [self sprite:sprite x:x y:y width:w height:h];
     }
-    [self sprite:1 x:playerX y:playerY width:0 height:0];
+    if(!playerCombat.remove) [self sprite:1 x:playerX y:playerY width:0 height:0];
     [[self openGLContext] flushBuffer];
 }
+- (AstroEnemy *)entityForPlacement:(NSDictionary *)placement {
+    NSString *attribute=[placement[@"attribute"] stringValue];
+    AstroEnemy *enemy=[AstroEnemy new];
+    enemy->placement=placement; enemy->definition=game[@"attributes"][attribute];
+    enemy->state=(AstroScriptState){.frame=1,.tilt=1,.state=1,
+        .x=number(placement,@"x"),.y=number(placement,@"y")};
+    int group=attribute.intValue/10;
+    enemy->kind=group>5&&group<20?5:group;
+    enemy->layer=enemy->kind==5?2:0;
+    enemy->hitPoints=[enemy->definition[@"hit_points"] intValue];
+    NSString *script=[enemy->definition[@"script"] stringValue];
+    NSMutableData *program=[NSMutableData data];
+    for(NSString *line in game[@"scripts"][script]) {
+        AstroInstruction instruction;
+        if(!astro_parse_instruction(line.UTF8String,&instruction)) {
+            NSLog(@"Invalid script %@: %@",script,line); exit(1);
+        }
+        [program appendBytes:&instruction length:sizeof(instruction)];
+    }
+    enemy->program=program;
+    return enemy;
+}
 - (void)resetEnemies {
-    enemies=[NSMutableArray array]; simulationTick=0;
+    enemies=[NSMutableArray array]; pendingEnemies=[NSMutableArray array];
+    simulationTick=0;randomSeed=1;lastPlayerShot=0;score=0;
+    playerCombat=(AstroCombatState){.kind=1,.hit_points=100};
     NSDictionary *level=game[@"levels"][levels[selectedLevel]];
     for(NSDictionary *placement in level[@"entities"]) {
-        NSString *attribute=[placement[@"attribute"] stringValue];
-        if([attribute isEqualToString:@"11"]) continue;
-        AstroEnemy *enemy=[AstroEnemy new];
-        enemy->placement=placement; enemy->definition=game[@"attributes"][attribute];
-        enemy->state=(AstroScriptState){.frame=1,.tilt=1,.state=1,
-            .x=number(placement,@"x"),.y=number(placement,@"y")};
-        NSString *script=[enemy->definition[@"script"] stringValue];
-        NSMutableData *program=[NSMutableData data];
-        for(NSString *line in game[@"scripts"][script]) {
-            AstroInstruction instruction;
-            if(!astro_parse_instruction(line.UTF8String,&instruction)) {
-                NSLog(@"Invalid script %@: %@",script,line); exit(1);
+        if([placement[@"attribute"] intValue]==11) continue;
+        [enemies addObject:[self entityForPlacement:placement]];
+    }
+}
+- (void)fireWeapon:(int)identifier x:(int)x y:(int)y heading:(int)heading source:(int)kind {
+    // shortcut: laser/bolt branches await their own recovered collision traversal.
+    if(identifier>=40&&identifier<=53) return;
+    NSDictionary *definition=game[@"weapons"][[NSString stringWithFormat:@"%d",identifier]];
+    if(!definition) return;
+    AstroWeapon weapon={.pattern=[definition[@"header_field_2"] intValue]};
+    NSArray *entries=definition[@"bullets"];
+    for(NSUInteger i=0;i<MIN(entries.count,6);i++) {
+        NSArray *entry=entries[i];
+        weapon.shots[i]=(AstroShot){[entry[0] intValue],[entry[1] intValue],
+                                  [entry[2] intValue],[entry[3] intValue]};
+    }
+    AstroShot shots[6];
+    int count=astro_weapon_shots(&weapon,x,y,heading,&randomSeed,shots);
+    if(count<0) {NSLog(@"Invalid weapon pattern %d",identifier);exit(1);}
+    for(int i=0;i<count;i++) {
+        int attribute=20+shots[i].type;
+        NSDictionary *attr=game[@"attributes"][[NSString stringWithFormat:@"%d",attribute]];
+        NSDictionary *sprite=game[@"sprites"][[attr[@"sprite"] stringValue]];
+        if(!attr||!sprite) {NSLog(@"Missing bullet attribute %d",attribute);exit(1);}
+        double width=number(sprite,@"width"),height=number(sprite,@"height");
+        NSDictionary *placement=@{@"attribute":@(attribute),
+            @"x":@((int)(shots[i].x-width/2)),@"y":@((int)(shots[i].y-height/2)),
+            @"width":@(width),@"height":@(height)};
+        AstroEnemy *bullet=[self entityForPlacement:placement];
+        bullet->kind=attribute>30?5:2;bullet->active=YES;
+        bullet->layer=kind==5?2:(kind==1||kind==-1)?3:0;
+        bullet->state.update_tick=bullet->state.animation_tick=
+            bullet->state.action_tick=simulationTick;
+        astro_vector_make(&bullet->state.velocity,shots[i].heading,number(attr,@"speed"));
+        [pendingEnemies addObject:bullet];emittedShots++;
+    }
+}
+- (AstroCombatState)combatFor:(AstroEnemy *)enemy {
+    return (AstroCombatState){.kind=enemy->kind,.layer=enemy->layer,
+        .hit_points=enemy->hitPoints,.remove=enemy->state.remove,.velocity=enemy->state.velocity};
+}
+- (void)applyCombat:(AstroCombatState)combat to:(AstroEnemy *)enemy {
+    enemy->hitPoints=combat.hit_points;enemy->state.remove=combat.remove;
+    enemy->state.velocity=combat.velocity;
+}
+- (void)checkCombat {
+    NSRect player=NSMakeRect(playerX+camera,playerY,71,20);
+    for(AstroEnemy *bullet in enemies) {
+        if(!bullet->active||bullet->state.remove||(bullet->kind!=2&&bullet->kind!=5)) continue;
+        NSRect bounds=NSMakeRect((int)bullet->state.x,(int)bullet->state.y,
+            number(bullet->placement,@"width"),number(bullet->placement,@"height"));
+        AstroCombatState b=[self combatFor:bullet];
+        if(!playerCombat.remove&&NSIntersectsRect(bounds,player))
+            astro_bullet_hits_player(&b,&playerCombat);
+        if(b.kind==2) for(AstroEnemy *enemy in enemies) {
+            if(enemy==bullet||!enemy->active||enemy->state.remove||
+               !(enemy->kind==5||(enemy->kind>19&&enemy->kind<30))) continue;
+            NSRect target=NSMakeRect((int)enemy->state.x,(int)enemy->state.y,
+                number(enemy->placement,@"width"),number(enemy->placement,@"height"));
+            if(NSIntersectsRect(bounds,target)) {
+                AstroCombatState e=[self combatFor:enemy];
+                astro_bullet_hits_enemy(&b,&e,[enemy->definition[@"kill_score"] intValue],&score);
+                if(e.hit_points!=enemy->hitPoints) damageHits++;
+                [self applyCombat:e to:enemy];
             }
-            [program appendBytes:&instruction length:sizeof(instruction)];
         }
-        enemy->program=program;
-        [enemies addObject:enemy];
+        [self applyCombat:b to:bullet];
     }
 }
 - (void)stepEnemies {
     simulationTick++;
     for(AstroEnemy *enemy in enemies) {
         AstroScriptState *state=&enemy->state;
-        // shortcut: preview activates visible objects; recover original spawn/parent rules next.
-        if(state->remove||state->x-camera>700||state->x-camera< -300) continue;
-        if(enemy->program.length) {
+        if(state->remove) continue;
+        // MAKENEWSPRITES consumes map entries 100 pixels beyond the right edge.
+        if(!enemy->active) {
+            if(state->x>=camera+740) continue;
+            enemy->active=YES;
+            state->x=(int)state->x;state->y=(int)state->y;
+            state->update_tick=state->animation_tick=state->action_tick=simulationTick;
+        }
+        double width=number(enemy->placement,@"width"),height=number(enemy->placement,@"height");
+        if(state->x>camera+(enemy->kind==2?650:740)||state->x+width<camera-10||
+           (enemy->kind==2&&(state->y>390||state->y+height< -10))) {
+            state->remove=1;continue;
+        }
+        if(enemy->kind==5&&enemy->program.length&&state->x<camera+640&&state->x+width>camera) {
             double w=number(enemy->placement,@"width"),h=number(enemy->placement,@"height");
-            double dx=(int)(playerX+camera+40)-(int)(state->x+w/2);
-            double dy=(int)(playerY+15)-(int)(state->y+h/2);
-            double heading=atan2(-dy,dx)*180/M_PI;
-            if(heading<0) heading+=360;
+            int heading=astro_heading(state->x,state->y,w,h,playerX+camera,playerY,71,20);
             AstroScriptContext context={.player_present=1,.target_heading=(int)heading,
                 .player_x=playerX+camera,.player_y=playerY,
                 .animated=[enemy->definition[@"animated"] intValue],
                 .weapon=[enemy->definition[@"weapon"] intValue],
+                .userdata=(__bridge void *)self,.fire=enemyFire,
                 .gun_x=(int)state->x+[enemy->definition[@"turret_x"] intValue],
                 .gun_y=(int)state->y+[enemy->definition[@"turret_y"] intValue]};
             // shortcut: weapon/damage callbacks await reconstructed combat; no invented bullets.
@@ -224,7 +320,14 @@ static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValu
             scriptSteps++;
         }
         state->x+=state->velocity.x; state->y+=state->velocity.y;
+        if(enemy->kind==2&&(state->x-camera< -300||state->x-camera>1000||
+            state->y< -200||state->y>700)) state->remove=-1;
     }
+    [enemies addObjectsFromArray:pendingEnemies];[pendingEnemies removeAllObjects];
+    [self checkCombat];
+    NSIndexSet *removed=[enemies indexesOfObjectsPassingTest:
+        ^BOOL(AstroEnemy *enemy,NSUInteger index,BOOL *stop){return enemy->state.remove!=0;}];
+    [enemies removeObjectsAtIndexes:removed];
 }
 - (void)tick:(NSTimer *)sender {
     double now=[NSDate timeIntervalSinceReferenceDate];
@@ -233,6 +336,10 @@ static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValu
     while(tickRemainder>=1.0/60.0) {
         tickRemainder-=1.0/60.0;
         [self stepEnemies];
+        if(keys[8]&&!playerCombat.remove&&simulationTick-lastPlayerShot>10) {
+            lastPlayerShot=simulationTick;
+            [self fireWeapon:10 x:(int)(playerX+camera)+74 y:(int)playerY+12 heading:0 source:1];
+        }
         playerX+=playerVelocity.x; playerY+=playerVelocity.y;
         // Original player acceleration and drag: DOPLAYERSPRITE literals.
         if(keys[123]||keys[0]) astro_vector_make(&playerVelocity,180,.5);
@@ -241,12 +348,16 @@ static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValu
         if(keys[125]||keys[1]) astro_vector_make(&playerVelocity,270,.5);
         astro_vector_slow(&playerVelocity,.1);
         // Preview bounds are temporary; original collision handling is pending.
-        playerX=fmax(0,fmin(playerX,560)); playerY=fmax(70,fmin(playerY,425));
+        playerX=fmax(0,fmin(playerX,560)); playerY=fmax(0,fmin(playerY,360));
     }
     if(keys[7]||automatic) camera+=120*dt;
     if(keys[6]) camera=fmax(0,camera-120*dt);
     [self setNeedsDisplay:YES];
-    if(selftestPath && ++selftestTicks==90) [self finishSelfTest];
+    if(selftestPath) {
+        selftestTicks++;
+        if(selftestTicks==20) [self keyUp:[self testEvent:NSKeyUp code:124]];
+        if(selftestTicks==90) [self finishSelfTest];
+    }
 }
 - (NSEvent *)testEvent:(NSEventType)type code:(unsigned short)code {
     return [NSEvent keyEventWithType:type location:NSZeroPoint modifierFlags:0
@@ -258,9 +369,11 @@ static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValu
     [[NSFileManager defaultManager] createDirectoryAtPath:path
         withIntermediateDirectories:YES attributes:nil error:nil];
     [self keyDown:[self testEvent:NSKeyDown code:124]];
+    [self keyDown:[self testEvent:NSKeyDown code:8]];
     [self keyDown:[self testEvent:NSKeyDown code:45]];
     for(AstroEnemy *enemy in enemies) if(enemy->program.length) {
-        camera=fmax(0,enemy->state.x-400); break;
+        camera=fmax(0,enemy->state.x-400);
+        playerY=enemy->state.y+number(enemy->placement,@"height")/2-12; break;
     }
     music.volume=0;
     [music play];
@@ -292,8 +405,9 @@ static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValu
     [png writeToFile:[selftestPath stringByAppendingPathComponent:@"frame.png"] atomically:YES];
     BOOL moved=playerX>selftestStartX+10;
     BOOL audio=music.isPlaying && music.currentTime>0;
-    BOOL passed=scriptSteps>0 && moved && selectedLevel==1 && colored>100 && textures.count>0 && audio;
-    NSDictionary *report=@{@"passed":@(passed),@"script_steps":@(scriptSteps),@"player_moved":@(moved),
+    BOOL passed=damageHits>0 && emittedShots>0 && scriptSteps>0 && moved && selectedLevel==1 && colored>100 && textures.count>0 && audio;
+    NSDictionary *report=@{@"passed":@(passed),@"script_steps":@(scriptSteps),@"emitted_shots":@(emittedShots),@"damage_hits":@(damageHits),
+        @"player_hit_points":@(playerCombat.hit_points),@"score":@(score),@"player_moved":@(moved),
         @"stage_switched":@(selectedLevel==1),@"music_time":@(music.currentTime),
         @"music_playing":@(music.isPlaying),@"colored_pixels":@(colored),
         @"textures_loaded":@(textures.count),@"frame_width":@(width),@"frame_height":@(height)};
