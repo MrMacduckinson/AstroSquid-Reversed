@@ -80,6 +80,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     int campaignAction;
     uint32_t respawnTick,invulnerableUntil; // Active markers, not deadlines: elapsed comparisons must survive wrap.
     uint32_t respawnWaitStartTick;
+    BOOL respawnPending;
     uint32_t respawnStartTick,respawnBlinkTick;
     double respawnBlinkWidth;
     BOOL paused,gameOver,gameOverPending;
@@ -555,7 +556,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     inventory=(AstroInventory){10,0,1,1};
     NSString *stage=levels[selectedLevel];
     campaign=(AstroCampaign){[[stage substringFromIndex:5] intValue],[stage hasSuffix:@"A"]?1:2,0,0};
-    campaignAction=ASTRO_CAMPAIGN_NONE;respawnTick=invulnerableUntil=0;gameOver=NO;gameOverPending=NO;engineGlow=departureTrail=NO;playerVisualDeleted=NO;
+    campaignAction=ASTRO_CAMPAIGN_NONE;respawnTick=invulnerableUntil=0;respawnPending=NO;gameOver=NO;gameOverPending=NO;engineGlow=departureTrail=NO;playerVisualDeleted=NO;
     playerWeapon=10;liveBeams=[NSMutableArray array];presentedBeams=@[];
     NSDictionary *level=game[@"levels"][levels[selectedLevel]];
     if(!starsInitialized) {astro_stars_init(stars,1,&randomSeed);starsInitialized=YES;}
@@ -1034,7 +1035,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
                 body->placement=@{@"attribute":@11,@"tag":@0};body->definition=game[@"attributes"][@"11"];
                 body->visual=playerVisual;body->bounds=playerBounds;body->state.velocity=playerVelocity;[self addDeathEffects:body];
                 if(inventory.lives==0){if(!gameOver&&!selftestPath)gameOverPending=YES;gameOver=YES;}
-                else {inventory.lives--;[self beginRespawnWait];}
+                else respawnPending=YES;
             } else {
                 [self addDeathEffects:enemy];
                 int action=changingStage?ASTRO_CAMPAIGN_NONE:astro_campaign_event(&campaign,[enemy->placement[@"tag"] intValue],0);
@@ -1160,17 +1161,27 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         } else [self beginStageTransition];
     }
     if(changingStage)[self stepStageTransition];
+    if(changingStage&&!transition.simulate_world){simulationTick++;tickedScroll=transition.scroll_x;return;}
+    [self stepWorldWithoutFlow];
+}
+- (void)stepWorldWithoutFlow {
     simulationTick++;
-    if(changingStage&&!transition.simulate_world){tickedScroll=transition.scroll_x;return;}
-    if(!changingStage||transition.simulate_world)[self cleanupWorld];
+    [self cleanupWorld];
     BOOL blinking=invulnerableUntil!=0;
     if(blinking)playerVisual.width=spriteInfo[playerVisual.sprite].width;
     [self calculateActors];
     if(blinking)playerVisual.width=respawnBlinkWidth;
 }
 - (void)beginRespawnWait {
-    // shortcut: entered from death cleanup; move to the original GAMELOOP death branch when its full scheduling is restored.
     respawnWaitStartTick=[self playerClockTick];respawnTick=1;
+}
+- (void)pollRespawnWaitFrame {
+    uint32_t comparison=[self playerClockTick];
+    if((int32_t)(comparison-observedWallTick)>0){
+        observedWallTick=[self playerClockTick];simulationTick=observedWallTick;
+        [self advanceWorldForWait:YES];
+    }
+    [self pollRespawnWait];
 }
 - (void)pollRespawnWait {
     if((int32_t)([self playerClockTick]-respawnWaitStartTick)>60){
@@ -1215,7 +1226,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         }];
     [liveBeams removeObjectsAtIndexes:expired];
     [self syncActorLinks];actorTraversalDepth++;
-    id actor=(!changingStage||transition.simulate_world)?world.firstObject:nil;
+    id actor=world.firstObject;
     while(actor){
         // CALC caches only this next pointer; nested cleanup can change later links.
         id next=[self nextActor:actor];[self stepActor:actor];actor=next;
@@ -1254,15 +1265,25 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if((int32_t)(comparison-lastSpawnTick)>20){[self makeNewSprites];lastSpawnTick=[self playerClockTick];}
 }
 - (void)pollGame {
+    if(respawnTick){[self pollRespawnWaitFrame];return;}
     uint32_t comparison=[self playerClockTick];
     if((int32_t)(comparison-observedWallTick)>0){
-        observedWallTick=[self playerClockTick];simulationTick=observedWallTick-1;
-        double old=camera;
-        if(changingStage&&transition.simulate_world)camera=astro_camera_advance(camera,transition.scroll_x);
-        else if(!changingStage&&automatic&&!campaign.arena&&campaignAction==ASTRO_CAMPAIGN_NONE)camera=astro_camera_advance(camera,1);
-        tickedScroll=camera-old;[self stepEnemies];[self renderTick];
+        observedWallTick=[self playerClockTick];simulationTick=observedWallTick;
+        if(respawnPending){
+            respawnPending=NO;inventory.lives--;[self beginRespawnWait];[self pollRespawnWaitFrame];return;
+        }
+        [self advanceWorldForWait:NO];
     }
     [self pollMapSpawns];specialReturnPending=NO;
+}
+- (void)advanceWorldForWait:(BOOL)waiting {
+    double old=camera;
+    if(changingStage&&transition.simulate_world)camera=astro_camera_advance(camera,transition.scroll_x);
+    else if(!changingStage&&automatic&&!campaign.arena&&campaignAction==ASTRO_CAMPAIGN_NONE)camera=astro_camera_advance(camera,1);
+    tickedScroll=camera-old;
+    simulationTick=observedWallTick-1;
+    if(waiting)[self stepWorldWithoutFlow];else [self stepEnemies];
+    [self renderTick];
 }
 - (void)advanceFlowWithKey:(BOOL)anyKey {
     AstroFlowPhase previous=flow.phase;astro_flow_step(&flow,anyKey);
@@ -1337,7 +1358,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             NSLog(@"Campaign reached %@ at tick %lu",stage,(unsigned long)campaignTestTicks);
         }
         if(menuVisible&&gameOver){[self writeCampaignReport:YES passed:campaign.complete&&campaignVisits.count==17 reason:campaign.complete?@"ending reached":@"pilot died"];return;}
+        BOOL waitDriven=NO;
         if(flow.phase!=ASTRO_FLOW_PLAY){simulationTick++;[self advanceFlowWithKey:YES];}
+        else if(respawnPending||respawnTick){simulationTick++;[self pollGame];waitDriven=YES;}
         else {
             memset(keys,0,sizeof(keys));
             if(!changingStage){
@@ -1360,7 +1383,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             else if(!changingStage&&automatic&&!campaign.arena&&campaignAction==ASTRO_CAMPAIGN_NONE)camera=astro_camera_advance(camera,1);
             tickedScroll=camera-previous;[self stepEnemies];
         }
-        [self renderTick];[self pollMapSpawns];specialReturnPending=NO;
+        if(!waitDriven){[self renderTick];[self pollMapSpawns];specialReturnPending=NO;}
         int bossHP=0;
         for(AstroEnemy *enemy in enemies)if([enemy->placement[@"tag"] intValue]<0&&enemy->kind!=39)bossHP+=MAX(0,enemy->hitPoints);
         if(camera>campaignLastCamera+1||bossHP<campaignLastBossHP){campaignLastChange=campaignTestTicks;campaignLastCamera=camera;campaignLastBossHP=bossHP;}
@@ -1429,6 +1452,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(paused||gameOver||menuVisible||flow.phase!=ASTRO_FLOW_PLAY) tickRemainder=0;
     while(tickRemainder>=1.0/60.0&&flow.phase==ASTRO_FLOW_PLAY&&!menuVisible&&!paused) {
         tickRemainder-=1.0/60.0;
+        if(respawnPending||respawnTick){simulationTick++;[self pollGame];continue;}
         double previousCamera=camera;
         if(changingStage&&transition.simulate_world)camera=astro_camera_advance(camera,transition.scroll_x);
         else if(selftestPath&&keys[7])camera=astro_camera_advance(camera,2);
@@ -1607,8 +1631,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [world removeObjectIdenticalTo:obstacle];[enemies removeObjectIdenticalTo:obstacle];
     playerCombat.remove=-1;
     uint32_t deathTick=simulationTick;[self cleanupWorld];
-    assert(![world containsObject:[NSNull null]]&&inventory.lives==0&&respawnTick&&respawnWaitStartTick==deathTick);
-    for(int i=0;i<61;i++){[self stepEnemies];[self pollMapSpawns];}
+    assert(![world containsObject:[NSNull null]]&&inventory.lives==1&&respawnPending&&!respawnTick);
+    observedWallTick=simulationTick-1;[self pollGame];
+    assert(inventory.lives==0&&!respawnPending&&respawnTick&&respawnWaitStartTick==deathTick);
+    for(int i=0;i<61;i++){simulationTick++;[self pollGame];}
     assert([world containsObject:[NSNull null]]&&playerCombat.kind==-1&&inventory.weapon==40&&inventory.upgrade==0&&inventory.specials==2&&playerWeapon==40);
     assert(playerSpawnTick==simulationTick&&((simulationTick-playerSpawnTick)/6)%2==0);
     for(int i=0;i<181;i++){[self stepEnemies];[self pollMapSpawns];}assert(playerCombat.kind==1&&!invulnerableUntil);
