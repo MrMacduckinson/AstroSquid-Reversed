@@ -87,7 +87,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     uint32_t worldRenderTick,visualRateTick;
     int16_t visualFrames;
     double visualRate;
-    BOOL visualDebug;
+    BOOL visualDebug,wallClockPoll;
     uint32_t simulationTick,lastSpawnTick;
     NSUInteger scriptSteps;
     uint32_t actorVisits;
@@ -170,6 +170,9 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
 - (void)handleVisualEffects;
 - (void)readVisualKeys;
 - (void)presentFrame;
+- (void)beginGameLoop;
+- (void)pollGame;
+- (void)pollMapSpawns;
 @end
 
 static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValue]; }
@@ -537,7 +540,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)resetEnemies {
     renderClock=0;enemies=[NSMutableArray array];world=[NSMutableArray array];mapPlacements=[NSMutableArray array];
-    lastSpawnTick=lastPlayerShot=simulationTick;score=0;
+    lastPlayerShot=simulationTick;score=0;
     playerCombat=(AstroCombatState){.kind=1,.hit_points=100};playerHitVisual=(AstroPlayerHitVisual){0};
     visualEffects=[NSMutableArray array];specialPolygons=[NSMutableArray array];specialFlashes=[NSMutableArray array];
     special=(AstroSpecial){0};specialLoopRunning=specialReturnPending=NO;specialTargetObjects=nil;specialTargetData=nil;
@@ -683,7 +686,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (uint32_t)playerClockTick {
     if(specialLoopRunning||specialReturnPending)return [self specialClockTick];
-    return (selftestPath||campaignTestPath)?simulationTick:[self currentGameTick];
+    return (!wallClockPoll&&(selftestPath||campaignTestPath))?simulationTick:[self currentGameTick];
 }
 - (void)prepareSpecialContext:(AstroSpecialContext *)context {
     if(!specialEntered){playerCombat.kind=-1;specialEntered=YES;}
@@ -1143,9 +1146,27 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
     if(!menuVisible&&flow.phase==ASTRO_FLOW_PLAY&&(!changingStage||transition.simulate_world)) {
         [self handleVisualEffects];
-        if(simulationTick-lastSpawnTick>20){lastSpawnTick=simulationTick;[self makeNewSprites];}
     }
-    specialReturnPending=NO;
+}
+- (void)beginGameLoop {
+    lastSpawnTick=[self playerClockTick];observedWallTick=[self playerClockTick];worldRenderTick=[self playerClockTick];
+}
+- (void)pollMapSpawns {
+    if(menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY||changingStage||respawnTick)return;
+    if(invulnerableUntil){[self makeNewSprites];return;}
+    uint32_t comparison=[self playerClockTick];
+    if((int32_t)(comparison-lastSpawnTick)>20){[self makeNewSprites];lastSpawnTick=[self playerClockTick];}
+}
+- (void)pollGame {
+    uint32_t comparison=[self playerClockTick];
+    if((int32_t)(comparison-observedWallTick)>0){
+        observedWallTick=[self playerClockTick];simulationTick=observedWallTick-1;
+        double old=camera;
+        if(changingStage&&transition.simulate_world)camera=astro_camera_advance(camera,transition.scroll_x);
+        else if(!changingStage&&automatic&&!campaign.arena&&campaignAction==ASTRO_CAMPAIGN_NONE)camera=astro_camera_advance(camera,1);
+        tickedScroll=camera-old;[self stepEnemies];[self renderTick];
+    }
+    [self pollMapSpawns];specialReturnPending=NO;
 }
 - (void)advanceFlowWithKey:(BOOL)anyKey {
     AstroFlowPhase previous=flow.phase;astro_flow_step(&flow,anyKey);
@@ -1164,6 +1185,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         playerRenderBirth=++renderClock;
     }
     if(previous!=flow.phase&&flow.phase==ASTRO_FLOW_PLAY)[audio playMusic:2];
+    if(previous==ASTRO_FLOW_READY&&flow.phase==ASTRO_FLOW_PLAY){
+        if(initialReadyCard)[self beginGameLoop];
+        else {[self pollMapSpawns];specialReturnPending=NO;}
+    }
     if(flow.phase==ASTRO_FLOW_FINISHED)[self beginGameOver];
 }
 - (void)probePreferences:(NSString *)stage {
@@ -1239,7 +1264,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             else if(!changingStage&&automatic&&!campaign.arena&&campaignAction==ASTRO_CAMPAIGN_NONE)camera=astro_camera_advance(camera,1);
             tickedScroll=camera-previous;[self stepEnemies];
         }
-        [self renderTick];
+        [self renderTick];[self pollMapSpawns];specialReturnPending=NO;
         int bossHP=0;
         for(AstroEnemy *enemy in enemies)if([enemy->placement[@"tag"] intValue]<0&&enemy->kind!=39)bossHP+=MAX(0,enemy->hitPoints);
         if(camera>campaignLastCamera+1||bossHP<campaignLastBossHP){campaignLastChange=campaignTestTicks;campaignLastCamera=camera;campaignLastBossHP=bossHP;}
@@ -1273,27 +1298,26 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(overlay)observedWallTick=[self currentGameTick];
 }
 - (void)tickWallClock {
-    uint32_t stamp=(uint32_t)floor((NSProcessInfo.processInfo.systemUptime-clockOrigin)*60);
-    uint32_t elapsed=stamp-observedWallTick;
-    if(!elapsed&&!menuVisible)return;
-    if(!menuVisible)observedWallTick=stamp;simulationTick=stamp;
-    if(gameOverPending){gameOverPending=NO;[self beginGameOver];observedWallTick=[self currentGameTick];return;}
-    BOOL idle=menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY;
-    if(!menuVisible&&flow.phase!=ASTRO_FLOW_PLAY) {
-        BOOL anyKey=NO;for(int i=0;i<128;i++)anyKey|=keys[i];
-        uint64_t age=(uint64_t)flow.ticks+elapsed-1;flow.ticks=(uint32_t)MIN(age,UINT32_MAX);
-        [self advanceFlowWithKey:anyKey];
-    }
-    if(!idle) {
-        double old=camera;
-        if(changingStage&&transition.simulate_world)camera=astro_camera_advance(camera,transition.scroll_x);
-        else if(!changingStage&&automatic&&!campaign.arena&&campaignAction==ASTRO_CAMPAIGN_NONE)camera=astro_camera_advance(camera,1);
-        tickedScroll=camera-old;simulationTick=stamp-1;[self stepEnemies];[self renderTick];
-    }
-    if(editingKey>=0&&NSProcessInfo.processInfo.systemUptime>=keyCaptureDeadline){editingKey=-1;[self refreshKeyLabels];}
-    if(menuVisible)[self pollMenu];
-    if(idle&&!menuVisible)[self setNeedsDisplay:YES];
-    self.window.title=@"AstroSquid";
+    wallClockPoll=YES;@try {
+        if(!menuVisible&&!paused&&!gameOver&&flow.phase==ASTRO_FLOW_PLAY){
+            [self pollGame];self.window.title=@"AstroSquid";return;
+        }
+        uint32_t stamp=(uint32_t)floor((NSProcessInfo.processInfo.systemUptime-clockOrigin)*60);
+        uint32_t elapsed=stamp-observedWallTick;
+        if(!elapsed&&!menuVisible)return;
+        if(!menuVisible)observedWallTick=stamp;simulationTick=stamp;
+        if(gameOverPending){gameOverPending=NO;[self beginGameOver];observedWallTick=[self currentGameTick];return;}
+        BOOL idle=menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY;
+        if(!menuVisible&&flow.phase!=ASTRO_FLOW_PLAY) {
+            BOOL anyKey=NO;for(int i=0;i<128;i++)anyKey|=keys[i];
+            uint64_t age=(uint64_t)flow.ticks+elapsed-1;flow.ticks=(uint32_t)MIN(age,UINT32_MAX);
+            [self advanceFlowWithKey:anyKey];
+        }
+        if(editingKey>=0&&NSProcessInfo.processInfo.systemUptime>=keyCaptureDeadline){editingKey=-1;[self refreshKeyLabels];}
+        if(menuVisible)[self pollMenu];
+        if(idle&&!menuVisible)[self setNeedsDisplay:YES];
+        self.window.title=@"AstroSquid";
+    } @finally {wallClockPoll=NO;}
 }
 - (void)tick:(NSTimer *)sender {
     if(campaignTestPath){[self driveCampaignTest];return;}
@@ -1315,7 +1339,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         else if(automatic&&!campaign.arena&&campaignAction==ASTRO_CAMPAIGN_NONE)camera=astro_camera_advance(camera,1);
         if(selftestPath&&keys[6])camera=fmax(0,camera-2);
         tickedScroll=camera-previousCamera;
-        [self stepEnemies];[self renderTick];
+        [self stepEnemies];[self renderTick];[self pollMapSpawns];specialReturnPending=NO;
     }
     if(!selftestPath) self.window.title=[NSString stringWithFormat:@"AstroSquid — %@ — HP %d · Lives %d · Score %d%@",
         levels[selectedLevel],playerCombat.hit_points,inventory.lives,score,
