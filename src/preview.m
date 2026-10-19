@@ -76,7 +76,8 @@ typedef struct {AstroVisual visual;int layer;uint64_t birth;} LiveEffect;
     NSMutableArray *liveBeams;
     NSArray *presentedBeams;
     uint32_t presentedBeamSeed;
-    BOOL simulationRender;
+    BOOL simulationRender,deferPresent;
+    uint32_t worldRenderTick;
     uint32_t simulationTick,lastSpawnTick;
     NSUInteger scriptSteps;
     uint32_t actorVisits;
@@ -102,6 +103,7 @@ typedef struct {AstroVisual visual;int layer;uint64_t birth;} LiveEffect;
     AstroSpecial special;
     NSArray *suspendedSpecialTail;
     BOOL specialResumePending;
+    int specialGunX,specialGunY;
     NSMutableArray *specialPolygons,*specialFlashes;
     BOOL keys[128];
     NSInteger selectedLevel;
@@ -143,6 +145,9 @@ typedef struct {AstroVisual visual;int layer;uint64_t birth;} LiveEffect;
 - (void)drawSceneSprite:(const AstroSceneSprite *)sprite;
 - (void)fireWeapon:(int)weapon x:(int)x y:(int)y heading:(int)heading source:(int)kind;
 - (void)moveChildren:(AstroEnemy *)parent heading:(int)heading amount:(double)amount;
+- (void)renderSpecialWorld;
+- (void)presentSpecialFrame;
+- (void)drawSpecialOverlays;
 @end
 
 static double number(NSDictionary *d, NSString *key) { return [d[key] doubleValue]; }
@@ -178,6 +183,8 @@ static void specialSprite(void *c,int sprite,double x,double y,double width,doub
 }
 static void specialPolygon(void *c,const AstroSpecialVertex *v,size_t n) {BeamContext *w=c;[w->view addSpecialPolygon:v count:n];}
 static void specialSound(void *c,int index,double x) {BeamContext *w=c;[w->view playSound:index x:x];}
+static void specialRenderWorld(void *c) {BeamContext *w=c;[w->view renderSpecialWorld];}
+static void specialPresent(void *c) {BeamContext *w=c;[w->view presentSpecialFrame];}
 
 static void sceneLine(void *context,double x,double y,double ex,double ey,AstroLineStyle style) {
     (void)context;glDisable(GL_TEXTURE_2D);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
@@ -434,6 +441,18 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         const AstroVisual *v=data.bytes;
         [self sprite:v->sprite x:v->x-camera y:v->y width:v->width height:v->height];
     }
+    if(!simulationRender)[self drawSpecialOverlays];
+    if(worldOverlay) {
+        [hud drawState:&overlay texture:^GLuint(NSInteger n){return [self texture:n];}
+            framebufferWidth:(GLsizei)bounds.size.width height:(GLsizei)bounds.size.height];
+        glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
+        glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);glMatrixMode(GL_MODELVIEW);glLoadIdentity();
+        [ui drawSprites:^(NSInteger n,double x,double y,double w,double h){[self sprite:n x:x y:y width:w height:h];}
+            texture:^GLuint(NSInteger n){return [self texture:n];}];
+    }
+    if(!deferPresent){if(campaignTestPath)glFlush();else [[self openGLContext] flushBuffer];}
+}
+- (void)drawSpecialOverlays {
     glDisable(GL_TEXTURE_2D);glShadeModel(GL_SMOOTH);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     for(NSData *data in specialPolygons) {
         const AstroSpecialVertex *v=data.bytes;size_t n=data.length/sizeof(*v);glBegin(GL_POLYGON);
@@ -443,14 +462,12 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     for(NSData *data in specialFlashes) {
         const AstroVisual *v=data.bytes;[self sprite:v->sprite x:v->x-camera y:v->y width:v->width height:v->height];
     }
-    if(worldOverlay) {
-        [hud drawState:&overlay texture:^GLuint(NSInteger n){return [self texture:n];}
-            framebufferWidth:(GLsizei)bounds.size.width height:(GLsizei)bounds.size.height];
-        glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
-        glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);glMatrixMode(GL_MODELVIEW);glLoadIdentity();
-        [ui drawSprites:^(NSInteger n,double x,double y,double w,double h){[self sprite:n x:x y:y width:w height:h];}
-            texture:^GLuint(NSInteger n){return [self texture:n];}];
-    }
+}
+- (void)renderSpecialWorld {
+    deferPresent=YES;simulationRender=YES;[self display];simulationRender=NO;deferPresent=NO;
+}
+- (void)presentSpecialFrame {
+    [[self openGLContext] makeCurrentContext];[self drawSpecialOverlays];
     if(campaignTestPath)glFlush();else [[self openGLContext] flushBuffer];
 }
 - (AstroEnemy *)entityForPlacement:(NSDictionary *)placement {
@@ -630,8 +647,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     NSArray *objects=[world copy];NSMutableData *data=[self targetsForObjects:objects];
     BeamContext beamWorld={.view=self,.objects=objects,.targets=data.mutableBytes};
     AstroSpecialContext context={.context=&beamWorld,.seed=&randomSeed,.targets=data.mutableBytes,
-        .target_count=objects.count,.source_parent=-1,.gun_x=playerBounds.left+74,.gun_y=playerBounds.top+12,
-        .frame_interval=1,.left=camera,.top=0,.right=camera+640,.bottom=380,
+        .target_count=objects.count,.source_parent=-1,.gun_x=start?playerBounds.left+74:specialGunX,.gun_y=start?playerBounds.top+12:specialGunY,
+        .frame_interval=ui.frameInterval,.left=camera,.top=0,.right=camera+640,.bottom=380,
+        .render_tick=&worldRenderTick,.render_world=specialRenderWorld,.present=specialPresent,
         .spawn=specialSpawn,.bullet=specialBullet,.beam=specialBeam,.sprite=specialSprite,
         .polygon=specialPolygon,.sound=specialSound};
     if(start) {
@@ -645,7 +663,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     int flags=0;
     if(!start&&special.active)flags=astro_special_step_nested(&special,simulationTick,&context);
     lastPlayerShot=special.action_until;
-    if(!special.active&&!invulnerableUntil)playerCombat.kind=1;
+    if(start&&!special.active&&!invulnerableUntil)playerCombat.kind=1;
     return flags;
 }
 
@@ -949,6 +967,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
 }
 - (void)stepEnemies {
+    if(suspendedSpecialTail){specialGunX=playerBounds.left+74;specialGunY=playerBounds.top+12;}
     if(campaignAction!=ASTRO_CAMPAIGN_NONE&&!changingStage&&!suspendedSpecialTail) {
         if(selftestPath||(campaignAction==ASTRO_CAMPAIGN_LOAD&&campaign.level==9)) {
             AstroCampaign next=campaign;[self loadCampaignStage:next];
@@ -999,18 +1018,25 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             suspendedSpecialTail=[actors subarrayWithRange:NSMakeRange(i+1,actors.count-i-1)];break;
         }
     }
-    if(nestedPass)specialResumePending=([self stepSpecial:NO]&ASTRO_SPECIAL_RESUME)!=0;
     if(nestedPass||!suspendedSpecialTail)[self inheritParentState];
+    if(nestedPass){
+        specialResumePending=([self stepSpecial:NO]&ASTRO_SPECIAL_RESUME)!=0;
+        [self updateVisualEffects];
+        if(specialResumePending)playerCombat.kind=1;
+    }
 }
 - (void)renderTick {
-    simulationRender=YES;[self display];simulationRender=NO;
+    if(suspendedSpecialTail){
+        if(!specialResumePending)return;
+        NSArray *tail=suspendedSpecialTail;suspendedSpecialTail=nil;specialResumePending=NO;
+        for(id object in tail)if([world containsObject:object])[self stepActor:object];
+        [self inheritParentState];
+    }
+    if((int32_t)(simulationTick-worldRenderTick)>=ui.frameInterval){
+        worldRenderTick=simulationTick;simulationRender=YES;[self display];simulationRender=NO;
+    }
     if(!menuVisible&&flow.phase==ASTRO_FLOW_PLAY&&(!changingStage||transition.simulate_world)) {
         [self updateVisualEffects];
-        if(specialResumePending) {
-            NSArray *tail=suspendedSpecialTail;suspendedSpecialTail=nil;specialResumePending=NO;
-            for(id object in tail)if([world containsObject:object])[self stepActor:object];
-            [self inheritParentState];[self updateVisualEffects];
-        }
         if(!suspendedSpecialTail&&simulationTick-lastSpawnTick>20){lastSpawnTick=simulationTick;[self makeNewSprites];}
     }
 }

@@ -38,10 +38,25 @@ Full original-logic equivalence remains unproved. Current bounded evidence:
   bitwise, including the initial camera residual. Menu orb animation receives
   the configured interval, while synchronous Pause/GameOver panels retain30/60
   frames. Actual Intel GL rendering also passes at both intervals. This is
-  renderer support; host FPS preferences and scheduling are not yet connected.
+  renderer support; host FPS preferences and all gameplay consumers are not yet
+  connected. The shared world/special render deadline is checked below.
+- `tests/special_fps_vectors.csv` retains40 original timed-special render phases
+  and1232 captured CPU updates. Shared render deadlines, signed intervals,
+  world-before-special RNG, first-flash IEEE coordinates and terminal outer
+  render eligibility match. This replays captured CPU ticks; it does not replace
+  the original busy-loop TickCount read schedule with a fixed31-update claim.
+- `tests/special_phase_host_test.m` checks the actual host at intervals2/3/0/-1:
+  gun coordinates cached before nested CALC, parent inheritance before damage,
+  world render before special visuals, inner animation before restoring kind1,
+  suppressed outer rendering while blocked, and terminal shared-deadline reuse.
+  A pending respawn timer does not suppress the original unconditional kind1
+  restoration. Full application GL self-tests pass at intervals2/3.
 
 Original configured FPS intervals, parent-linked cases, production scheduling,
 full startup/menu state, extended campaigns and final packaging remain open.
+In particular, the original may finish a special between CPU updates when a
+separate TickCount read crosses the deadline; the asynchronous host's completion
+boundary still needs that clock-read behavior modeled and compared.
 
 ## Checks performed
 

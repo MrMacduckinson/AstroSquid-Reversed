@@ -10,7 +10,7 @@ static void sprite(AstroSpecialContext *c,int id,double x,double y,double size) 
 }
 static int random_value(AstroSpecialContext *c,int n) {return astro_random(c->seed,n);}
 static int valid(const AstroSpecialContext *c) {
-    return c&&c->seed&&(!c->target_count||c->targets)&&c->frame_interval>0&&c->left<c->right&&c->top<c->bottom;
+    return c&&c->seed&&(!c->target_count||c->targets)&&c->left<c->right&&c->top<c->bottom;
 }
 static double center_value(const AstroTarget *t,int y) {
     AstroRect r=astro_target_rect(t);
@@ -72,7 +72,7 @@ int astro_special_start(AstroSpecial *s,int weapon,int x,int y,int heading,uint3
     else {s->active=1;if(weapon<50)sound(c,296,x);}
     return 1;
 }
-static void storm(AstroSpecial *s,AstroSpecialContext *c,int render) {
+static int storm_cpu(AstroSpecial *s,AstroSpecialContext *c) {
     int hits=0;
     for(int i=0;i<8;i++) {
         int x=c->gun_x-210+random_value(c,400),y=c->gun_y-199+random_value(c,400);
@@ -89,7 +89,10 @@ static void storm(AstroSpecial *s,AstroSpecialContext *c,int render) {
                 beam(c,s->weapon-1,s->weapon-49,ex,ey,center(u,0),center(u,1),second,0);}
         }
     }
-    if(render)for(int i=0;i<hits;i++) {
+    return hits;
+}
+static void storm_render(AstroSpecialContext *c,int hits) {
+    for(int i=0;i<hits;i++) {
         double size=30+random_value(c,70);
         int dx=random_value(c,60),dy=random_value(c,60);
         sprite(c,115,c->gun_x-40+dx-size/2,c->gun_y-29+dy-size/2,size);
@@ -106,14 +109,18 @@ static int point(AstroSpecialContext *c,int x,int y) {
     if(result>=0&&(c->targets[result].kind==40||c->targets[result].kind==-1||result==c->source_parent))return -1;
     return result;
 }
-static void plasma_ray(AstroSpecialContext *c,int render) {
+typedef struct {int x,y;double ex,ey;} SpecialRay;
+static SpecialRay plasma_ray_cpu(AstroSpecialContext *c) {
     int x=c->gun_x-15,y=c->gun_y+1,target=-1;double ex=x,ey=y;
     while(ex<c->right&&ex>c->left&&ey<c->bottom&&ey>c->top&&target<0) {
         ex+=5;
         for(int offset=1;offset<20&&target<0;offset+=4)target=point(c,(int16_t)astro_ppc_i32(ex),(int16_t)astro_ppc_i32(ey+offset));
     }
     beam(c,40,200,x,y,astro_ppc_i32(ex),astro_ppc_i32(ey),target,1);
-    if(!render)return;
+    return (SpecialRay){x,y,ex,ey};
+}
+static void plasma_ray_render(AstroSpecialContext *c,SpecialRay ray) {
+    int x=ray.x,y=ray.y;double ex=ray.ex,ey=ray.ey;
     for(int sign=1;sign>=-1;sign-=2) {
         AstroSpecialVertex v[]={
             {x,y+sign*45,1,0,0,0},{x+15,y+sign*85,1,0,0,0},
@@ -131,9 +138,15 @@ static int apply_tick(AstroSpecial *s,uint32_t tick,AstroSpecialContext *c) {
     s->action_until=tick+(uint32_t)c->frame_interval+59;
     if(tick==s->last_tick)return 0;
     s->last_tick=tick;
-    int render=tick-s->last_render_tick>=(uint32_t)c->frame_interval;
-    if(render)s->last_render_tick=tick;
-    if(s->weapon>=50)storm(s,c,render);else plasma_ray(c,render);
+    int hits=0;SpecialRay ray={0};
+    if(s->weapon>=50)hits=storm_cpu(s,c);else ray=plasma_ray_cpu(c);
+    uint32_t *render_tick=c->render_tick?c->render_tick:&s->last_render_tick;
+    if((int32_t)(tick-*render_tick)>=c->frame_interval) {
+        *render_tick=tick;s->last_render_tick=tick;
+        if(c->render_world)c->render_world(c->context);
+        if(s->weapon>=50)storm_render(c,hits);else plasma_ray_render(c,ray);
+        if(c->present)c->present(c->context);
+    }
     return 1;
 }
 int astro_special_step(AstroSpecial *s,uint32_t tick,AstroSpecialContext *c) {
@@ -148,6 +161,7 @@ int astro_special_start_nested(AstroSpecial *s,int weapon,int x,int y,int headin
     return 1;
 }
 int astro_special_step_nested(AstroSpecial *s,uint32_t tick,AstroSpecialContext *c) {
+    /* shortcut: model separate original bottom-loop TickCount reads before whole-loop fidelity. */
     if(!s||!s->active||!valid(c))return 0;
     if((int32_t)(tick-s->started)<0||tick==s->last_tick)return ASTRO_SPECIAL_WAIT;
     apply_tick(s,tick,c);
