@@ -566,7 +566,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     for(NSUInteger i=0;i<backgrounds.count;i++) parallax[i]=(AstroParallax){
         number(backgrounds[i],@"x"),number(backgrounds[i],@"y"),[backgrounds[i][@"userdata"] intValue]};
     for(NSDictionary *placement in level[@"entities"]) {
-        if([placement[@"attribute"] intValue]==11) continue;
         [mapPlacements addObject:placement];
     }
     [self makeNewSprites];playerRenderBirth=++renderClock;playerNextActor=world.firstObject;[world insertObject:[NSNull null] atIndex:0];
@@ -962,12 +961,15 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)firePlayerWeapons {
     [self fireOrdinaryPlayerWeaponFrom:playerBounds actionTick:&lastPlayerShot kind:playerCombat.kind];
-    BOOL startSpecial=(!changingStage||transition.allow_input)&&keys[selftestPath?58:controlKeys[1]]&&!special.active&&inventory.specials>0&&
-        (int32_t)([self playerClockTick]-lastPlayerShot)>
-        60.0/[game[@"weapons"][[NSString stringWithFormat:@"%d",playerWeapon]][@"rate"] doubleValue];
-    BOOL timed=startSpecial&&[self startSpecial];
+    BOOL timed=[self requestPlayerSpecialFrom:nil actionTick:&lastPlayerShot];
     uint32_t finishTick=timed?[self specialClockTick]:[self playerClockTick];
     simulationTick=finishTick;[self finishPlayerUpdateAtTick:finishTick];
+}
+- (BOOL)requestPlayerSpecialFrom:(AstroEnemy *)actor actionTick:(uint32_t *)actionTick {
+    BOOL startSpecial=(!changingStage||transition.allow_input)&&keys[selftestPath?58:controlKeys[1]]&&!special.active&&inventory.specials>0&&
+        (int32_t)([self playerClockTick]-*actionTick)>
+        60.0/[game[@"weapons"][[NSString stringWithFormat:@"%d",playerWeapon]][@"rate"] doubleValue];
+    return startSpecial&&(actor?[self startSpecialFrom:actor]:[self startSpecial]);
 }
 - (void)fireOrdinaryPlayerWeaponFrom:(AstroRect)bounds actionTick:(uint32_t *)actionTick kind:(int)kind {
     if((!changingStage||transition.allow_input)&&keys[selftestPath?8:controlKeys[0]]&&(int32_t)([self playerClockTick]-*actionTick)>
@@ -983,6 +985,22 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(engineGlow){
         engineGlowRect=astro_transition_engine_glow(playerVisual.x,playerVisual.y,playerVisual.height,playerState.frame);
         playerState.animation_tick-=5;
+    }
+}
+- (void)updateOtherPlayer:(AstroEnemy *)enemy {
+    AstroScriptState *state=&enemy->state;
+    AstroPlayer actor={state->velocity,state->frame,state->tilt,state->state,state->animation_tick,state->update_tick};
+    BOOL open=[self updatePlayerMotion:&actor velocity:&state->velocity bounds:enemy->bounds width:enemy->visual.width height:enemy->visual.height];
+    state->frame=actor.frame;state->tilt=actor.tilt;state->state=actor.state;state->animation_tick=actor.animation_tick;
+    if(!open)return;
+    [self fireOrdinaryPlayerWeaponFrom:enemy->bounds actionTick:&state->action_tick kind:enemy->kind];
+    BOOL timed=[self requestPlayerSpecialFrom:enemy actionTick:&state->action_tick];
+    uint32_t finishTick=timed?[self specialClockTick]:[self playerClockTick];
+    simulationTick=finishTick;state->update_tick=finishTick;
+    astro_player_hit_follow(&playerHitVisual,enemy->bounds);
+    if(engineGlow){
+        engineGlowRect=astro_transition_engine_glow(playerVisual.x,playerVisual.y,playerVisual.height,state->frame);
+        state->animation_tick-=5;
     }
 }
 - (id)nextActor:(id)object {return object==[NSNull null]?playerNextActor:((AstroEnemy *)object)->nextActor;}
@@ -1041,6 +1059,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         state->remove=1;
     }
     [self checkCollisionsFor:enemy];
+    if(enemy->kind==1||enemy->kind==-1){[self updateOtherPlayer:enemy];return;}
     if(enemy->kind==5&&enemy->program.length&&enemy->bounds.left<camera+640&&enemy->bounds.right>camera) {
         int heading=astro_heading(state->x,state->y,enemy->visual.width,enemy->visual.height,
             playerEntityX,playerEntityY,playerVisual.width,playerVisual.height);
