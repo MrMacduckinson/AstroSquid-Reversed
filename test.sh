@@ -13,6 +13,8 @@ build/star_bits_test tests/star_hex_vectors.txt
 build/physics_test tests/physics_vectors.csv tests/heading_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/script_test.c src/script.c src/physics.c src/ppc_math.c -lm -o build/script_test
 build/script_test
+"${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/script_clock_test.c src/script.c src/physics.c src/ppc_math.c -lm -o build/script_clock_test
+build/script_clock_test
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/weapons_test.c src/weapons.c -o build/weapons_test
 build/weapons_test tests/weapon_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/combat_test.c src/combat.c -lm -o build/combat_test

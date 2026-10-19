@@ -38,4 +38,9 @@ int astro_parse_instruction(const char *text,AstroInstruction *out);
 /* Original DOSCRIPTEDSPRITE scheduling and instruction semantics. */
 int astro_script_step(AstroScriptState *state,const AstroInstruction *script,
                       size_t count,uint32_t tick,const AstroScriptContext *context);
+/* Original independent update/action/animation clocks; action compares signed
+ * absolute ticks, while update/animation compare wrapped elapsed ticks. */
+int astro_script_step_clocked(AstroScriptState *state,const AstroInstruction *script,
+                              size_t count,uint32_t (*read_tick)(void *),void *clock_context,
+                              const AstroScriptContext *context);
 #endif

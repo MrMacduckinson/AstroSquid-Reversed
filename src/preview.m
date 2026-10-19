@@ -1087,8 +1087,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
                 enemy->visual.width,spriteInfo[enemy->visual.sprite].width),
             .gun_y=astro_script_gun_coordinate(enemy->bounds.top,[enemy->definition[@"turret_y"] intValue],
                 enemy->visual.height,spriteInfo[enemy->visual.sprite].height)};
-        if(!astro_script_step(state,enemy->program.bytes,
-            enemy->program.length/sizeof(AstroInstruction),simulationTick,&context)) {
+        if(!astro_script_step_clocked(state,enemy->program.bytes,
+            enemy->program.length/sizeof(AstroInstruction),actorReadTick,(__bridge void *)self,&context)) {
             NSLog(@"Script ended outside RETURN"); exit(1);
         }
         scriptSteps++;

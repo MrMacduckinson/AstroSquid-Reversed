@@ -63,30 +63,30 @@ static int facing(int heading,AstroOperand side) {
     }
 }
 
-static void animate(AstroScriptState *s,uint32_t tick,const AstroScriptContext *c) {
-    if(!c->animated||s->state==4||(int32_t)(tick-s->animation_tick)<=6) return;
-    s->animation_tick=tick;
+static void animate(AstroScriptState *s,uint32_t (*read_tick)(void *),void *clock_context,const AstroScriptContext *c) {
+    if(!c->animated||s->state==4||(int32_t)(read_tick(clock_context)-s->animation_tick)<=6) return;
+    s->animation_tick=read_tick(clock_context);
     int destination=s->state==2?1:s->state==3?3:2;
     if(s->tilt<destination) { s->tilt++;s->frame++; }
     else if(s->tilt>destination) { s->tilt--;s->frame--; }
 }
 
-int astro_script_step(AstroScriptState *s,const AstroInstruction *script,
-                      size_t count,uint32_t tick,const AstroScriptContext *c) {
-    if(!s||!script||!c||s->line>=count) return 0;
-    if((int32_t)(tick-s->update_tick)<1) return 1;
-    s->update_tick=tick;
+int astro_script_step_clocked(AstroScriptState *s,const AstroInstruction *script,
+                              size_t count,uint32_t (*read_tick)(void *),void *clock_context,const AstroScriptContext *c) {
+    if(!s||!script||!c||!read_tick||s->line>=count) return 0;
+    if((int32_t)(read_tick(clock_context)-s->update_tick)<1) return 1;
+    s->update_tick=read_tick(clock_context);
     const AstroInstruction *op=&script[s->line];
     if(op->opcode==ASTRO_RETURN) {
         // Original RETURN skips the initialization line and resumes line two.
         if(count<2) return 0;
         s->line=1;
-        animate(s,tick,c);
+        animate(s,read_tick,clock_context,c);
         return 1;
     }
     if(s->state!=4) s->state=s->velocity.y<-.2?2:s->velocity.y>.2?3:1;
-    if((int32_t)(tick-s->action_tick)>0) {
-        s->action_tick=tick+(uint32_t)op->delay;
+    if((int32_t)read_tick(clock_context)>(int32_t)s->action_tick) {
+        s->action_tick=read_tick(clock_context)+(uint32_t)op->delay;
         int direction=op->direction;
         if(op->direction_kind==ASTRO_AIM&&c->player_present) direction=c->target_heading;
         if(op->direction_kind==ASTRO_FRAME) direction=frame_heading(s->frame,op->value_kind);
@@ -134,6 +134,11 @@ int astro_script_step(AstroScriptState *s,const AstroInstruction *script,
         }
         s->line++;
     }
-    animate(s,tick,c);
+    animate(s,read_tick,clock_context,c);
     return 1;
+}
+static uint32_t constant_tick(void *context){return *(const uint32_t *)context;}
+int astro_script_step(AstroScriptState *s,const AstroInstruction *script,
+                      size_t count,uint32_t tick,const AstroScriptContext *c) {
+    return astro_script_step_clocked(s,script,count,constant_tick,&tick,c);
 }
