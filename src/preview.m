@@ -78,7 +78,8 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     AstroScore highscores[10];
     AstroScoreEditor scoreEditor;
     int campaignAction;
-    uint32_t respawnTick,invulnerableUntil; // Blink marker, not a deadline: elapsed comparisons must survive wrap.
+    uint32_t respawnTick,invulnerableUntil; // Active markers, not deadlines: elapsed comparisons must survive wrap.
+    uint32_t respawnWaitStartTick;
     uint32_t respawnStartTick,respawnBlinkTick;
     double respawnBlinkWidth;
     BOOL paused,gameOver,gameOverPending;
@@ -1033,7 +1034,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
                 body->placement=@{@"attribute":@11,@"tag":@0};body->definition=game[@"attributes"][@"11"];
                 body->visual=playerVisual;body->bounds=playerBounds;body->state.velocity=playerVelocity;[self addDeathEffects:body];
                 if(inventory.lives==0){if(!gameOver&&!selftestPath)gameOverPending=YES;gameOver=YES;}
-                else {inventory.lives--;respawnTick=simulationTick+61;}
+                else {inventory.lives--;[self beginRespawnWait];}
             } else {
                 [self addDeathEffects:enemy];
                 int action=changingStage?ASTRO_CAMPAIGN_NONE:astro_campaign_event(&campaign,[enemy->placement[@"tag"] intValue],0);
@@ -1166,7 +1167,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(blinking)playerVisual.width=spriteInfo[playerVisual.sprite].width;
     [self calculateActors];
     if(blinking)playerVisual.width=respawnBlinkWidth;
-    if(respawnTick&&simulationTick>=respawnTick) {
+}
+- (void)beginRespawnWait {
+    // shortcut: entered from death cleanup; move to the original GAMELOOP death branch when its full scheduling is restored.
+    respawnWaitStartTick=[self playerClockTick];respawnTick=1;
+}
+- (void)pollRespawnWait {
+    if((int32_t)([self playerClockTick]-respawnWaitStartTick)>60){
         playerCombat=(AstroCombatState){.kind=-1,.hit_points=100};
         [self createPlayerAtX:camera+30 y:190];
         inventory.upgrade=0;playerWeapon=inventory.weapon;playerSpawnTick=simulationTick;
@@ -1240,7 +1247,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     lastSpawnTick=[self playerClockTick];observedWallTick=[self playerClockTick];worldRenderTick=[self playerClockTick];
 }
 - (void)pollMapSpawns {
-    if(menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY||changingStage||respawnTick)return;
+    if(menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY||changingStage)return;
+    if(respawnTick){[self pollRespawnWait];return;}
     if(invulnerableUntil){[self pollRespawnBlink];return;}
     uint32_t comparison=[self playerClockTick];
     if((int32_t)(comparison-lastSpawnTick)>20){[self makeNewSprites];lastSpawnTick=[self playerClockTick];}
@@ -1599,8 +1607,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [world removeObjectIdenticalTo:obstacle];[enemies removeObjectIdenticalTo:obstacle];
     playerCombat.remove=-1;
     uint32_t deathTick=simulationTick;[self cleanupWorld];
-    assert(![world containsObject:[NSNull null]]&&inventory.lives==0&&respawnTick==deathTick+61);
-    for(int i=0;i<61;i++)[self stepEnemies];
+    assert(![world containsObject:[NSNull null]]&&inventory.lives==0&&respawnTick&&respawnWaitStartTick==deathTick);
+    for(int i=0;i<61;i++){[self stepEnemies];[self pollMapSpawns];}
     assert([world containsObject:[NSNull null]]&&playerCombat.kind==-1&&inventory.weapon==40&&inventory.upgrade==0&&inventory.specials==2&&playerWeapon==40);
     assert(playerSpawnTick==simulationTick&&((simulationTick-playerSpawnTick)/6)%2==0);
     for(int i=0;i<181;i++){[self stepEnemies];[self pollMapSpawns];}assert(playerCombat.kind==1&&!invulnerableUntil);

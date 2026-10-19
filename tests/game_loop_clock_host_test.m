@@ -67,19 +67,19 @@ static NSMutableString *events;
             [self pollMapSpawns];assert(used==(cases[i].open?2u:1u)&&factories==(unsigned)cases[i].open&&lastSpawnTick==(cases[i].open?cases[i].store:cases[i].old));
             assert([events isEqual:cases[i].open?@"CFC":@"C"]);
         }checked++;}
-    {for(int guard=0;guard<7;guard++){
+    {for(int guard=0;guard<6;guard++){
             [self resetClockCase:NULL count:0];lastSpawnTick=77;
             if(guard==0)menuVisible=YES;else if(guard==1)paused=YES;else if(guard==2)gameOver=YES;
             else if(guard==3)flow.phase=ASTRO_FLOW_READY;else if(guard==4){changingStage=YES;transition.phase=ASTRO_TRANSITION_WAIT;}
-            else if(guard==5){changingStage=YES;transition.phase=ASTRO_TRANSITION_TRAIL;}else respawnTick=150;
+            else {changingStage=YES;transition.phase=ASTRO_TRANSITION_TRAIL;}
             [self pollMapSpawns];assert(!used&&!factories&&lastSpawnTick==77);
         }checked++;}
     {const uint32_t c[]={131,140};[self resetClockCase:c count:2];changingStage=YES;transition.phase=ASTRO_TRANSITION_WAIT;
         [self pollMapSpawns];assert(!used&&!factories&&lastSpawnTick==100);
         changingStage=NO;[self pollMapSpawns];assert(used==2&&factories==1&&factoryCheckpoint==100&&lastSpawnTick==140&&[events isEqual:@"CFC"]);checked++;}
-    {const uint32_t c[]={100,100,100,100};[self resetClockCase:c count:4];invulnerableUntil=1;respawnStartTick=respawnBlinkTick=100;lastSpawnTick=73;
+    {const uint32_t c[]={100,100,100,100,100};[self resetClockCase:c count:5];invulnerableUntil=1;respawnStartTick=respawnBlinkTick=100;lastSpawnTick=73;
         [self pollMapSpawns];[self pollMapSpawns];assert(used==4&&factories==2&&lastSpawnTick==73&&[events isEqual:@"CFCCFC"]);
-        respawnTick=161;[self pollMapSpawns];assert(used==4&&factories==2&&lastSpawnTick==73);checked++;}
+        respawnTick=1;respawnWaitStartTick=100;[self pollMapSpawns];assert(used==5&&factories==2&&lastSpawnTick==73);checked++;}
     {[self resetClockCase:NULL count:0];lastSpawnTick=0xaabbccdd;constantClock=YES;constantValue=777;
         [self resetEnemies];assert(lastSpawnTick==0xaabbccdd);constantClock=NO;checked++;}
     {const uint32_t c[]={130,140};[self resetClockCase:c count:2];
