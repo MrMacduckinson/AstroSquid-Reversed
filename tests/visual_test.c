@@ -1,3 +1,4 @@
+#include "ieee_exact.h"
 #include "../src/visual.h"
 #include <assert.h>
 #include <math.h>
@@ -9,7 +10,7 @@ int main(int argc,char **argv) {
     while(fscanf(f,"%d,%d,%lf,%lf,%lf,%lf,%u,%lf,%lf,%lf,%lf,%u",&from,&to,&x,&y,&w,&h,&tick,&ex,&ey,&ew,&eh,&next)==12) {
         AstroVisual v={from,x,y,w,h,0};
         assert(astro_visual_change(&v,to,metrics,sizeof(metrics)/sizeof(metrics[0]),tick));
-        assert(v.sprite==to&&v.next_tick==next&&fabs(v.x-ex)<1e-10&&fabs(v.y-ey)<1e-10&&fabs(v.width-ew)<1e-10&&fabs(v.height-eh)<1e-10);count++;
+        assert(v.sprite==to&&v.next_tick==next&&ieee_exact(v.x,ex)&&ieee_exact(v.y,ey)&&ieee_exact(v.width,ew)&&ieee_exact(v.height,eh));count++;
     }
     assert(feof(f)&&count==100);fclose(f);
     AstroSpriteInfo animation[]={{10,20,1,3},{20,10,-1,2}};

@@ -1,6 +1,6 @@
 #include "player.h"
 void astro_player_step(AstroPlayer *p,uint32_t tick,unsigned keys,int speed,
-                       AstroRect b,double width,double height,AstroRect viewport,int ending) {
+                       AstroRect b,double width,double height,AstroViewport viewport,int ending) {
     if((int32_t)(tick-p->animation_tick)>10) {
         p->animation_tick=tick;
         if(keys&ASTRO_KEY_RIGHT) p->animation_tick-=5;

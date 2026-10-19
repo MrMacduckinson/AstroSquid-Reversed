@@ -1,3 +1,4 @@
+#include "ieee_exact.h"
 #include "../src/effects.h"
 #include <assert.h>
 #include <math.h>
@@ -30,9 +31,9 @@ int main(int argc,char **argv) {
             assert(fgets(line,sizeof(line),f)&&line[0]=='E'&&values(line,v)==13);
             AstroDeathEffect *e=&effects[i];
             assert(e->type==v[0]&&e->kind==v[1]&&e->attribute==v[2]&&e->frame==v[4]);
-            assert(fabs(e->x-v[5])<1e-9&&fabs(e->y-v[6])<1e-9);
-            if(e->type!=ASTRO_EFFECT_PICKUP) assert(e->sprite==v[3]&&fabs(e->width-v[7])<1e-9&&fabs(e->height-v[8])<1e-9);
-            if(e->type==ASTRO_EFFECT_DEBRIS) assert(fabs(e->velocity.x-v[9])<1e-9&&fabs(e->velocity.y-v[10])<1e-9&&e->action_tick==(uint32_t)v[12]);
+            assert(ieee_exact(e->x,v[5])&&ieee_exact(e->y,v[6]));
+            if(e->type!=ASTRO_EFFECT_PICKUP) assert(e->sprite==v[3]&&ieee_exact(e->width,v[7])&&ieee_exact(e->height,v[8]));
+            if(e->type==ASTRO_EFFECT_DEBRIS) assert(ieee_exact(e->velocity.x,v[9])&&ieee_exact(e->velocity.y,v[10])&&e->action_tick==(uint32_t)v[12]);
             if(e->type==ASTRO_EFFECT_EXPLOSION) assert(e->animation_tick==(uint32_t)v[11]);
         }
         cases++;

@@ -6,7 +6,12 @@
 typedef struct { double brightness,x,y,speed; } AstroStar;
 typedef struct { double x,y; int depth; } AstroParallax;
 typedef struct { double r,g,b,a,width; } AstroLineStyle;
-typedef struct { int sprite,persistent;double xy[8],alpha; } AstroSceneSprite;
+typedef struct {
+    int sprite,persistent;
+    double xy[8],alpha;
+    /* Original CPU sprite/transform command, before GPU matrix rasterization. */
+    double rect[4],angle,pivot_x,pivot_y;
+} AstroSceneSprite;
 typedef struct {
     void *context;
     void (*line)(void *,double,double,double,double,AstroLineStyle);

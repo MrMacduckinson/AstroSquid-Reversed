@@ -36,7 +36,7 @@ typedef struct {AstroVisual visual;int layer;uint64_t birth;} LiveEffect;
     AstroScriptState state;
     NSDictionary *placement, *definition;
     NSData *program;
-    int kind,layer,hitPoints,baseSprite;
+    int kind,layer,renderLayer,hitPoints,baseSprite;
     AstroVisual visual;
     AstroRect bounds,previousBounds;
     BOOL active;
@@ -133,7 +133,7 @@ typedef struct {AstroVisual visual;int layer;uint64_t birth;} LiveEffect;
 - (void)addSpecialBeam:(const AstroBeam *)beam temporary:(int)temporary context:(BeamContext *)context;
 - (void)addSpecialSprite:(int)sprite x:(double)x y:(double)y width:(double)width height:(double)height;
 - (void)addSpecialPolygon:(const AstroSpecialVertex *)vertices count:(size_t)count;
-- (void)playSound:(int)index x:(int)x;
+- (void)playSound:(int)index x:(double)x;
 - (void)playBeamSound:(int)index x:(int)x;
 - (void)drawSceneSprite:(const AstroSceneSprite *)sprite;
 - (void)fireWeapon:(int)weapon x:(int)x y:(int)y heading:(int)heading source:(int)kind;
@@ -167,7 +167,7 @@ static void specialSprite(void *c,int sprite,double x,double y,double width,doub
     BeamContext *w=c;[w->view addSpecialSprite:sprite x:x y:y width:width height:height];
 }
 static void specialPolygon(void *c,const AstroSpecialVertex *v,size_t n) {BeamContext *w=c;[w->view addSpecialPolygon:v count:n];}
-static void specialSound(void *c,int index,int x) {BeamContext *w=c;[w->view playSound:index x:x];}
+static void specialSound(void *c,int index,double x) {BeamContext *w=c;[w->view playSound:index x:x];}
 
 static void sceneLine(void *context,double x,double y,double ex,double ey,AstroLineStyle style) {
     (void)context;glDisable(GL_TEXTURE_2D);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
@@ -222,6 +222,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(!audio) {NSLog(@"Cannot load original audio: %@",error);return nil;}
     ui=[[AstroUIRenderer alloc] initWithAssets:path error:&error];
     if(!ui) {NSLog(@"Cannot load original interface: %@",error);return nil;}
+    [ui reloadMenuWithRandom:&randomSeed];
     ui.registered=YES;ui.registeredName=@"MACSPB";editingKey=-1;
     ui.unlockedLevel=MAX(1,MIN(16,[[NSUserDefaults standardUserDefaults] integerForKey:@"AstroSquidUnlockedLevel"]));
     int defaults[6]={55,58,126,125,123,124};memcpy(controlKeys,defaults,sizeof(defaults));
@@ -388,9 +389,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
                 continue;
             }
             AstroEnemy *enemy=object;
-            int renderLayer=enemy->kind==5?5:(enemy->kind>=20&&enemy->kind<=29)?4:
-                (enemy->kind==2||enemy->kind==4||enemy->kind==40)?6:1;
-            if(renderLayer!=layer)continue;
+            if(enemy->renderLayer!=layer)continue;
             double x=enemy->visual.x-camera,y=enemy->visual.y;
             if(x+enemy->visual.width<0||x>640||y+enemy->visual.height<0||y>380)continue;
             [self sprite:enemy->visual.sprite x:x y:y width:enemy->visual.width height:enemy->visual.height];
@@ -457,7 +456,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         .x=number(placement,@"x"),.y=number(placement,@"y")};
     int group=attribute.intValue/10;
     enemy->kind=group>5&&group<20?5:group;
-    enemy->layer=enemy->kind==5?2:0;
+    enemy->layer=enemy->kind==5||(enemy->kind>=20&&enemy->kind<30)?2:0;
+    enemy->renderLayer=enemy->kind==5?5:(enemy->kind>=20&&enemy->kind<30)?4:
+        (enemy->kind==1||enemy->kind==2||enemy->kind==4||enemy->kind==40)?6:1;
     enemy->hitPoints=[enemy->definition[@"hit_points"] intValue];
     NSString *script=[enemy->definition[@"script"] stringValue];
     NSMutableData *program=[NSMutableData data];
@@ -553,7 +554,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         @"x":@((int)(shot->x-width/2)),@"y":@((int)(shot->y-height/2)),
         @"width":@(width),@"height":@(height)};
     AstroEnemy *bullet=[self entityForPlacement:placement];
-    bullet->kind=attribute>30?5:2;bullet->active=YES;
+    bullet->kind=attribute>30?5:2;bullet->active=YES;bullet->renderLayer=6;
     bullet->layer=kind==5?2:(kind==1||kind==-1)?3:0;
     bullet->state.update_tick=bullet->state.animation_tick=
         bullet->state.action_tick=simulationTick;
@@ -611,7 +612,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)playBeamSound:(int)index x:(int)x {
     [audio playCueIfNotPlaying:index==295?@"Zap":@"Laser" position:(x-camera)/640];
 }
-- (void)playSound:(int)index x:(int)x {[audio playStringCue:index position:(x-camera)/640];}
+- (void)playSound:(int)index x:(double)x {[audio playStringCue:index position:(x-camera)/640];}
 - (int)stepSpecial:(BOOL)start {
     NSArray *objects=[world copy];NSMutableData *data=[self targetsForObjects:objects];
     BeamContext beamWorld={.view=self,.objects=objects,.targets=data.mutableBytes};
@@ -686,6 +687,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         @"width":@(width),@"height":@(height),@"tag":@0};
     AstroEnemy *enemy=[self entityForPlacement:placement];enemy->active=YES;
     enemy->kind=effect->kind;enemy->state.frame=effect->frame;
+    enemy->renderLayer=6;enemy->layer=0;
     enemy->state.velocity=effect->velocity;
     enemy->state.update_tick=enemy->state.animation_tick=simulationTick;
     enemy->state.action_tick=effect->action_tick;
@@ -775,7 +777,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
 }
 - (void)stepPlayer {
-    playerVisual.x+=playerVelocity.x+tickedScroll;playerVisual.y+=playerVelocity.y;
+    playerVisual.x+=playerVelocity.x;playerVisual.y+=playerVelocity.y;
+    playerVisual.x+=tickedScroll;playerVisual.y+=0.0;
     astro_visual_change(&playerVisual,playerState.frame,spriteInfo,1001,simulationTick);
     playerEntityX=playerVisual.x;playerEntityY=playerVisual.y;
     playerX=playerVisual.x-camera;playerY=playerVisual.y;
@@ -792,7 +795,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(changingStage&&!transition.allow_input)controls=transition.controls;
     playerState.velocity=playerVelocity;
     astro_player_step(&playerState,simulationTick,controls,1,playerBounds,playerVisual.width,playerVisual.height,
-        (AstroRect){(int)camera,0,(int)(camera+640),380},changingStage);
+        (AstroViewport){camera,0,camera+640,380},changingStage);
     playerVelocity=playerState.velocity;playerCombat.velocity=playerVelocity;
     astro_player_hit_follow(&playerHitVisual,playerBounds);
     if((!changingStage||transition.allow_input)&&keys[selftestPath?8:controlKeys[0]]&&!special.active&&(int32_t)(simulationTick-lastPlayerShot)>
@@ -843,17 +846,18 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
     [self checkCollisionsFor:enemy];
     if(enemy->kind==5&&enemy->program.length&&enemy->bounds.left<camera+640&&enemy->bounds.right>camera) {
-        double w=enemy->bounds.right-enemy->bounds.left,h=enemy->bounds.bottom-enemy->bounds.top;
-        int heading=astro_heading(state->x,state->y,w,h,playerEntityX,playerEntityY,
-            playerBounds.right-playerBounds.left,playerBounds.bottom-playerBounds.top);
+        int heading=astro_heading(state->x,state->y,enemy->visual.width,enemy->visual.height,
+            playerEntityX,playerEntityY,playerVisual.width,playerVisual.height);
         EnemyContext source={self,enemy};
         AstroScriptContext context={.player_present=[world containsObject:[NSNull null]],.target_heading=(int)heading,
             .player_x=playerEntityX,.player_y=playerEntityY,
             .animated=[enemy->definition[@"animated"] intValue],
             .weapon=[enemy->definition[@"weapon"] intValue],
             .userdata=&source,.fire=enemyFire,.hit_player=enemyHit,
-            .gun_x=(int)state->x+[enemy->definition[@"turret_x"] intValue],
-            .gun_y=(int)state->y+[enemy->definition[@"turret_y"] intValue]};
+            .gun_x=astro_script_gun_coordinate(enemy->bounds.left,[enemy->definition[@"turret_x"] intValue],
+                enemy->visual.width,spriteInfo[enemy->visual.sprite].width),
+            .gun_y=astro_script_gun_coordinate(enemy->bounds.top,[enemy->definition[@"turret_y"] intValue],
+                enemy->visual.height,spriteInfo[enemy->visual.sprite].height)};
         if(!astro_script_step(state,enemy->program.bytes,
             enemy->program.length/sizeof(AstroInstruction),simulationTick,&context)) {
             NSLog(@"Script ended outside RETURN"); exit(1);
@@ -1334,6 +1338,41 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     assert(!gameOver&&[ui.anchor isEqual:@"Play Menu"]);[self testModifier:55 flags:0];
     memcpy(highscores,saved,sizeof(saved));score=oldScore;[self refreshScores];
 }
+- (void)drawPanelTransition {
+    // Original PAUSETRANS/GAMEOVERTRANS redraw without world steps or Delay.
+    while(ui.transitioning){[ui animateTicks:1];[self display];}
+}
+- (void)resumePause {
+    [ui beginPauseExit];[self drawPanelTransition];
+    menuVisible=NO;paused=NO;[audio setPaused:NO];
+}
+- (NSString *)scoreOperandDescription:(NSData *)operand {
+    NSMutableData *shown=[operand mutableCopy];
+    if(shown.length>=15){shown.length=15;((unsigned char *)shown.mutableBytes)[14]=0xc9;}
+    NSString *text=[[NSString alloc] initWithData:shown encoding:NSMacOSRomanStringEncoding];
+    return [NSString stringWithFormat:@"\"%@\" (length %lu)",text,(unsigned long)operand.length];
+}
+- (BOOL)continueScoreOverflow:(NSData *)left right:(NSData *)right {
+    NSAlert *alert=[NSAlert new];alert.alertStyle=NSAlertStyleCritical;
+    alert.messageText=@"Length >255 while adding strings:";
+    alert.informativeText=[NSString stringWithFormat:@"%@ +\n%@",[self scoreOperandDescription:left],[self scoreOperandDescription:right]];
+    [alert addButtonWithTitle:@"Stop"];[alert addButtonWithTitle:@"Continue"];
+    return [alert runModal]==NSAlertSecondButtonReturn;
+}
+- (BOOL)editScoreByte:(unsigned)ch {
+    size_t length=strlen(scoreEditor.name);
+    size_t left=scoreEditor.cursor<0?0:MIN((size_t)scoreEditor.cursor,length);
+    size_t right=scoreEditor.cursor>(int)length?0:MIN((size_t)((int)length-scoreEditor.cursor),length);
+    if(astro_score_editor_key(&scoreEditor,ch)!=ASTRO_SCORE_EDIT_ALERT)return YES;
+    NSMutableData *first=[NSMutableData dataWithBytes:scoreEditor.name length:left];
+    unsigned char character=(unsigned char)ch;
+    NSData *second;
+    if(left==255)second=[NSData dataWithBytes:&character length:1];
+    else{[first appendBytes:&character length:1];second=[NSData dataWithBytes:scoreEditor.name+length-right length:right];}
+    BOOL proceed=[self continueScoreOverflow:first right:second];
+    if(astro_score_editor_resolve_alert(&scoreEditor,proceed)==ASTRO_SCORE_EDIT_STOP){[NSApp terminate:nil];return NO;}
+    return YES;
+}
 - (void)keyDown:(NSEvent *)event {
     unsigned key=event.keyCode;
     if(splashVisible){splashVisible=NO;memset(keys,0,sizeof(keys));return;}
@@ -1341,24 +1380,24 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(menuVisible&&[ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0) {
         unsigned ch=key==51?8:key==117?127:key==123?28:key==124?29:
             key==126||key==115?30:key==125||key==119?31:key==36?13:key==76?3:0;
-        if(ch)astro_score_editor_key(&scoreEditor,ch);
+        if(ch){if(![self editScoreByte:ch])return;}
         else {
             NSData *bytes=[event.characters dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:NO];
             const unsigned char *text=bytes.bytes;
-            for(NSUInteger i=0;i<bytes.length;i++)astro_score_editor_key(&scoreEditor,text[i]);
+            for(NSUInteger i=0;i<bytes.length;i++)if(![self editScoreByte:text[i]])return;
         }
         [self refreshScoreEditor];if(scoreEditor.submitted)[self finishGameOver];return;
     }
     if(menuVisible&&gameOver){[self finishGameOver];return;}
-    if(menuVisible&&paused){menuVisible=NO;paused=NO;return;}
+    if(menuVisible&&paused){[self resumePause];return;}
     if(event.isARepeat) return;
     if(editingKey>=0&&key<128) {
         controlKeys[editingKey]=key;editingKey=-1;[self refreshKeyLabels];[self saveSettings];return;
     }
     if(!selftestPath) {
         if((key==53||key==50)) {
-            if(menuVisible&&paused) {menuVisible=NO;paused=NO;[audio setPaused:NO];}
-            else if(!menuVisible&&flow.phase==ASTRO_FLOW_PLAY&&(!changingStage||transition.allow_input)) {menuVisible=YES;paused=YES;[audio playCue:@"Menu"];[ui show:@"Pause"];}
+            if(menuVisible&&paused) {[self resumePause];}
+            else if(!menuVisible&&flow.phase==ASTRO_FLOW_PLAY&&(!changingStage||transition.allow_input)) {menuVisible=YES;paused=YES;[audio playCue:@"Menu"];[ui show:@"Pause"];[self drawPanelTransition];}
         }
         return;
     }
@@ -1395,7 +1434,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     keys[code]=(event.modifierFlags&device)!=0;
     if(!keys[code])return;
     if(splashVisible){splashVisible=NO;return;}
-    if(menuVisible&&paused){menuVisible=NO;paused=NO;return;}
+    if(menuVisible&&paused){[self resumePause];return;}
     if(menuVisible&&gameOver&&ui.editingHighscore<=0){[self finishGameOver];return;}
     if(editingKey>=0){controlKeys[editingKey]=code;editingKey=-1;[self refreshKeyLabels];[self saveSettings];}
 }
@@ -1437,7 +1476,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)finishGameOver {
     BOOL entered=ui.editingHighscore>0;
     if(entered){ui.editingHighscore=astro_scores_insert(highscores,score,scoreEditor.name);[self saveScores];}
-    paused=NO;gameOver=NO;[ui show:entered?@"Highscores Menu":@"Play Menu"];
+    paused=NO;gameOver=NO;[ui reloadMenuWithRandom:&randomSeed];
+    [ui show:entered?@"Highscores Menu":@"Play Menu"];
     [audio setPaused:NO];[audio playMusic:1];
 }
 - (void)unlockStage {
@@ -1464,7 +1504,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if([ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0&&p.x>=223&&p.x<423&&p.y>=254&&p.y<277) {
         scoreEditor.cursor=[ui scoreCursorAtX:p.x];[self refreshScoreEditor];return;
     }
-    [ui mouseDownX:p.x y:p.y];
+    [self performMenuAction:[ui mouseDownX:p.x y:p.y]];
 }
 - (void)mouseMoved:(NSEvent *)event {[self mouseDragged:event];}
 - (BOOL)resignFirstResponder {memset(keys,0,sizeof(keys));return [super resignFirstResponder];}
@@ -1475,8 +1515,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(!menuVisible||editingKey>=0)return;
     if(splashVisible){splashVisible=NO;return;}
     NSPoint p=[self menuPoint:event];
-    NSString *name=[ui mouseUpX:p.x y:p.y];
-    [self performMenuAction:name];
+    [ui mouseUpX:p.x y:p.y];
 }
 - (void)performMenuAction:(NSString *)name {
     AstroUICommand command=astro_ui_command(name.UTF8String);
@@ -1502,10 +1541,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         astro_flow_ready(&flow,campaign.level,campaign.half);[self unlockStage];
         [audio setPaused:NO];[audio playMusic:1];
     } else if(command.action==ASTRO_UI_QUIT) [NSApp terminate:nil];
-    else if(command.action==ASTRO_UI_RESUME) {menuVisible=NO;paused=NO;[audio setPaused:NO];}
+    else if(command.action==ASTRO_UI_RESUME) {[self resumePause];}
     else if(command.action==ASTRO_UI_GAME_OVER_OK)[self finishGameOver];
     else if(command.action==ASTRO_UI_QUIT_GAME) {
-        paused=NO;gameOver=NO;[ui show:@"Play Menu"];[audio setPaused:NO];[audio playMusic:1];
+        paused=NO;gameOver=NO;[ui reloadMenuWithRandom:&randomSeed];
+        [ui show:@"Play Menu"];[audio setPaused:NO];[audio playMusic:1];
     }
 }
 - (void)viewDidMoveToWindow { [self.window makeFirstResponder:self]; }

@@ -8,22 +8,26 @@ typedef struct {int id;double x,y,w,h;} Flash;
 static AstroSpecialSpawn spawns[200];static AstroShot bullets[32];
 static AstroBeam beams[MAX_EVENTS];static Flash flashes[MAX_EVENTS];
 static AstroSpecialVertex vertices[MAX_EVENTS];
+typedef struct {int id;double pan;} Sound;
+static Sound sounds[MAX_EVENTS];static int na;static char order[40000];static unsigned order_count;
+static void event(char c){assert(order_count<sizeof(order)-1);order[order_count++]=c;order[order_count]=0;}
+static void sound(void *context,int id,double x){(void)context;assert(na<MAX_EVENTS);event('A');sounds[na++]=(Sound){id,x/640};}
 static int ns,nb,ne,nf,nv,kill;
-static void spawn(void *c,const AstroSpecialSpawn *s){(void)c;assert(ns<200);spawns[ns++]=*s;}
-static void bullet(void *c,const AstroShot *b){(void)c;assert(nb<32);bullets[nb++]=*b;}
+static void spawn(void *c,const AstroSpecialSpawn *s){(void)c;event('S');assert(ns<200);spawns[ns++]=*s;}
+static void bullet(void *c,const AstroShot *b){(void)c;event('B');assert(nb<32);bullets[nb++]=*b;}
 static void beam(void *c,const AstroBeam *b,int temporary){
-    (void)temporary;assert(ne<MAX_EVENTS);beams[ne++]=*b;
+    (void)temporary;event('E');assert(ne<MAX_EVENTS);beams[ne++]=*b;
     if(kill&&b->target>=0)((AstroTarget *)c)[b->target].remove=-1;
 }
-static void flash(void *c,int id,double x,double y,double w,double h){(void)c;assert(nf<MAX_EVENTS);flashes[nf++]=(Flash){id,x,y,w,h};}
-static void polygon(void *c,const AstroSpecialVertex *v,size_t count){(void)c;assert(nv+(int)count<MAX_EVENTS);for(size_t i=0;i<count;i++)vertices[nv++]=v[i];}
-static void equal(double a,double b){if(fabs(a-b)>1e-10){fprintf(stderr,"expected %.17g actual %.17g\n",a,b);assert(0);}}
+static void flash(void *c,int id,double x,double y,double w,double h){(void)c;event('F');assert(nf<MAX_EVENTS);flashes[nf++]=(Flash){id,x,y,w,h};}
+static void polygon(void *c,const AstroSpecialVertex *v,size_t count){(void)c;event('P');assert(nv+(int)count<MAX_EVENTS);for(size_t i=0;i<count;i++){event('V');vertices[nv++]=v[i];}}
+static void equal(double a,double b){uint64_t x,y;memcpy(&x,&a,8);memcpy(&y,&b,8);if(x!=y){fprintf(stderr,"expected %.17g [%016llx] actual %.17g [%016llx]\n",a,(unsigned long long)x,b,(unsigned long long)y);assert(0);}}
 int main(int argc,char **argv){
     FILE *f=fopen(argc>1?argv[1]:"tests/special_vectors.csv","r");assert(f);
-    char line[512];unsigned cases=0;
+    char line[16384];unsigned cases=0;
     while(fgets(line,sizeof(line),f)) {
-        int id,n,es,eb,ee,ef,ev;unsigned expected_seed;
-        assert(sscanf(line,"C,%d,%d,%u,%d,%d,%d,%d,%d",&id,&n,&expected_seed,&es,&eb,&ee,&ef,&ev)==8);
+        int id,n,es,eb,ee,ef,ev,ea;unsigned expected_seed;
+        assert(sscanf(line,"C,%d,%d,%u,%d,%d,%d,%d,%d,%d",&id,&n,&expected_seed,&es,&eb,&ee,&ef,&ev,&ea)==9);
         AstroTarget targets[6];
         for(int i=0;i<6;i++) {
             double x=200+(n*13+i*37)%350,y=100+(n*7+i*17)%130,w=20+i*3,h=25+i*5;
@@ -35,16 +39,18 @@ int main(int argc,char **argv){
                 targets[i].bounds=(AstroRect){left,top,left+(int)w-7,top+(int)h+5};
             }
         }
-        uint32_t seed=(uint32_t)n*123456789u;ns=nb=ne=nf=nv=0;kill=n%4==0;
+        uint32_t seed=(uint32_t)n*123456789u;ns=nb=ne=nf=nv=na=0;order_count=0;order[0]=0;kill=n%4==0;
         AstroSpecialContext c={.context=targets,.seed=&seed,.targets=targets,.target_count=6,.source_parent=-1,
             .gun_x=234,.gun_y=192,.frame_interval=n%3+1,.left=0,.top=0,.right=640,.bottom=380,
-            .spawn=spawn,.bullet=bullet,.beam=beam,.sprite=flash,.polygon=polygon};
+            .spawn=spawn,.bullet=bullet,.beam=beam,.sprite=flash,.polygon=polygon,.sound=sound};
         AstroSpecial special={0};assert(astro_special_start(&special,id,234,192,n*17,100,&c));
         for(uint32_t t=100;special.active&&t<=131;t++) {
             astro_special_step(&special,t,&c);
             int before=ne;astro_special_step(&special,t,&c);assert(ne==before);
         }
         assert(!special.active);assert(special.action_until==(uint32_t)((id>=40?130:100)+(n%3+1)+59));assert(ns==es&&nb==eb&&ne==ee&&nf==ef&&nv==ev&&seed==expected_seed);
+        assert(na==ea);assert(fgets(line,sizeof(line),f)&&line[0]=='O'&&line[1]==',');line[strcspn(line,"\n")]=0;
+        if(strcmp(line+2,order)){fprintf(stderr,"special%d n%d event order mismatch\n",id,n);assert(0);}
         for(int i=0;i<es;i++) {
             AstroSpecialSpawn e={0},*a=spawns+i;double w,h;
             assert(fgets(line,sizeof(line),f));assert(sscanf(line,"S,%d,%d,%d,%d,%d,%d,%d,%d,%lf,%lf,%lf,%lf",
@@ -71,6 +77,11 @@ int main(int argc,char **argv){
             Flash e,*a=flashes+i;assert(fgets(line,sizeof(line),f));assert(sscanf(line,"F,%d,%lf,%lf,%lf,%lf",&e.id,&e.x,&e.y,&e.w,&e.h)==5);
             assert(e.id==a->id);equal(e.x,a->x);equal(e.y,a->y);equal(e.w,a->w);equal(e.h,a->h);
         }
+        for(int i=0;i<ea;i++) {
+            int sound_id;unsigned long long expected_bits;uint64_t bits;
+            assert(fgets(line,sizeof(line),f));assert(sscanf(line,"A,%d,%llx",&sound_id,&expected_bits)==2);
+            memcpy(&bits,&sounds[i].pan,8);assert(sound_id==sounds[i].id&&bits==(uint64_t)expected_bits);
+        }
         for(int i=0;i<ev;i++) {
             AstroSpecialVertex e,*a=vertices+i;assert(fgets(line,sizeof(line),f));assert(sscanf(line,"V,%lf,%lf,%lf,%lf,%lf,%lf",&e.x,&e.y,&e.r,&e.g,&e.b,&e.a)==6);
             equal(e.x,a->x);equal(e.y,a->y);equal(e.r,a->r);equal(e.g,a->g);equal(e.b,a->b);equal(e.a,a->a);
@@ -82,6 +93,6 @@ int main(int argc,char **argv){
     assert(!astro_special_start(&s,20,0,0,0,1,&c));assert(!astro_special_start(NULL,10,0,0,0,1,&c));
     assert(astro_special_start(&s,40,20,20,0,1,&c));assert(!astro_special_start(&s,50,20,20,0,1,&c));
     c.seed=NULL;assert(!astro_special_step(&s,1,&c));
-    printf("PASS: %u original special-attack traces (all16 tiers), spawn/beam/flash/polygon/RNG, duplicate-tick and invalid-input checks\n",cases);
+    printf("PASS: %u original special-attack traces (all16 tiers), spawn/beam/flash/polygon/sound IEEE bits, event order/RNG, duplicate-tick and invalid-input checks\n",cases);
     return 0;
 }

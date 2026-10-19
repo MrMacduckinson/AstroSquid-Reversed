@@ -52,7 +52,7 @@ int main(int argc,char **argv) {
         for(tick=1;tick<=200;tick++) {
             unsigned controls=(variant+tick/25)%16;
             int x=tick%4==0?-20:tick%4==1?620:60,y=tick%4==2?-20:tick%4==3?375:180;
-            AstroRect bounds={x,y,x+71,y+20},viewport={0,0,640,380};
+            AstroRect bounds={x,y,x+71,y+20};AstroViewport viewport={0,0,640,380};
             set_short(entity,36,y);set_short(entity,38,x);set_short(entity,40,y+20);set_short(entity,42,x+71);
             set_short(globals,0xaac,controls&1?-1:0);set_short(globals,0xaae,controls&2?-1:0);
             set_short(globals,0xaa8,controls&4?-1:0);set_short(globals,0xaaa,controls&8?-1:0);

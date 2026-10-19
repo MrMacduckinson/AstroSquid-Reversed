@@ -12,8 +12,9 @@ static unsigned char *read_file(const char *name) {
     FILE *f=fopen(name,"rb");if(!f)exit(2);fseek(f,0,SEEK_END);long n=ftell(f);rewind(f);
     unsigned char *p=malloc(n);if(!p||fread(p,1,n,f)!=(size_t)n)exit(2);fclose(f);return p;
 }
+static void hex_double(FILE*f,double d){uint64_t u;memcpy(&u,&d,8);fprintf(f,"%016llx ",(unsigned long long)u);}
 int main(int argc,char **argv) {
-    if(argc!=3)return 2;
+    if(argc!=3)return 2;FILE *bits=getenv("ASTRO_STAR_BITS")?fopen(getenv("ASTRO_STAR_BITS"),"w"):NULL;
     unsigned char *pef=read_file(argv[1]),*literals=read_file(argv[2]),*code=pef+128;
     unsigned char *globals=calloc(1,0x1300),*heap=calloc(1,0x10000);
     double *original=calloc(3001*4,sizeof(double));AstroStar stars[3000];
@@ -49,13 +50,18 @@ int main(int argc,char **argv) {
         if(seed!=*(uint32_t *)(globals+0x244)) {printf("seed mismatch trial%d\n",trial);return 1;}
         for(int i=0;i<3000;i++) for(int j=0;j<4;j++) {
             double a=original[(i+1)*4+j],z=((double *)&stars[i])[j];
-            if(fabs(a-z)>1e-8) {printf("star mismatch trial%d star%d component%d original%.17g portable%.17g\n",trial,i,j,a,z);return 1;}
+            if(memcmp(&a,&z,8)) {printf("star mismatch trial%d star%d component%d original%.17g portable%.17g\n",trial,i,j,a,z);return 1;}
         }
         for(int i=0;i<3;i++) {
-            if(fabs(*(double *)(native_layers[i])-layers[i].x)>1e-8||fabs(*(double *)(native_layers[i]+8)-layers[i].y)>1e-8) {
+            if(memcmp(native_layers[i],&layers[i].x,8)||memcmp(native_layers[i]+8,&layers[i].y,8)) {
                 printf("parallax mismatch trial%d layer%d\n",trial,i);return 1;
             }
         }
+        if(bits&&trial<4){fprintf(bits,"C %d %u\n",trial,seed);
+            for(int i=0;i<3000;i++){for(int j=0;j<4;j++)hex_double(bits,original[(i+1)*4+j]);fputc('\n',bits);}
+            for(int i=0;i<3;i++){hex_double(bits,*(double*)native_layers[i]);hex_double(bits,*(double*)(native_layers[i]+8));fputc('\n',bits);}
+        }
     }
+    if(bits)fclose(bits);
     puts("PASS: MOVESTARS300000 original/portable star updates, RNG state and300 parallax results on PowerPC");return 0;
 }

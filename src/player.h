@@ -2,6 +2,7 @@
 #define ASTROSQUID_PLAYER_H
 #include "combat.h"
 #include <stdint.h>
+typedef struct { double left,top,right,bottom; } AstroViewport;
 typedef struct {
     AstroVelocity velocity;
     int frame,tilt,state;
@@ -10,5 +11,5 @@ typedef struct {
 enum { ASTRO_KEY_UP=1,ASTRO_KEY_DOWN=2,ASTRO_KEY_LEFT=4,ASTRO_KEY_RIGHT=8 };
 /* DOPLAYERSPRITE animation, acceleration and boundary handling; firing is separate. */
 void astro_player_step(AstroPlayer *p,uint32_t tick,unsigned controls,int speed,
-                       AstroRect bounds,double width,double height,AstroRect viewport,int ending);
+                       AstroRect bounds,double width,double height,AstroViewport viewport,int ending);
 #endif

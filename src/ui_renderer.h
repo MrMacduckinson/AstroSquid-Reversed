@@ -7,6 +7,8 @@ typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
 @interface AstroUIRenderer : NSObject
 @property(nonatomic,readonly) NSString *anchor;
 @property(nonatomic,readonly) BOOL transitioning;
+@property(nonatomic,readonly) double panelOffset;
+- (void)beginPauseExit;
 @property(nonatomic) BOOL registered;
 @property(nonatomic,copy) NSString *registeredName;
 /* 1-based row, zero disables new-score entry. Root handles text input. */
@@ -22,8 +24,10 @@ typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
 /* Main Menu / Play Menu / Settings Menu / Continue Menu / Keys Menu /
    Highscores Menu / Register Menu / Reg Thanks / Pause / GameOver. */
 - (void)show:(NSString *)anchor;
+/* Original PUTCONTROLS: source-order random phase for orb records only. */
+- (void)reloadMenuWithRandom:(uint32_t *)seed;
 - (void)moveMouseX:(double)x y:(double)y;
-- (void)mouseDownX:(double)x y:(double)y;
+- (NSString *)mouseDownX:(double)x y:(double)y;
 /* Returns original DOMOUSE action name. Navigation is applied automatically. */
 - (NSString *)mouseUpX:(double)x y:(double)y;
 - (void)animateTicks:(unsigned)ticks;

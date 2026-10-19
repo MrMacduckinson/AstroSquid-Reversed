@@ -1,5 +1,6 @@
 #import "ui_renderer.h"
 #include "ui_model.h"
+#include "weapons.h"
 #include <math.h>
 
 @implementation AstroUIRenderer {
@@ -10,10 +11,13 @@
     unsigned _ticks;
     double _targetX,_targetY;
     BOOL _transitioning;
+    unsigned _panelFrames;
+    double _panelOffset,_panelStep;
     NSMutableDictionary *_orbStates;
 }
 @synthesize anchor=_anchor;
 @synthesize transitioning=_transitioning;
+@synthesize panelOffset=_panelOffset;
 - (instancetype)initWithAssets:(NSString *)assets error:(NSError **)error {
     if((self=[super init])){
         NSData *bytes=[NSData dataWithContentsOfFile:[assets stringByAppendingPathComponent:@"ui/ui.json"] options:0 error:error];
@@ -32,14 +36,16 @@
     return nil;
 }
 - (void)show:(NSString *)anchor {
+    _panelFrames=0;_panelOffset=0;
     NSString *scene=[anchor isEqual:@"Pause"]?@"Data B3":[anchor isEqual:@"GameOver"]?@"Data B1":@"Data B2";
-    BOOL sameScene=_objects==_data[@"scenes"][scene];
+    BOOL sameScene=[scene isEqual:@"Data B2"]&&_objects==_data[@"scenes"][scene];
     _objects=_data[@"scenes"][scene];_anchor=[anchor copy];_hover=nil;_pressed=nil;
     if(!sameScene){
         _cameraX=0;_cameraY=0;_ticks=0;[_orbStates removeAllObjects];
         for(NSDictionary *object in _objects){
-            NSInteger counter=[scene isEqual:@"Data B2"]?arc4random_uniform(60)+1:[object[@"animation_counter"] integerValue];
-            _orbStates[object[@"name"]]=[@{ @"counter":@(counter),@"growth":@0.0 } mutableCopy];
+            NSInteger counter=[object[@"animation_counter"] integerValue];
+            AstroUIMotion state={[object[@"x"] doubleValue],[object[@"y"] doubleValue],[object[@"width"] doubleValue],[object[@"height"] doubleValue],(int32_t)counter,[object[@"sprite"] shortValue]};
+            _orbStates[object[@"name"]]=[NSMutableData dataWithBytes:&state length:sizeof(state)];
         }
     }
     _targetX=0;_targetY=0;
@@ -50,7 +56,31 @@
                             [a[@"width"] doubleValue],[a[@"height"] doubleValue],&_targetX,&_targetY);
     }
     _transitioning=sameScene&&![_anchor isEqual:@"Credits"];
-    if(!_transitioning){_cameraX=_targetX;_cameraY=_targetY;}
+    if(!_transitioning){
+        if([scene isEqual:@"Data B2"]){
+            double dx,dy;do {dx=(_targetX-_cameraX)/10;dy=(_targetY-_cameraY)/10;_cameraX+=dx;_cameraY+=dy;}while(fabs(dx)>=1||fabs(dy)>=1);
+        }else {_cameraX=_targetX;_cameraY=_targetY;}
+    }
+    if([anchor isEqual:@"Pause"]||[anchor isEqual:@"GameOver"]){
+        _panelFrames=[anchor isEqual:@"Pause"]?30:60;_panelOffset=-380;
+        _panelStep=380.0/_panelFrames;_transitioning=YES;
+        for(NSDictionary *object in _objects){
+            if([anchor isEqual:@"GameOver"]&&![object[@"name"] isEqual:@"GameOverOK"]&&![object[@"name"] isEqual:@"GameOverFade"])continue;
+            AstroUIMotion *state=[_orbStates[object[@"name"]] mutableBytes];
+            state->y=(state->y-380)-70;
+        }
+    }
+}
+- (void)beginPauseExit {
+    if(![_anchor isEqual:@"Pause"])return;
+    _panelFrames=30;_panelStep=-380.0/30;_transitioning=YES;
+}
+- (void)reloadMenuWithRandom:(uint32_t *)seed {
+    _objects=nil;[self show:@"Main Menu"];
+    for(NSDictionary *object in _objects){
+        NSInteger sprite=[object[@"sprite"] integerValue];
+        if(sprite==900||sprite==901)((AstroUIMotion *)[_orbStates[object[@"name"]] mutableBytes])->counter=astro_random(seed,60);
+    }
 }
 - (BOOL)enabled:(NSDictionary *)object {
     NSString *name=object[@"name"];
@@ -59,14 +89,9 @@
     return YES;
 }
 - (NSRect)bounds:(NSDictionary *)object {
-    double x=[object[@"x"] doubleValue]+_cameraX,y=[object[@"y"] doubleValue]+_cameraY;
-    double w=[object[@"width"] doubleValue],h=[object[@"height"] doubleValue];
-    NSInteger sprite=[object[@"sprite"] integerValue];
-    if(sprite>=900&&sprite<=902){
-        double growth=[_orbStates[object[@"name"]][@"growth"] doubleValue];
-        x-=growth;y-=growth;w+=2*growth;h+=2*growth;
-    }
-    return NSMakeRect(x,y,w,h);
+    const AstroUIMotion *state=[_orbStates[object[@"name"]] bytes];
+    double y=state->y+_cameraY;if([_anchor isEqual:@"Pause"]||[_anchor isEqual:@"GameOver"])y+=70;
+    return NSMakeRect(state->x+_cameraX,y,state->width,state->height);
 }
 - (NSString *)hitX:(double)x y:(double)y {
     NSString *result=nil;
@@ -79,28 +104,34 @@
     return result;
 }
 - (void)moveMouseX:(double)x y:(double)y {_hover=[self hitX:x y:y];}
-- (void)mouseDownX:(double)x y:(double)y {_pressed=[self hitX:x y:y];_hover=_pressed;}
-- (NSString *)mouseUpX:(double)x y:(double)y {
+- (NSString *)mouseDownX:(double)x y:(double)y {
+    if(_pressed)return nil;
     if([_anchor isEqual:@"Credits"]){[self show:@"Main Menu"];return @"Yeah";}
-    NSString *hit=[self hitX:x y:y];NSString *result=[hit isEqual:_pressed]?hit:nil;_pressed=nil;_hover=hit;
+    NSString *result=[self hitX:x y:y];_pressed=result;_hover=result;
     if(result){AstroUICommand command=astro_ui_command(result.UTF8String);
-        if(command.action==ASTRO_UI_NAVIGATE)[self show:[NSString stringWithUTF8String:command.destination]];
+        if(command.action==ASTRO_UI_NAVIGATE){[self show:[NSString stringWithUTF8String:command.destination]];_pressed=result;}
     }return result;
+}
+- (NSString *)mouseUpX:(double)x y:(double)y {
+    _pressed=nil;_hover=[self hitX:x y:y];return nil;
 }
 - (void)animateTicks:(unsigned)ticks {
     _ticks+=ticks;
     for(unsigned i=0;i<ticks;i++){
-        if(_transitioning){
+        if(_panelFrames){
+            _panelOffset+=_panelStep;
+            for(NSDictionary *object in _objects){
+                if([_anchor isEqual:@"GameOver"]&&![object[@"name"] isEqual:@"GameOverOK"]&&![object[@"name"] isEqual:@"GameOverFade"])continue;
+                astro_ui_panel_step([_orbStates[object[@"name"]] mutableBytes],_panelStep);
+            }
+            if(!--_panelFrames){_transitioning=NO;if(_panelStep>0)_panelOffset=0;}
+            continue;
+        }else if(_transitioning){
             double dx=(_targetX-_cameraX)/10,dy=(_targetY-_cameraY)/10;
             _cameraX+=dx;_cameraY+=dy;
-            if(fabs(dx)<1&&fabs(dy)<1){_targetX=_cameraX;_targetY=_cameraY;_transitioning=NO;}
+            if(fabs(dx)<1&&fabs(dy)<1){_targetX=_cameraX;_targetY=_cameraY;_transitioning=NO;_pressed=nil;}
         }
-        for(NSMutableDictionary *state in _orbStates.allValues){
-            NSInteger counter=[state[@"counter"] integerValue];double growth=[state[@"growth"] doubleValue];
-            if(counter<31)growth+=.1;
-            else {growth-=.1;if(counter>59)counter=0;}
-            state[@"counter"]=@(counter+1);state[@"growth"]=@(growth);
-        }
+        for(NSDictionary *object in _objects)astro_ui_animate([_orbStates[object[@"name"]] mutableBytes],1);
     }
 }
 - (double)textWidth:(NSString *)text size:(double)size {
@@ -112,7 +143,7 @@
 - (void)drawText:(NSString *)text x:(double)x baseline:(double)y size:(double)size texture:(AstroUITextureLoader)texture {
     NSData *bytes=[text dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:YES];
     const unsigned char *chars=bytes.bytes;NSArray *advance=_data[@"font"][@"advance"];
-    glEnable(GL_TEXTURE_2D);glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_TEXTURE_2D);glEnable(GL_BLEND);glBlendFunc(GL_ONE,GL_ONE_MINUS_SRC_ALPHA);
     glBindTexture(GL_TEXTURE_2D,texture(50));
     for(NSUInteger i=0;i<bytes.length;i++){
         unsigned c=chars[i];
@@ -124,6 +155,7 @@
             glTexCoord2d(u,v+e);glVertex2d(x,y);glEnd();
         }x+=size*[advance[c] doubleValue];
     }
+    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 }
 - (void)label:(NSString *)text object:(NSDictionary *)object left:(BOOL)left texture:(AstroUITextureLoader)texture {
     NSRect r=[self bounds:object];NSDictionary *spec=_data[@"label_layout"][object[@"name"]];
@@ -171,8 +203,8 @@
         [self drawText:registration x:x baseline:(int)(NSMidY(r)+215) size:10 texture:texture];
         [self drawText:_data[@"labels"][@"224"] x:x baseline:(int)(NSMidY(r)+230) size:10 texture:texture];
     }
-    if([_anchor isEqual:@"Pause"]){glColor4d(1,1,1,1);[self drawText:@"Game Paused" x:220 baseline:220 size:32 texture:texture];}
-    if([_anchor isEqual:@"GameOver"]){glColor4d(1,1,1,1);[self drawText:@"Game Over" x:240 baseline:190 size:32 texture:texture];}
+    if([_anchor isEqual:@"Pause"]&&!_transitioning){glColor4d(1,1,1,1);[self drawText:@"Game Paused" x:220 baseline:220 size:32 texture:texture];}
+    if([_anchor isEqual:@"GameOver"]&&!_transitioning){glColor4d(1,1,1,1);[self drawText:@"Game Over" x:240 baseline:190 size:32 texture:texture];}
     if([_anchor isEqual:@"GameOver"]&&self.editingHighscore>0){
         glColor4d(1,1,1,1);[self drawText:@"Highscore!" x:240 baseline:240 size:32 texture:texture];
         glDisable(GL_TEXTURE_2D);glBegin(GL_LINE_LOOP);
@@ -197,10 +229,10 @@
         NSDictionary *object=[self object:@"Highscores Menu"];NSRect r=[self bounds:object];NSInteger i=0;
         double x=(int)(NSMidX(r)+95),y=(int)(NSMidY(r)+50);
         glColor4d(1,1,1,1);
-        for(NSDictionary *entry in self.highscores){NSString *line=[NSString stringWithFormat:@"'%@' %@pts",entry[@"name"]?:@"",entry[@"score"]?:@0];
+        for(NSDictionary *entry in self.highscores){NSString *line=[NSString stringWithFormat:@"'%@' %s%@pts",entry[@"name"]?:@"",[entry[@"score"] longLongValue]>=0?" ":"",entry[@"score"]?:@0];
             glColor4d(self.editingHighscore>0&&self.editingHighscore!=i+1?.5:1,self.editingHighscore>0&&self.editingHighscore!=i+1?.5:1,self.editingHighscore>0&&self.editingHighscore!=i+1?.5:1,1);
             [self drawText:line x:x+30 baseline:y+25*i size:16 texture:texture];
-            [self drawText:[NSString stringWithFormat:@"%ld",(long)i+1] x:x-(i==9?11:0) baseline:y+25*i+4 size:24 texture:texture];
+            [self drawText:[NSString stringWithFormat:@" %ld",(long)i+1] x:x-(i==9?11:0) baseline:y+25*i+4 size:24 texture:texture];
             if(++i==10)break;
         }
     }

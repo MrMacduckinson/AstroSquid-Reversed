@@ -10,6 +10,9 @@
 #include "scores.h"
 static uint32_t descriptors[484][2];
 static void no_save(void){}
+static unsigned native_alerts;
+static short controlled_alert(short identifier,void *filter){(void)filter;if(identifier!=150)exit(2);native_alerts++;return 2;}
+static void controlled_paramtext(void){}
 void missing_import_report(uint32_t *descriptor){int index=(int)(descriptor-&descriptors[0][0])/2;fprintf(stderr,"Unresolved scores oracle import %d\n",index);exit(2);}
 extern void missing_import(void);
 __asm__(".text\n.align 2\n.globl _missing_import\n_missing_import:\nmr r3,r12\nb _missing_import_report\n");
@@ -18,7 +21,7 @@ static void jump_to(unsigned char *at,void *destination){uintptr_t p=(uintptr_t)
 int main(int argc,char **argv){
     if(argc!=4){fputs("usage: scores_oracle original.pef literals.bin original-app\n",stderr);return 2;}
     unsigned char *pef=read_file(argv[1]),*code=pef+128,*literals=read_file(argv[2]),*globals=calloc(1,0x1300),*heap=calloc(1,0x10000);uint32_t toc[489]={0};
-    for(int i=0;i<484;i++){void *function=dlsym(RTLD_DEFAULT,import_names[i]);descriptors[i][0]=(uint32_t)(uintptr_t)(function?function:(void *)missing_import);toc[i]=(uint32_t)(uintptr_t)descriptors[i];}
+    for(int i=0;i<484;i++){void *function=dlsym(RTLD_DEFAULT,import_names[i]);if(!strcmp(import_names[i],"StopAlert"))function=controlled_alert;if(!strcmp(import_names[i],"ParamText"))function=controlled_paramtext;descriptors[i][0]=(uint32_t)(uintptr_t)(function?function:(void *)missing_import);toc[i]=(uint32_t)(uintptr_t)descriptors[i];}
     *(void **)(globals+0x21c)=literals;*(double *)(globals+0x378)=4503601774854144.;*(uint32_t *)(globals+0x380)=0x43300000;
     *(void **)(globals+0x388)=heap;*(void **)(globals+0x38c)=heap;toc[0]=(uint32_t)(uintptr_t)globals;
     FSRef ref;SInt16 resourceFile;HFSUniStr255 forkName;OSStatus error=FSPathMakeRef((const UInt8 *)argv[3],&ref,NULL);
@@ -43,15 +46,15 @@ int main(int argc,char **argv){
     unsigned steps=0;uint32_t random=12345;
     for(int episode=0;episode<100;episode++){
         AstroScoreEditor editor;astro_score_editor_begin(&editor);memset(globals+0x5b2,0,0x22a);*(void **)(globals+0xa06)=globals+0x5b2;*(double *)(globals+0x5c2)=200;
-        for(int step=0;step<200;step++){
+        for(int step=0;step<400;step++){
             static const unsigned controls[]={8,127,28,29,30,31,27,9,10,11,12,16,1,4,5};
             random=random*1664525+1013904223;unsigned key=(random&3)?32+(random>>16)%224:controls[(random>>16)%15];
-            size_t length=strlen(editor.name);if((key==8&&!editor.cursor)||(key==127&&editor.cursor==length)||(length==255&&key>=32&&key!=127))continue;
-            *(void **)(globals+0x38c)=heap;invoke_fb(code+0x4b9c8,globals,toc,(void *)(uintptr_t)key,NULL,NULL);astro_score_editor_key(&editor,key);
-            if(globals[0x6da]!=strlen(editor.name)||memcmp(globals+0x6db,editor.name,globals[0x6da])||*(int16_t *)(globals+0x5d6)!=(int)editor.cursor){fprintf(stderr,"Native editor mismatch episode%d step%d key%u len%u/%lu cursor%d/%lu\n",episode,step,key,globals[0x6da],(unsigned long)strlen(editor.name),*(int16_t *)(globals+0x5d6),(unsigned long)editor.cursor);return 1;}
+            unsigned before_alerts=native_alerts;
+            *(void **)(globals+0x38c)=heap;invoke_fb(code+0x4b9c8,globals,toc,(void *)(uintptr_t)key,NULL,NULL);int edit=astro_score_editor_key(&editor,key);if(edit==ASTRO_SCORE_EDIT_ALERT){if(native_alerts!=before_alerts+1)return 1;astro_score_editor_resolve_alert(&editor,1);}else if(native_alerts!=before_alerts)return 1;
+            if(globals[0x6da]!=strlen(editor.name)||memcmp(globals+0x6db,editor.name,globals[0x6da])||*(int16_t *)(globals+0x5d6)!=(int)editor.cursor){fprintf(stderr,"Native editor mismatch episode%d step%d key%u len%u/%lu cursor%d/%lu\n",episode,step,key,globals[0x6da],(unsigned long)strlen(editor.name),*(int16_t *)(globals+0x5d6),(unsigned long)(int)editor.cursor);return 1;}
             steps++;
         }
         invoke_fb(code+0x4b9c8,globals,toc,(void *)13,NULL,NULL);astro_score_editor_key(&editor,13);if(*(int16_t *)(globals+0x7da)!=editor.submitted)return 1;
     }
-    CloseResFile(resourceFile);printf("PASS native defaults, %u stable score insertions and %u Classic editing events +100submits\n",insertions,steps);return 0;
+    CloseResFile(resourceFile);printf("PASS native defaults, %u stable score insertions and %u Classic editing events +100submits, %u controlledoriginaloverflowalerts\n",insertions,steps,native_alerts);return 0;
 }

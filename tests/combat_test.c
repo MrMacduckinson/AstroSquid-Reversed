@@ -1,3 +1,4 @@
+#include "ieee_exact.h"
 #include "../src/combat.h"
 #include <assert.h>
 #include <math.h>
@@ -17,7 +18,7 @@ int main(int argc,char **argv) {
         if(player) astro_bullet_hits_player(&b,&e);
         else actual_effects=astro_bullet_hits_enemy(&b,&e,value,&score);
         assert(b.hit_points==want_bhp&&e.hit_points==want_ehp&&b.remove==br&&e.remove==er);
-        assert(fabs(e.velocity.x-vx)<1e-10&&fabs(e.velocity.y-vy)<1e-10);
+        assert(ieee_exact(e.velocity.x,vx)&&ieee_exact(e.velocity.y,vy));
         assert(score==want_score&&effects==actual_effects);checked++;
     }
     assert(feof(f));fclose(f);assert(checked==200);

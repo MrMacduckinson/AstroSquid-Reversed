@@ -21,13 +21,22 @@ static int nspawn,pspawn,nbeam,pbeam,nbullet,pbullet,nflash,pflash,nvertex,pvert
 typedef struct {int id;double x,y,w,h;} Flash;
 static Flash native_flashes[MAX_EVENTS],port_flashes[MAX_EVENTS];
 static AstroSpecialVertex native_vertices[MAX_EVENTS],port_vertices[MAX_EVENTS];
+typedef struct {int id;double pan;} Sound;
+static Sound native_sounds[MAX_EVENTS],port_sounds[MAX_EVENTS];static int nsound,psound,last_sound_id;
+static char native_order[40000],port_order[40000];static unsigned no,po;static void*string_result;
+static void native_event(char c){if(no>=sizeof(native_order)-1)exit(3);native_order[no++]=c;native_order[no]=0;}
+static void port_event(char c){if(po>=sizeof(port_order)-1)exit(3);port_order[po++]=c;port_order[po]=0;}
+void *getstr(uint32_t id){last_sound_id=id&65535;return string_result;}
+void sound(void*name,double*pan){(void)name;native_event('A');native_sounds[nsound++]=(Sound){last_sound_id,*pan};}
+static void port_sound(void*context,int id,double x){(void)context;port_event('A');port_sounds[psound++]=(Sound){id,(double)x/640};}
+static void capture_begin(unsigned mode){if(mode==9)native_event('P');}
 static double cr,cg,cb,ca;
 static void capture_color(double r,double g,double b,double a){cr=r;cg=g;cb=b;ca=a;}
-static void capture_vertex(double x,double y){native_vertices[nvertex++]=(AstroSpecialVertex){x,y,cr,cg,cb,ca};}
+static void capture_vertex(double x,double y){native_event('V');native_vertices[nvertex++]=(AstroSpecialVertex){x,y,cr,cg,cb,ca};}
 static unsigned char *attrs,*sprt;
 static int kill_on_hit;
 void *new_entity(int kind,int subtype,int x,int y,void *parent) {
-    (void)parent;if(nspawn>=200)exit(3);int i=nspawn++,id=kind*10+subtype;
+    (void)parent;native_event('S');if(nspawn>=200)exit(3);int i=nspawn++,id=kind*10+subtype;
     unsigned char *e=entities[i],*r=renders[i];
     memset(e,0,128);memset(r,0,312);
     int sprite=*(int16_t *)(attrs+id*30+22);
@@ -39,10 +48,10 @@ void *new_entity(int kind,int subtype,int x,int y,void *parent) {
     set_double(r,16,w);set_double(r,24,h);return e;
 }
 void new_bullet(int type,int x,int y,int heading,void *source) {
-    (void)source;native_bullets[nbullet++]=(AstroShot){type,heading,x,y};
+    (void)source;native_event('B');native_bullets[nbullet++]=(AstroShot){type,heading,x,y};
 }
 void *new_beam(int weapon,int damage,int x,int y,int ex,int ey,void *source) {
-    (void)source;if(nbeam>=MAX_EVENTS)exit(3);
+    (void)source;native_event('E');if(nbeam>=MAX_EVENTS)exit(3);
     native_beams[nbeam++]=(AstroBeam){weapon,damage,x,y,ex,ey,-1};return beam_marker;
 }
 void resolve(void *b,int kind,void *target,int target_kind) {
@@ -52,7 +61,7 @@ void resolve(void *b,int kind,void *target,int target_kind) {
     }
 }
 void forced(int id,double *x,double *y,double *w,double *h) {
-    native_flashes[nflash++]=(Flash){id,*x,*y,*w,*h};
+    native_event('F');native_flashes[nflash++]=(Flash){id,*x,*y,*w,*h};
 }
 void next_tick(void){tick++;}
 static void nothing(void){}
@@ -61,12 +70,12 @@ extern void name##_fb(void); \
 __asm__(".text\n.align 2\n.globl _" #name "_fb\n_" #name "_fb:\n" \
 "mflr r0\nstw r0,8(r1)\nstwu r1,-64(r1)\nstw r2,20(r1)\n" \
 "bl _" #name "\nlwz r2,20(r1)\naddi r1,r1,64\nlwz r0,8(r1)\nmtlr r0\nblr\n");
-BRIDGE(new_entity) BRIDGE(new_bullet) BRIDGE(new_beam) BRIDGE(resolve) BRIDGE(forced) BRIDGE(next_tick)
-static void port_spawn(void *ctx,const AstroSpecialSpawn *s){(void)ctx;port_spawns[pspawn++]=*s;}
-static void port_bullet(void *ctx,const AstroShot *s){(void)ctx;port_bullets[pbullet++]=*s;}
-static void port_beam(void *ctx,const AstroBeam *b,int temp){(void)temp;AstroTarget *t=ctx;port_beams[pbeam++]=*b;if(kill_on_hit&&b->target>=0)t[b->target].remove=-1;}
-static void port_flash(void *ctx,int id,double x,double y,double w,double h){(void)ctx;port_flashes[pflash++]=(Flash){id,x,y,w,h};}
-static void port_polygon(void *ctx,const AstroSpecialVertex *v,size_t count){(void)ctx;for(size_t i=0;i<count;i++)port_vertices[pvertex++]=v[i];}
+BRIDGE(getstr) BRIDGE(sound) BRIDGE(new_entity) BRIDGE(new_bullet) BRIDGE(new_beam) BRIDGE(resolve) BRIDGE(forced) BRIDGE(next_tick)
+static void port_spawn(void *ctx,const AstroSpecialSpawn *s){(void)ctx;port_event('S');port_spawns[pspawn++]=*s;}
+static void port_bullet(void *ctx,const AstroShot *s){(void)ctx;port_event('B');port_bullets[pbullet++]=*s;}
+static void port_beam(void *ctx,const AstroBeam *b,int temp){(void)temp;port_event('E');AstroTarget *t=ctx;port_beams[pbeam++]=*b;if(kill_on_hit&&b->target>=0)t[b->target].remove=-1;}
+static void port_flash(void *ctx,int id,double x,double y,double w,double h){(void)ctx;port_event('F');port_flashes[pflash++]=(Flash){id,x,y,w,h};}
+static void port_polygon(void *ctx,const AstroSpecialVertex *v,size_t count){(void)ctx;port_event('P');for(size_t i=0;i<count;i++){port_event('V');port_vertices[pvertex++]=v[i];}}
 int main(int argc,char **argv) {
     if(argc!=5)return 2;
     unsigned char *pef=read_file(argv[1]),*code=pef+128,*literals=read_file(argv[2]);
@@ -76,6 +85,7 @@ int main(int argc,char **argv) {
         void *function=dlsym(RTLD_DEFAULT,import_names[i]);
         if(!strcmp(import_names[i],"TickCount"))function=(void *)controlled_tick;
         if(!strncmp(import_names[i],"gl",2))function=(void *)nothing;
+        if(!strcmp(import_names[i],"glBegin"))function=(void *)capture_begin;
         if(!strcmp(import_names[i],"glColor4d"))function=(void *)capture_color;
         if(!strcmp(import_names[i],"glVertex2d"))function=(void *)capture_vertex;
         descriptors[i][0]=(uint32_t)(uintptr_t)(function?function:(void *)missing_import);
@@ -85,18 +95,20 @@ int main(int argc,char **argv) {
     snprintf(path,sizeof(path),"%s/sprt.bin",argv[4]);sprt=read_file(path);
     set_pointer(globals,0x21c,literals);set_double(globals,0x368,3.14159265358979323846);
     set_double(globals,0x378,4503601774854144.0);*(uint32_t *)(globals+0x380)=0x43300000;
-    set_pointer(globals,0x388,heap);set_pointer(globals,0x38c,heap);
+    string_result=heap;set_pointer(globals,0x388,heap);set_pointer(globals,0x38c,heap);
     set_pointer(globals,0xa94,attrs);set_pointer(globals,0xe82,sprt);toc[0]=(uint32_t)(uintptr_t)globals;
     jump_to(code+0x53bf4,(void *)new_entity_fb);jump_to(code+0x54248,(void *)new_bullet_fb);
     jump_to(code+0x54594,(void *)new_beam_fb);jump_to(code+0x547b4,(void *)resolve_fb);
     jump_to(code+0x55878,(void *)forced_fb);jump_to(code+0x4cb28,(void *)next_tick_fb);
-    int noops[]={0x3ce84,0x539b8,0x54c64,0x57afc,0x35eb8,0x3b55c,0x43134,0x528b4};
+    jump_to(code+0x2ca8,(void*)getstr_fb);jump_to(code+0x3ce84,(void*)sound_fb);
+    int noops[]={0x539b8,0x54c64,0x57afc,0x35eb8,0x3b55c,0x43134,0x528b4};
     for(unsigned i=0;i<sizeof(noops)/sizeof(noops[0]);i++)*(uint32_t *)(code+noops[i])=0x4e800020;
     MakeDataExecutable(code,433284);
     FILE *fixture=getenv("ASTRO_SPECIAL_FIXTURE")?fopen(getenv("ASTRO_SPECIAL_FIXTURE"),"w"):NULL;
     FILE *stale=getenv("ASTRO_STALE_SPECIAL_FIXTURE")?fopen(getenv("ASTRO_STALE_SPECIAL_FIXTURE"),"w"):NULL;
     unsigned cases=0;
     for(int family=1;family<=5;family++)if(family!=2)for(int tier=0;tier<4;tier++)for(int n=0;n<40;n++) {
+        no=po=0;native_order[0]=port_order[0]=0;nsound=psound=0;
         int id=family*10+tier;nspawn=pspawn=nbeam=pbeam=nbullet=pbullet=nflash=pflash=nvertex=pvertex=0;
         tick=100;uint32_t seed=(uint32_t)n*123456789u;*(uint32_t *)(globals+0x244)=seed;
         memset(entities,0,sizeof(entities));memset(world,0,sizeof(world));
@@ -124,12 +136,17 @@ int main(int argc,char **argv) {
         invoke5(code+0x5bd0c,globals,toc,(void *)(intptr_t)id,(void *)234,(void *)192,(void *)(intptr_t)(n*17),player);
         AstroSpecialContext c={.context=targets,.seed=&seed,.targets=targets,.target_count=6,.source_parent=-1,
             .gun_x=gunx,.gun_y=guny,.frame_interval=n%3+1,.left=0,.top=0,.right=640,.bottom=380,
-            .spawn=port_spawn,.bullet=port_bullet,.beam=port_beam,.sprite=port_flash,.polygon=port_polygon};
+            .spawn=port_spawn,.bullet=port_bullet,.beam=port_beam,.sprite=port_flash,.polygon=port_polygon,.sound=port_sound};
         AstroSpecial s={0};astro_special_start(&s,id,234,192,n*17,100,&c);
         for(uint32_t t=100;s.active&&t<=131;t++)astro_special_step(&s,t,&c);
         if(id>=40&&(*(int16_t *)player!=1||s.action_until!=*(uint32_t *)(player+16))) {
             printf("FAIL kind/cooldown id%d n%d kind%d deadline%u/%u\n",id,n,*(int16_t *)player,*(uint32_t *)(player+16),s.action_until);return 1;
         }
+        if(nsound!=psound){printf("FAIL soundcounts id%d n%d %d/%d\n",id,n,nsound,psound);return 1;}
+        for(int i=0;i<nsound;i++)if(native_sounds[i].id!=port_sounds[i].id||memcmp(&native_sounds[i].pan,&port_sounds[i].pan,8)){
+            printf("FAIL sound id%d n%d entry%d cue%d/%d pan%.17g/%.17g\n",id,n,i,native_sounds[i].id,port_sounds[i].id,native_sounds[i].pan,port_sounds[i].pan);return 1;
+        }
+        if(strcmp(native_order,port_order)){printf("FAIL special event order id%d n%d native%u port%u\n",id,n,no,po);return 1;}
         if(nspawn!=pspawn||nbullet!=pbullet||nbeam!=pbeam||nflash!=pflash||seed!=*(uint32_t *)(globals+0x244)) {
             printf("FAIL id%d n%d counts spawn%d/%d bullet%d/%d beam%d/%d flash%d/%d seed%u/%u\n",id,n,nspawn,pspawn,nbullet,pbullet,nbeam,pbeam,nflash,pflash,*(uint32_t *)(globals+0x244),seed);return 1;
         }
@@ -140,8 +157,8 @@ int main(int argc,char **argv) {
             double expected_w=s->width?s->width:w*s->scale,expected_h=s->height?s->height:h*s->scale;
             if(*(int16_t *)e!=s->kind||*(int16_t *)(e+2)!=s->subtype||*(double *)(e+44)!=s->x||*(double *)(e+52)!=s->y||
                *(int16_t *)(e+88)!=s->hit_points||*(int16_t *)(e+90)!=s->layer||*(int16_t *)(e+24)!=s->frame||
-               *(uint32_t *)(e+16)!=100+s->action_offset||fabs(*(double *)(e+72)-s->velocity.x)>1e-10||
-               fabs(*(double *)(e+80)-s->velocity.y)>1e-10||fabs(*(double *)(r+16)-expected_w)>1e-10||fabs(*(double *)(r+24)-expected_h)>1e-10) {
+               *(uint32_t *)(e+16)!=100+s->action_offset||memcmp(e+72,&s->velocity.x,8)||
+               memcmp(e+80,&s->velocity.y,8)||memcmp(r+16,&expected_w,8)||memcmp(r+24,&expected_h,8)) {
                 printf("FAIL id%d n%d spawn%d v%.12g,%.12g/%.12g,%.12g frame%d/%d hp%d/%d dims%.12g,%.12g/%.12g,%.12g\n",id,n,i,
                     *(double *)(e+72),*(double *)(e+80),s->velocity.x,s->velocity.y,*(int16_t *)(e+24),s->frame,
                     *(int16_t *)(e+88),s->hit_points,*(double *)(r+16),*(double *)(r+24),expected_w,expected_h);return 1;
@@ -159,7 +176,7 @@ int main(int argc,char **argv) {
         for(int i=0;i<nflash;i++)if(native_flashes[i].id!=port_flashes[i].id||memcmp(&native_flashes[i].x,&port_flashes[i].x,4*sizeof(double))){printf("FAIL flash id%d n%d index%d\n",id,n,i);return 1;}
         FILE *capture=n<3?fixture:n>=20&&n<23?stale:NULL;
         if(capture) {
-            fprintf(capture,"C,%d,%d,%u,%d,%d,%d,%d,%d\n",id,n,*(uint32_t *)(globals+0x244),nspawn,nbullet,nbeam,nflash,nvertex);
+            fprintf(capture,"C,%d,%d,%u,%d,%d,%d,%d,%d,%d\nO,%s\n",id,n,*(uint32_t *)(globals+0x244),nspawn,nbullet,nbeam,nflash,nvertex,nsound,native_order);
             for(int i=0;i<nspawn;i++){unsigned char *e=entities[i],*r=renders[i];
                 fprintf(capture,"S,%d,%d,%d,%d,%d,%d,%d,%d,%.17g,%.17g,%.17g,%.17g\n",
                     *(int16_t *)e,*(int16_t *)(e+2),(int)*(double *)(e+44),(int)*(double *)(e+52),
@@ -168,10 +185,11 @@ int main(int argc,char **argv) {
             for(int i=0;i<nbullet;i++){AstroShot *b=native_bullets+i;fprintf(capture,"B,%d,%d,%d,%d\n",b->type,b->heading,b->x,b->y);}
             for(int i=0;i<nbeam;i++){AstroBeam *b=native_beams+i;fprintf(capture,"E,%d,%d,%d,%d,%d,%d,%d\n",b->weapon,b->damage,b->x,b->y,b->end_x,b->end_y,b->target);}
             for(int i=0;i<nflash;i++){Flash *f=native_flashes+i;fprintf(capture,"F,%d,%.17g,%.17g,%.17g,%.17g\n",f->id,f->x,f->y,f->w,f->h);}
+            for(int i=0;i<nsound;i++){uint64_t u;memcpy(&u,&native_sounds[i].pan,8);fprintf(capture,"A,%d,%016llx\n",native_sounds[i].id,(unsigned long long)u);}
             for(int i=0;i<nvertex;i++){AstroSpecialVertex *v=native_vertices+i;fprintf(capture,"V,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g\n",v->x,v->y,v->r,v->g,v->b,v->a);}
         }
         cases++;
     }
     if(fixture)fclose(fixture);if(stale)fclose(stale);
-    printf("PASS %u original/portable special cases: all16 weapons, spawn fields, bullets, beam arguments, flash positions, polygon vertices/RGBA, RNG\n",cases);return 0;
+    printf("PASS %u original/portable special cases: all16 weapons, exactIEEE spawn fields/soundpan/polygon/flash, bullet/beam arguments, cross-event order/RNG\n",cases);return 0;
 }

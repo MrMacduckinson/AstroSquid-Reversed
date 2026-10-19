@@ -1,8 +1,9 @@
 #include "special.h"
 #include <math.h>
+#include "ppc_math.h"
 #include <string.h>
 
-static void sound(AstroSpecialContext *c,int id,int x) {if(c->sound)c->sound(c->context,id,x);}
+static void sound(AstroSpecialContext *c,int id,double x) {if(c->sound)c->sound(c->context,id,x);}
 static void spawn(AstroSpecialContext *c,const AstroSpecialSpawn *s) {if(c->spawn)c->spawn(c->context,s);}
 static void sprite(AstroSpecialContext *c,int id,double x,double y,double size) {
     if(c->sprite)c->sprite(c->context,id,x,y,size,size);
@@ -11,18 +12,20 @@ static int random_value(AstroSpecialContext *c,int n) {return astro_random(c->se
 static int valid(const AstroSpecialContext *c) {
     return c&&c->seed&&(!c->target_count||c->targets)&&c->frame_interval>0&&c->left<c->right&&c->top<c->bottom;
 }
-static int center(const AstroTarget *t,int y) {
+static double center_value(const AstroTarget *t,int y) {
     AstroRect r=astro_target_rect(t);
-    return (int)((y?t->y:t->x)+(y?r.bottom-r.top:r.right-r.left)/2.0);
+    return (y?t->y:t->x)+(y?r.bottom-r.top:r.right-r.left)/2.0;
 }
+static int center(const AstroTarget *t,int y) {return astro_ppc_i32(center_value(t,y));}
 static int nearest(AstroSpecialContext *c,int x,int y,int distance,int excluded) {
     int found=-1;
     for(size_t i=0;i<c->target_count;i++) {
         AstroTarget *t=c->targets+i;
         if(!(t->kind==1||t->kind==5||(t->kind>19&&t->kind<30))||
             (int)i==excluded||(int)i==c->source_parent||t->remove)continue;
-        int dx=x-(int16_t)center(t,0),dy=y-(int16_t)center(t,1);
-        int d=dx*dx+dy*dy;
+        uint32_t dx=(uint32_t)x-(uint32_t)(int32_t)(int16_t)center(t,0),dy=(uint32_t)y-(uint32_t)(int32_t)(int16_t)center(t,1);
+        /* Original PPC low-word multiply/add wraps at32bits. */
+        int32_t d=(int32_t)(dx*dx+dy*dy);
         if(d<distance){distance=d;found=(int)i;}
     }
     return found;
@@ -77,7 +80,7 @@ static void storm(AstroSpecial *s,AstroSpecialContext *c,int render) {
         if(target<0)continue;
         AstroTarget *t=c->targets+target;
         int ex=center(t,0),ey=center(t,1);
-        sound(c,295,ex);hits++;
+        sound(c,295,center_value(t,0));hits++;
         beam(c,s->weapon,0,c->gun_x,c->gun_y,x,y,-1,0);
         beam(c,s->weapon,(s->weapon-49)*4,x,y,ex,ey,target,0);
         if(s->weapon>50&&!t->remove) {
@@ -107,9 +110,9 @@ static void plasma_ray(AstroSpecialContext *c,int render) {
     int x=c->gun_x-15,y=c->gun_y+1,target=-1;double ex=x,ey=y;
     while(ex<c->right&&ex>c->left&&ey<c->bottom&&ey>c->top&&target<0) {
         ex+=5;
-        for(int offset=1;offset<20&&target<0;offset+=4)target=point(c,(int16_t)(int)ex,(int16_t)(int)(ey+offset));
+        for(int offset=1;offset<20&&target<0;offset+=4)target=point(c,(int16_t)astro_ppc_i32(ex),(int16_t)astro_ppc_i32(ey+offset));
     }
-    beam(c,40,200,x,y,(int)ex,(int)ey,target,1);
+    beam(c,40,200,x,y,astro_ppc_i32(ex),astro_ppc_i32(ey),target,1);
     if(!render)return;
     for(int sign=1;sign>=-1;sign-=2) {
         AstroSpecialVertex v[]={

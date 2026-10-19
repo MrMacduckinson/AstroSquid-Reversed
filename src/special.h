@@ -24,7 +24,7 @@ typedef struct {
     void (*beam)(void *,const AstroBeam *,int temporary);
     void (*sprite)(void *,int sprite,double x,double y,double width,double height);
     void (*polygon)(void *,const AstroSpecialVertex *,size_t count);
-    void (*sound)(void *,int string_index,int x);
+    void (*sound)(void *,int string_index,double x);
 } AstroSpecialContext;
 typedef struct {
     int weapon,active;

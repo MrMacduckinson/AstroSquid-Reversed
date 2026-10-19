@@ -1,3 +1,4 @@
+#include "ieee_exact.h"
 #include "../src/debris.h"
 #include <assert.h>
 #include <math.h>
@@ -13,7 +14,7 @@ int main(int argc,char **argv) {
         astro_debris_step(&s,tick,right,left,gravity);
         assert(s.kind==e.kind&&s.state==e.state&&s.frame==e.frame&&s.remove==e.remove&&
             s.update_tick==e.update_tick&&s.animation_tick==e.animation_tick&&s.action_tick==e.action_tick);
-        assert(fabs(s.velocity.x-e.velocity.x)<1e-10&&fabs(s.velocity.y-e.velocity.y)<1e-10);
+        assert(ieee_exact(s.velocity.x,e.velocity.x)&&ieee_exact(s.velocity.y,e.velocity.y));
         count++;
     }
     fclose(f);assert(count==450);

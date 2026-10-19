@@ -60,3 +60,12 @@ int astro_ui_contains(double x,double y,double width,double height,double px,dou
     int left=(int)x,top=(int)y,right=left+(int)width,bottom=top+(int)height;
     return right>left&&bottom>top&&px>=left&&py>=top&&px<right&&py<bottom;
 }
+
+void astro_ui_animate(AstroUIMotion *s,int32_t interval) {
+    if(s->sprite<900||s->sprite>902)return;
+    double delta=.1*(double)interval;
+    if(s->counter<31){s->x=s->x-delta;s->y=s->y-delta;s->width=delta*2+s->width;s->height=delta*2+s->height;}
+    else {s->x=delta+s->x;s->y=delta+s->y;s->width=s->width-delta*2;s->height=s->height-delta*2;if(s->counter>59)s->counter=0;}
+    s->counter=(int32_t)((uint32_t)s->counter+1);
+}
+void astro_ui_panel_step(AstroUIMotion *s,double step) {s->y=step+s->y;}

@@ -73,4 +73,15 @@ int main(int argc,const char **argv){@autoreleasepool{
     unsigned char witness[4];glReadPixels(0,0,1,1,GL_RGBA,GL_UNSIGNED_BYTE,witness);
     assert(witness[0]>=63&&witness[0]<=65&&witness[1]==witness[0]&&witness[2]==witness[0]);
     puts("PASS original straight-RGBA linear-edge witness (64, not premultiplied128)");
+    /* Font PICT301 RGB already contains coverage; original LMDRAWTEXT uses ONE. */
+    glViewport(0,0,640,480);glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);glMatrixMode(GL_MODELVIEW);glLoadIdentity();
+    glClearColor(0,0,0,1);glClear(GL_COLOR_BUFFER_BIT);glColor4d(1,1,1,1);
+    GLuint font=load(50);glBindTexture(GL_TEXTURE_2D,font);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+    [ui drawText:@"Game Paused" x:220 baseline:220 size:32 texture:load];
+    GLint sourceFactor;glGetIntegerv(GL_BLEND_SRC,&sourceFactor);assert(sourceFactor==GL_SRC_ALPHA);
+    NSMutableData *fontPixels=[NSMutableData dataWithLength:640*480*4];glReadPixels(0,0,640,480,GL_RGBA,GL_UNSIGNED_BYTE,fontPixels.mutableBytes);
+    unsigned half=0;const unsigned char *fp=fontPixels.bytes;
+    for(unsigned i=0;i<640*480;i++)if(fp[4*i]==127&&fp[4*i+1]==127&&fp[4*i+2]==127)half++;
+    assert(half>0);printf("PASS font original ONE blend, %u actual half-coverage pixels retain127\n",half);
+
 }}

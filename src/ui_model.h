@@ -1,6 +1,7 @@
 #ifndef ASTROSQUID_UI_MODEL_H
 #define ASTROSQUID_UI_MODEL_H
 #include <stddef.h>
+#include <stdint.h>
 
 typedef enum {
     ASTRO_UI_NONE, ASTRO_UI_NAVIGATE, ASTRO_UI_NEW_GAME, ASTRO_UI_CONTINUE,
@@ -13,6 +14,11 @@ typedef struct {
     const char *destination;
     int stage, section, key;
 } AstroUICommand;
+
+typedef struct {double x,y,width,height;int32_t counter;int16_t sprite;} AstroUIMotion;
+/* Original ANIMATEMENU10045f20; mutate each double in source order. */
+void astro_ui_animate(AstroUIMotion *state,int32_t interval);
+void astro_ui_panel_step(AstroUIMotion *state,double step);
 
 /* Original DOMOUSE names, including the eight paired campaign stages. */
 AstroUICommand astro_ui_command(const char *name);

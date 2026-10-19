@@ -45,7 +45,7 @@ static BOOL referenceWrongHUDOrder;
     if(referenceHUDEdge){xywh[2][0]=50;xywh[2][1]=374;}
     uint64_t births[]={3,4,6};
     for(int i=0;i<3;i++){
-        AstroEnemy *e=[AstroEnemy new];e->active=YES;e->kind=kinds[i];e->renderBirth=births[i];
+        AstroEnemy *e=[AstroEnemy new];e->active=YES;e->kind=kinds[i];e->renderLayer=kinds[i]==5?5:kinds[i]==20?4:6;e->renderBirth=births[i];
         e->visual=(AstroVisual){ids[i],xywh[i][0],xywh[i][1]+cy,xywh[i][2],xywh[i][3],100};
         [enemies addObject:e];[world addObject:e];
     }

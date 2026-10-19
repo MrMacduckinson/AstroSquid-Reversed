@@ -10,7 +10,7 @@ staging=$(mktemp -d "${TMPDIR:-/tmp}/astrosquid-source.XXXXXX")
 trap 'mv "$staging" "$HOME/.Trash/$(basename "$staging")"' EXIT
 source_dir="$staging/AstroSquid-Source"
 mkdir "$source_dir"
-rsync -a --exclude __pycache__ --exclude .DS_Store src tests tools assets validation "$source_dir/"
+rsync -a --exclude __pycache__ --exclude .DS_Store src tests tools assets validation licenses "$source_dir/"
 cp README.md VALIDATION.md build.sh test.sh requirements.txt "$source_dir/"
 if git rev-parse HEAD > "$source_dir/SOURCE_COMMIT.txt" 2>/dev/null; then :; else
   printf 'Source snapshot\n' > "$source_dir/SOURCE_COMMIT.txt"
