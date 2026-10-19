@@ -18,6 +18,8 @@ build/pickup_test tests/pickup_vectors.csv
 build/scenery_test tests/scenery_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/player_test.c src/player.c src/physics.c -lm -o build/player_test
 build/player_test tests/player_vectors.csv
+"${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/campaign_test.c src/campaign.c -o build/campaign_test
+build/campaign_test
 if [ -f assets/game.json ]; then
   if [ -n "${PYTHON:-}" ]; then
     "$PYTHON" tools/check_assets.py assets

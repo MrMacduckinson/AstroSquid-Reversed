@@ -1,7 +1,8 @@
 # AstroSquid reconstruction
 
 Work in progress: recover the behavior of AstroSquid 1.1 and build a native
-Intel macOS port. This is not yet a playable port or the original source code.
+Intel macOS port. This is a partial playable reconstruction, not a complete
+port or the original author’s source code.
 
 The original executable is PowerPC CFM/PEF, compiled with FutureBASIC 3.
 The `FCOD` resource contains the actual program. The tiny data fork is a loader.
@@ -54,11 +55,16 @@ The Ten for X build is a separate comparison and runtime reference.
 - Player animation, acceleration, drag and edge handling match 3200 original
   G5 ticks (800 replays); firing was disabled in this isolated player oracle.
   Complete collision order and parent relationships,
-  stage transitions, complete boss interactions and effects remain pending.
+  complete boss interactions and effects remain pending.
+- Connected campaign markers, boss-arena scrolling, final-stage entry, death and
+  respawn. This follows recovered control flow, with a portable campaign test;
+  a complete campaign playthrough against the original has not been verified.
+- Special attacks, original menus/cutscenes, death/debris effects and sound
+  effects remain unfinished. The preview must not be published as a full port.
 
-The preview is a renderer and host-input smoke test. It is not the finished game.
-It uses the recovered movement primitives; complete player behavior and camera
-rules are pending. Camera scrolling remains a test control.
+The preview connects recovered gameplay routines with a native renderer. It is
+not the finished game. Collision iteration order and parent relationships still
+need comparison with the original; beam visuals are temporary straight lines.
 Generated decompiler pseudocode is not yet buildable recovered source.
 
 ## Extract and build the preview
@@ -76,13 +82,14 @@ open 'build/AstroSquid Preview.app'
 ```
 
 Preview controls: arrows/WASD move the test player; Z/X move the camera; Space
-toggles automatic camera scrolling; N/P select a stage file; M toggles music;
-C fires; 1–4 select pellet/plasma/laser/lightning for testing; Escape quits. These controls apply only to the preview.
+toggles automatic camera scrolling (enabled initially); N/P select a stage file; M toggles music;
+C fires; 1–4 select pellet/plasma/laser/lightning for testing; Return pauses; R restarts; Escape quits. These controls apply only to the preview.
 
-`./test.sh` checks the recovered physics against the captured original results
-checks script parsing/scheduling and validates the complete extracted asset graph. `--self-test DIRECTORY` on the
-preview executable tests its own key handlers, level switching, framebuffer and
-muted audio decoder, writes evidence there, and exits. This avoids requiring
+`./test.sh` replays captured original results for physics, aiming, weapons,
+beams, damage, pickups and player behavior. It also checks scripts, campaign
+rules and the extracted asset graph. `--self-test DIRECTORY` on the preview
+exercises movement, scripts, projectile and beam hits, level selection, rendering
+and muted audio decoding, writes evidence there, and exits. This avoids requiring
 system-wide accessibility access for the preview's own integration tests.
 
 ## Reproduce binary analysis
