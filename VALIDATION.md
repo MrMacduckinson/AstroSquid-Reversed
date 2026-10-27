@@ -8,6 +8,10 @@ No game, GUI, OpenGL or audio test is launched on the primary development Mac.
 
 Full original-logic equivalence remains unproved. Current bounded evidence:
 
+Native comparisons below describe individual verification milestones. Later
+clock, actor and lifecycle changes are not automatically covered by older world
+captures; those captures do not establish equivalence of the current full game.
+
 - Shared production world methods match an original G5 capture for180 controlled
   ticks:26808 canonical records, with exact nonpointer fields, list order, RNG,
   effects, sound names/pan and animation. The committed30tick fixture has6588
@@ -19,6 +23,12 @@ Full original-logic equivalence remains unproved. Current bounded evidence:
   reachability claim. Parent links during specials remain unverified.
 - All29 original AI scripts match104400 controlled original/portable ticks,
   including natural/scaled visual dimensions (separate G5 oracle invocation).
+- Keyboard polling now uses one native Carbon `GetKeys` snapshot at the ordinary
+  loop tail, WAIT/blink, card and special input boundaries. The Intel provider
+  call was checked without logging key values. `tests/keymap_host_test.m` checks
+  all128 positions, replacement of stale state and call ordering with injected
+  snapshots; it is not an original G5 physical-key capture. Quit/screenshot side
+  effects and the original loop's extra bit128 remain unresolved.
 - `tests/caret_vectors.csv` contains4225 original DRAWMYEDITFIELD captures of
   deadline, visibility and conditional TickCount reads. GL/font drawing is
   replaced by no-ops in the private native oracle; original caret logic runs.

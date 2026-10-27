@@ -1,5 +1,6 @@
 // Native reconstruction; validation scope and platform support are in README.md.
 #import <Cocoa/Cocoa.h>
+#import <Carbon/Carbon.h>
 #import <IOKit/hidsystem/IOLLEvent.h>
 #import <OpenGL/gl.h>
 #import <AVFoundation/AVFoundation.h>
@@ -751,8 +752,15 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self handleVisualEffects];
 }
 - (void)readSpecialKeys {
+    [self readKeyMap];
+}
+- (void)copyKeyMap:(unsigned char *)bytes {
+    KeyMap snapshot;GetKeys(snapshot);memcpy(bytes,snapshot,sizeof(snapshot));
+}
+- (void)readKeyMap {
     if(selftestPath||campaignTestPath)return;
-    for(int i=0;i<6;i++)keys[controlKeys[i]]=CGEventSourceKeyState(kCGEventSourceStateCombinedSessionState,(CGKeyCode)controlKeys[i]);
+    unsigned char snapshot[16];[self copyKeyMap:snapshot];
+    for(unsigned i=0;i<128;i++)keys[i]=(snapshot[i>>3]>>(i&7))&1;
 }
 - (BOOL)startSpecial {
     return [self startSpecialFrom:nil];
@@ -1243,6 +1251,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
 }
 - (void)pollRespawnWait {
+    [self readKeyMap];
     if((int32_t)([self playerClockTick]-respawnWaitStartTick)>60){
         playerCombat=(AstroCombatState){.kind=-1,.hit_points=100};
         [self createPlayerAtX:camera+30 y:190];
@@ -1261,6 +1270,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         respawnBlinkTick=[self playerClockTick];
     }
     [self makeNewSprites];
+    [self readKeyMap];
     if((int32_t)([self playerClockTick]-respawnStartTick)>180){
         invulnerableUntil=0;playerVisual.width=spriteInfo[playerVisual.sprite].width;playerCombat.kind=1;
     }
@@ -1326,7 +1336,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)pollGame {
     if(respawnTick){[self pollRespawnWaitFrame];return;}
-    if(invulnerableUntil){[self pollNestedWorld];[self pollMapSpawns];specialReturnPending=NO;return;}
+    if(invulnerableUntil){[self pollNestedWorld];[self pollMapSpawns];if(!invulnerableUntil)[self readKeyMap];specialReturnPending=NO;return;}
     uint32_t comparison=[self playerClockTick];
     if((int32_t)(comparison-observedWallTick)>0){
         observedWallTick=[self playerClockTick];simulationTick=observedWallTick;
@@ -1335,7 +1345,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         }
         [self advanceWorldForWait:NO];
     }
-    [self pollMapSpawns];specialReturnPending=NO;
+    [self pollMapSpawns];if(flow.phase==ASTRO_FLOW_PLAY)[self readKeyMap];specialReturnPending=NO;
 }
 - (void)advanceWorldForWait:(BOOL)waiting {
     double old=camera;
@@ -1361,7 +1371,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         else {
             if(readyLoadPending)[self loadCampaignStage:pendingCampaign];
             [self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;
-            [self pollMapSpawns];specialReturnPending=NO;
+            [self pollMapSpawns];[self readKeyMap];specialReturnPending=NO;
         }
     }
     if(flow.phase==ASTRO_FLOW_FINISHED)[self beginGameOver];
@@ -1486,7 +1496,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if((uint32_t)([self cardDelayClockTick]-cardDelayStartTick)<60)return;
         flow.ticks=59;
     }
-    BOOL anyKey=NO;for(int i=0;i<128;i++)anyKey|=keys[i];
+    [self readKeyMap];BOOL anyKey=NO;for(int i=0;i<128;i++)anyKey|=keys[i];
     [self advanceFlowWithKey:anyKey];
 }
 - (void)tickWallClock {

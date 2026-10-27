@@ -15,6 +15,7 @@ static unsigned cardReads,gameReads,polls,displayRequests;
 @end
 @implementation CardDelayView
 - (void)display {}
+- (void)copyKeyMap:(unsigned char *)bytes {memset(bytes,0,16);for(unsigned i=0;i<128;i++)if(keys[i])bytes[i>>3]|=1u<<(i&7);}
 - (void)setNeedsDisplay:(BOOL)value {if(injecting&&value)displayRequests++;[super setNeedsDisplay:value];}
 - (uint32_t)cardDelayClockTick {if(injecting){cardReads++;return now;}return [super cardDelayClockTick];}
 - (uint32_t)playerClockTick {return injecting?900+gameReads++:[super playerClockTick];}
