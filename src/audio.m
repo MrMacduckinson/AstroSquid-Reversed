@@ -82,7 +82,7 @@
 - (BOOL)playMusic:(int)track {
     if (track<1 || track>(int)tracks.count) return NO;
     AVAudioPlayer *next=tracks[track-1];
-    if (_music==next && (_music.playing || paused)) return YES;
+    if (_music==next) return YES;
     [_music stop]; _music=next;_music.currentTime=0;
     return paused || [_music play];
 }
