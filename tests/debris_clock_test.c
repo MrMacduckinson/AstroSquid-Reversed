@@ -13,8 +13,7 @@ static uint32_t read_tick(void*p){Probe*q=p;assert(q->reads<q->limit);char line[
  switch(q->role){case 0:q->role=(int32_t)(tick-q->s->animation_tick)>6?1:2;break;case 1:q->role=2;break;case 2:q->role=(int32_t)(tick-q->s->update_tick)>0?3:q->s->kind==20?5:4;break;case 3:q->role=q->s->kind==20?5:4;break;case 4:q->role=5;break;}
  return tick;
 }
-/* Source-derived boundary checks, explicitly NOT native fixture evidence.
- * Use when the completed remote oracle CSV cannot be exported. */
+/* Additional source-derived boundaries, separate from the native CSV replay. */
 typedef struct {AstroDebris*s;const uint32_t*values,*updates,*animations;unsigned count,used;} SourceProbe;
 static uint32_t source_tick(void*p){SourceProbe*q=p;assert(q->used<q->count);unsigned i=q->used++;assert(q->s->update_tick==q->updates[i]&&q->s->animation_tick==q->animations[i]);return q->values[i];}
 static void source_cases(void){

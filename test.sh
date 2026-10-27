@@ -53,6 +53,7 @@ build/ui_motion_test tests/ui_motion_vectors.csv tests/ui_panel_vectors.csv
 build/debris_test tests/debris_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/debris_clock_test.c src/debris.c src/physics.c src/ppc_math.c -lm -o build/debris_clock_test
 build/debris_clock_test --synthetic
+build/debris_clock_test tests/debris_clock_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/scene_test.c src/scene.c src/weapons.c src/ppc_math.c -lm -o build/scene_test
 build/scene_test tests/scene_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/hud_test.c src/hud.c -lm -o build/hud_test

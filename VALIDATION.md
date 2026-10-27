@@ -23,6 +23,12 @@ captures; those captures do not establish equivalence of the current full game.
   reachability claim. Parent links during specials remain unverified.
 - All29 original AI scripts match104400 controlled original/portable ticks,
   including natural/scaled visual dimensions (separate G5 oracle invocation).
+- `tests/debris_clock_vectors.csv` contains12 fresh original G5 debris cases,
+  replayed by the default test suite. They check32 conditional clock reads,
+  native call-site addresses, timer/removal values before each read and final
+  IEEE velocity bits for kind4 and the CALC kind20 branch. The private oracle
+  bypasses MOVESTARS and CHECKSPRITECOLLISION; this is not a full coupled world
+  or renderer proof. The5 separate source-derived clock cases remain labelled.
 - Keyboard polling now uses one native Carbon `GetKeys` snapshot at the ordinary
   loop tail, WAIT/blink, card and special input boundaries. The Intel provider
   call was checked without logging key values. `tests/keymap_host_test.m` checks
