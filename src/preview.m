@@ -1495,7 +1495,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             [self pollGame];self.window.title=@"AstroSquid";return;
         }
         if(!menuVisible&&flow.phase!=ASTRO_FLOW_PLAY){
-            [self pollFlowCard];[self setNeedsDisplay:YES];self.window.title=@"AstroSquid";return;
+            [self pollFlowCard];
+            if(flow.phase!=ASTRO_FLOW_PLAY&&!cardClockStarted)[self setNeedsDisplay:YES];
+            self.window.title=@"AstroSquid";return;
         }
         uint32_t stamp=(uint32_t)floor((NSProcessInfo.processInfo.systemUptime-clockOrigin)*60);
         uint32_t elapsed=stamp-observedWallTick;

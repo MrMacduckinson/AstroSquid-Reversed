@@ -4,7 +4,7 @@
 #undef main
 static BOOL injecting;
 static uint32_t now;
-static unsigned cardReads,gameReads,polls;
+static unsigned cardReads,gameReads,polls,displayRequests;
 @interface DelayAudioProbe : AstroAudio
 @end
 @implementation DelayAudioProbe
@@ -15,6 +15,7 @@ static unsigned cardReads,gameReads,polls;
 @end
 @implementation CardDelayView
 - (void)display {}
+- (void)setNeedsDisplay:(BOOL)value {if(injecting&&value)displayRequests++;[super setNeedsDisplay:value];}
 - (uint32_t)cardDelayClockTick {if(injecting){cardReads++;return now;}return [super cardDelayClockTick];}
 - (uint32_t)playerClockTick {return injecting?900+gameReads++:[super playerClockTick];}
 - (void)advanceFlowWithKey:(BOOL)key {if(injecting)polls++;[super advanceFlowWithKey:key];}
@@ -26,11 +27,14 @@ static unsigned cardReads,gameReads,polls;
     observedWallTick=77;worldRenderTick=88;lastSpawnTick=66;simulationTick=55;
     memset(keys,0,sizeof(keys));keys[0]=YES;astro_flow_ready(&flow,1,1);cardClockStarted=NO;
     now=100;[self tickWallClock];assert(!polls&&!cardReads&&!gameReads&&flow.phase==ASTRO_FLOW_READY);
+    assert(displayRequests==1);
     [self recordCardPresentation];assert(cardReads==1&&cardDelayStartTick==100);
     now=120;[self recordCardPresentation];assert(cardReads==1&&cardDelayStartTick==100);
     now=159;[self tickWallClock];assert(!polls&&!gameReads&&flow.phase==ASTRO_FLOW_READY);
+    assert(displayRequests==1);
     assert(observedWallTick==77&&worldRenderTick==88&&lastSpawnTick==66&&simulationTick==55);
     now=160;[self tickWallClock];assert(polls==1&&gameReads==3&&flow.phase==ASTRO_FLOW_PLAY&&!cardClockStarted);
+    assert(displayRequests==1);
     assert(lastSpawnTick==900&&observedWallTick==901&&worldRenderTick==902);
     // Each ending page starts a new delay, including across the 32-bit wrap.
     gameReads=polls=0;flow=(AstroFlow){.phase=ASTRO_FLOW_ENDING};cardClockStarted=NO;
@@ -40,7 +44,10 @@ static unsigned cardReads,gameReads,polls;
     now=100;[self tickWallClock];assert(polls==1&&!cardClockStarted);
     [self recordCardPresentation];keys[0]=NO;now=160;[self tickWallClock];
     assert(polls==2&&flow.ending_page==1&&cardClockStarted);
-    keys[0]=YES;[self tickWallClock];assert(polls==3&&flow.ending_page==2&&!cardClockStarted&&!gameReads);
+    unsigned stableRequests=displayRequests;
+    [self tickWallClock];assert(displayRequests==stableRequests&&flow.ending_page==1);
+    keys[0]=YES;[self tickWallClock];assert(polls==4&&flow.ending_page==2&&!cardClockStarted&&!gameReads);
+    assert(displayRequests==stableRequests+1);
     // ENDOFLEVEL cards have no _DODELAY: same-tick input after presentation is accepted.
     polls=0;changingStage=NO;flow=(AstroFlow){.phase=ASTRO_FLOW_END_CARD,.next_stage=2,.next_half=1};
     now=300;[self recordCardPresentation];[self tickWallClock];
