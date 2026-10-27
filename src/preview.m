@@ -1159,7 +1159,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     selectedLevel=index;camera=-0.0;[self resetLevelWorld];
     playerX=30;playerY=190;
     if(selftestPath)playerCombat.hit_points=30000;
-    [self unlockStage];
 }
 - (void)beginStageTransition {
     pendingCampaign=campaign;
@@ -1193,12 +1192,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         int oldStage=campaign.level,oldHalf=campaign.half;AstroCampaign next=pendingCampaign;
         changingStage=NO;
         if(oldHalf==1&&next.half==2){
-            initialReadyCard=NO;readyLoadPending=YES;
+            initialReadyCard=NO;readyLoadPending=YES;campaign=next;
             [enemies removeAllObjects];[world removeAllObjects];[mapPlacements removeAllObjects];playerNextActor=nil;
             [visualEffects removeAllObjects];[liveBeams removeAllObjects];presentedBeams=@[];
             [specialPolygons removeAllObjects];[specialFlashes removeAllObjects];playerHitVisual.active=NO;engineGlow=departureTrail=NO;
         } else [self loadCampaignStage:next];
         astro_flow_stage_end(&flow,oldStage,oldHalf,next.level,next.half,next.complete);
+        if(flow.phase==ASTRO_FLOW_READY)[self unlockStage];
         if(flow.phase==ASTRO_FLOW_PLAY){[self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;}
     } else if(transition.phase==ASTRO_TRANSITION_CARD) {
         astro_flow_stage_end(&flow,campaign.level,campaign.half,pendingCampaign.level,pendingCampaign.half,pendingCampaign.complete);
@@ -1346,7 +1346,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     AstroFlowPhase previous=flow.phase;astro_flow_step(&flow,anyKey);
     if(previous==ASTRO_FLOW_END_CARD&&flow.phase!=previous&&changingStage) {
         AstroCampaign next=pendingCampaign;astro_transition_accept_card(&transition);changingStage=NO;
-        if(!next.complete)[self loadCampaignStage:next];
+        if(!next.complete){[self loadCampaignStage:next];if(flow.phase==ASTRO_FLOW_READY)[self unlockStage];}
         else {campaign.complete=1;[enemies removeAllObjects];[world removeAllObjects];playerNextActor=nil;}
     }
     if(previous==ASTRO_FLOW_READY&&flow.phase==ASTRO_FLOW_PLAY){

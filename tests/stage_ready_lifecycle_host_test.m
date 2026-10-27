@@ -26,10 +26,12 @@ static NSMutableString *events;
     [timer invalidate];timer=nil;[audio stop];audio=[StageAudioProbe new];events=[NSMutableString string];
     observing=YES;reads=0;ui.musicVolume=1;selftestPath=nil;campaignTestPath=@"controlled-stage-test";
     selectedLevel=[levels indexOfObject:@"Data 1A"];campaign=(AstroCampaign){1,1,0,0};pendingCampaign=(AstroCampaign){1,2,0,0};
+    ui.unlockedLevel=1;
     changingStage=YES;transition=(AstroTransition){.phase=ASTRO_TRANSITION_DONE};
     uint64_t seed=randomSeed;
     [self stepStageTransition];
     assert(flow.phase==ASTRO_FLOW_READY&&readyLoadPending&&reads==0&&randomSeed==seed);
+    assert(campaign.level==1&&campaign.half==2&&ui.unlockedLevel==2);
     assert(world.count==0&&enemies.count==0&&mapPlacements.count==0&&playerNextActor==nil&&events.length==0);
     assert([levels[selectedLevel] isEqual:@"Data 1A"]);
     inventory=(AstroInventory){40,3,2,2};playerWeapon=43;
@@ -49,6 +51,7 @@ static NSMutableString *events;
     changingStage=YES;flow=(AstroFlow){.phase=ASTRO_FLOW_END_CARD};transition=(AstroTransition){.phase=ASTRO_TRANSITION_CARD};
     [self advanceFlowWithKey:YES];
     assert(flow.phase==ASTRO_FLOW_READY&&[events isEqual:@"LM"]&&!readyLoadPending);
+    assert(campaign.level==2&&campaign.half==1&&ui.unlockedLevel==3);
     assert(![world containsObject:[NSNull null]]&&[levels[selectedLevel] isEqual:@"Data 2A"]&&reads==4*enemies.count);
     NSMutableArray *snapshots=[NSMutableArray array];
     for(AstroEnemy *enemy in enemies)[snapshots addObject:@[[NSData dataWithBytes:&enemy->state length:sizeof(enemy->state)],
@@ -63,11 +66,16 @@ static NSMutableString *events;
         assert([saved[2] unsignedLongLongValue]==enemy->renderBirth);
     }
     // A fresh game keeps the primary BEFORE its card and adds only GAMELOOP clocks after it.
-    reads=0;[events setString:@""];[self performMenuAction:@"New Game"];
+    reads=0;[events setString:@""];ui.unlockedLevel=7;readyLoadPending=YES;[self performMenuAction:@"New Game"];
     assert(initialReadyCard&&!readyLoadPending&&flow.phase==ASTRO_FLOW_READY&&reads==4*enemies.count+6);
+    assert(ui.unlockedLevel==7&&campaign.level==1&&campaign.half==1);
     unsigned entryReads=reads;uint64_t birth=playerRenderBirth;uint32_t update=playerState.update_tick;
     [events setString:@""];flow.ticks=59;[self advanceFlowWithKey:YES];
     assert(reads==entryReads+3&&[events isEqual:@"SP"]&&playerRenderBirth==birth&&playerState.update_tick==update);
+    ui.unlockedLevel=1;
+    [self loadCampaignStage:(AstroCampaign){4,1,0,0}];
+    assert(ui.unlockedLevel==1); // LOADLEVEL itself does not unlock a card.
+    [self unlockStage];assert(ui.unlockedLevel==7);
     observing=NO;
     puts("PASS source-backed actual stage lifecycle: B after READY, A map before/primary after, independent six player-start clocks, retained map state, initial primary before card");
 }
