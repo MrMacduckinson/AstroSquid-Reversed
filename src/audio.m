@@ -93,8 +93,11 @@
     }
     if (value) [_music pause]; else [_music play];
 }
-- (void)stop {
+- (void)stopMusic {
     [_music stop];_music=nil;
+}
+- (void)stop {
+    [self stopMusic];
     for (NSArray *pair in voices) for (AVAudioPlayer *player in pair) [player stop];
     [voices removeAllObjects];
 }

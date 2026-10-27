@@ -1340,8 +1340,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         playerVisual.next_tick=simulationTick+(uint32_t)spriteInfo[playerVisual.sprite].delay;
         playerRenderBirth=++renderClock;
     }
-    if(previous!=flow.phase&&flow.phase==ASTRO_FLOW_PLAY)[audio playMusic:2];
     if(previous==ASTRO_FLOW_READY&&flow.phase==ASTRO_FLOW_PLAY){
+        [audio stopMusic];if(ui.musicVolume>0)[audio playMusic:2];
         if(initialReadyCard)[self beginGameLoop];
         else {[self pollMapSpawns];specialReturnPending=NO;}
     }

@@ -34,5 +34,9 @@ int main(void) {@autoreleasepool {
     [audio stop];assert(second.stops==1&&audio.music==nil);
     assert([audio playMusic:2]&&second.starts==2&&second.currentTime==0);
     assert([audio playMusic:1]&&second.stops==2&&first.starts==2&&first.currentTime==0);
+    MusicProbe *effect=[MusicProbe new];effect.playing=YES;
+    [audio setValue:[NSMutableArray arrayWithObject:@[effect,effect]] forKey:@"voices"];
+    [audio stopMusic];assert(audio.music==nil&&first.stops==2&&effect.stops==0&&effect.playing);
+    [audio stop];assert(effect.stops==2&&!effect.playing);
     puts("PASS PLAYTRACK selected-track identity: playing/stopped/paused no-op, invalid IDs, switch and explicit stop/restart");
 }}

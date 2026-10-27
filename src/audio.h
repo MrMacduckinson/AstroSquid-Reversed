@@ -13,5 +13,6 @@
 - (BOOL)playStringCue:(int)index position:(double)position;
 - (BOOL)playMusic:(int)track;
 - (void)setPaused:(BOOL)paused;
+- (void)stopMusic;
 - (void)stop;
 @end
