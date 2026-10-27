@@ -23,6 +23,13 @@ captures; those captures do not establish equivalence of the current full game.
   reachability claim. Parent links during specials remain unverified.
 - All29 original AI scripts match104400 controlled original/portable ticks,
   including natural/scaled visual dimensions (separate G5 oracle invocation).
+- `tests/script_clock_native.csv` captures10 whole-original DOSCRIPTEDSPRITE
+  cases with33 independent clock reads. Replay checks actual call-site roles,
+  state before every read, final state/velocity bits and one fire callback that
+  consumes a clock before animation resumes. Script-resource delivery and the
+  fire callback are controlled boundaries; this does not execute real weapon
+  allocation or prove all AI/world interactions. The10 source-derived tests
+  remain separate from this native capture.
 - `tests/debris_clock_vectors.csv` contains12 fresh original G5 debris cases,
   replayed by the default test suite. They check32 conditional clock reads,
   native call-site addresses, timer/removal values before each read and final
