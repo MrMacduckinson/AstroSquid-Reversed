@@ -52,6 +52,15 @@ static unsigned cardReads,gameReads,polls,displayRequests;
     polls=0;changingStage=NO;flow=(AstroFlow){.phase=ASTRO_FLOW_END_CARD,.next_stage=2,.next_half=1};
     now=300;[self recordCardPresentation];[self tickWallClock];
     assert(polls==1&&flow.phase==ASTRO_FLOW_READY&&!cardClockStarted&&!gameReads);
+    memset(keys,0,sizeof(keys));initialReadyCard=YES;now=400;[self recordCardPresentation];
+    [self testModifier:57 flags:NSEventModifierFlagCapsLock];assert(keys[57]);
+    now=459;[self tickWallClock];assert(flow.phase==ASTRO_FLOW_READY);
+    now=460;[self tickWallClock];assert(flow.phase==ASTRO_FLOW_PLAY);
+    [self testModifier:57 flags:0];assert(!keys[57]);
+    astro_flow_ready(&flow,1,1);cardClockStarted=NO;now=500;[self recordCardPresentation];
+    [self testModifier:63 flags:NSEventModifierFlagFunction];assert(keys[63]);
+    now=560;[self tickWallClock];assert(flow.phase==ASTRO_FLOW_PLAY);
+    [self testModifier:63 flags:0];assert(!keys[63]);
     injecting=NO;
     puts("PASS actual card delay: starts after presentation, strict59/60, held/current keys, repeated draw, shared game clocks untouched, page reset/wrap, no-delay end card");
 }

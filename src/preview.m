@@ -1842,9 +1842,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     unsigned code=event.keyCode;
     NSEventModifierFlags flag=code==58||code==61?NSEventModifierFlagOption:
         code==56||code==60?NSEventModifierFlagShift:code==59||code==62?NSEventModifierFlagControl:
-        code==55||code==54?NSEventModifierFlagCommand:0;
+        code==55||code==54?NSEventModifierFlagCommand:code==57?NSEventModifierFlagCapsLock:
+        code==63?NSEventModifierFlagFunction:0;
     if(!flag||code>=128)return;
-    NSUInteger device=code==55?NX_DEVICELCMDKEYMASK:code==54?NX_DEVICERCMDKEYMASK:
+    NSUInteger device=code==57?NSEventModifierFlagCapsLock:code==63?NSEventModifierFlagFunction:
+        code==55?NX_DEVICELCMDKEYMASK:code==54?NX_DEVICERCMDKEYMASK:
         code==58?NX_DEVICELALTKEYMASK:code==61?NX_DEVICERALTKEYMASK:
         code==56?NX_DEVICELSHIFTKEYMASK:code==60?NX_DEVICERSHIFTKEYMASK:
         code==59?NX_DEVICELCTLKEYMASK:NX_DEVICERCTLKEYMASK;
