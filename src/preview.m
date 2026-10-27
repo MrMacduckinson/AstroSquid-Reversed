@@ -129,6 +129,8 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     double previousTime,clockOrigin;
     uint32_t observedWallTick;
     BOOL initialReadyCard,readyLoadPending;
+    BOOL cardClockStarted;
+    uint32_t cardDelayStartTick;
     double tickRemainder;
     AstroVelocity playerVelocity;
     AstroPlayer playerState;
@@ -397,7 +399,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if(flow.phase==ASTRO_FLOW_ENDING)
             [ui drawEndingPage:flow.ending_page texture:^GLuint(NSInteger n){return [self texture:n];}];
         else [ui drawBriefingForStage:flow.stage list:astro_flow_text_list(&flow) texture:^GLuint(NSInteger n){return [self texture:n];}];
-        [self presentFrame];return;
+        [self presentFrame];[self recordCardPresentation];return;
     }
     BOOL worldOverlay=menuVisible&&([ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"]);
     BOOL hudAfterWorld=worldOverlay||nestedWorldRender;
@@ -1198,10 +1200,12 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             [specialPolygons removeAllObjects];[specialFlashes removeAllObjects];playerHitVisual.active=NO;engineGlow=departureTrail=NO;
         } else [self loadCampaignStage:next];
         astro_flow_stage_end(&flow,oldStage,oldHalf,next.level,next.half,next.complete);
+        cardClockStarted=NO;
         if(flow.phase==ASTRO_FLOW_READY)[self unlockStage];
         if(flow.phase==ASTRO_FLOW_PLAY){[self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;}
     } else if(transition.phase==ASTRO_TRANSITION_CARD) {
         astro_flow_stage_end(&flow,campaign.level,campaign.half,pendingCampaign.level,pendingCampaign.half,pendingCampaign.complete);
+        cardClockStarted=NO;
     }
 }
 - (void)stepEnemies {
@@ -1303,6 +1307,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if(trail&&transition.phase==ASTRO_TRANSITION_CARD){
             [audio playMusic:1];
             astro_flow_stage_end(&flow,campaign.level,campaign.half,pendingCampaign.level,pendingCampaign.half,pendingCampaign.complete);
+            cardClockStarted=NO;
         }
     }
     if(!menuVisible&&flow.phase==ASTRO_FLOW_PLAY&&(!changingStage||transition.simulate_world)) {
@@ -1343,7 +1348,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     @try {[self renderTick];} @finally {nestedWorldRender=previous;}
 }
 - (void)advanceFlowWithKey:(BOOL)anyKey {
-    AstroFlowPhase previous=flow.phase;astro_flow_step(&flow,anyKey);
+    AstroFlowPhase previous=flow.phase;int previousPage=flow.ending_page;astro_flow_step(&flow,anyKey);
+    if(previous!=flow.phase||previousPage!=flow.ending_page)cardClockStarted=NO;
     if(previous==ASTRO_FLOW_END_CARD&&flow.phase!=previous&&changingStage) {
         AstroCampaign next=pendingCampaign;astro_transition_accept_card(&transition);changingStage=NO;
         if(!next.complete){[self loadCampaignStage:next];if(flow.phase==ASTRO_FLOW_READY)[self unlockStage];}
@@ -1468,10 +1474,28 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self stepMenu];
     if(overlay)observedWallTick=[self currentGameTick];
 }
+- (uint32_t)cardDelayClockTick {
+    return (uint32_t)(uint64_t)floor(NSProcessInfo.processInfo.systemUptime*60);
+}
+- (void)recordCardPresentation {
+    if(!cardClockStarted){cardDelayStartTick=[self cardDelayClockTick];cardClockStarted=YES;}
+}
+- (void)pollFlowCard {
+    if(!cardClockStarted)return;
+    if(flow.phase==ASTRO_FLOW_READY||flow.phase==ASTRO_FLOW_ENDING){
+        if((uint32_t)([self cardDelayClockTick]-cardDelayStartTick)<60)return;
+        flow.ticks=59;
+    }
+    BOOL anyKey=NO;for(int i=0;i<128;i++)anyKey|=keys[i];
+    [self advanceFlowWithKey:anyKey];
+}
 - (void)tickWallClock {
     wallClockPoll=YES;@try {
         if(!menuVisible&&!paused&&!gameOver&&flow.phase==ASTRO_FLOW_PLAY){
             [self pollGame];self.window.title=@"AstroSquid";return;
+        }
+        if(!menuVisible&&flow.phase!=ASTRO_FLOW_PLAY){
+            [self pollFlowCard];[self setNeedsDisplay:YES];self.window.title=@"AstroSquid";return;
         }
         uint32_t stamp=(uint32_t)floor((NSProcessInfo.processInfo.systemUptime-clockOrigin)*60);
         uint32_t elapsed=stamp-observedWallTick;
@@ -1479,11 +1503,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if(!menuVisible)observedWallTick=stamp;simulationTick=stamp;
         if(gameOverPending){gameOverPending=NO;[self beginGameOver];observedWallTick=[self currentGameTick];return;}
         BOOL idle=menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY;
-        if(!menuVisible&&flow.phase!=ASTRO_FLOW_PLAY) {
-            BOOL anyKey=NO;for(int i=0;i<128;i++)anyKey|=keys[i];
-            uint64_t age=(uint64_t)flow.ticks+elapsed-1;flow.ticks=(uint32_t)MIN(age,UINT32_MAX);
-            [self advanceFlowWithKey:anyKey];
-        }
         if(editingKey>=0&&NSProcessInfo.processInfo.systemUptime>=keyCaptureDeadline){editingKey=-1;[self refreshKeyLabels];}
         if(menuVisible)[self pollMenu];
         if(idle&&!menuVisible)[self setNeedsDisplay:YES];
@@ -1950,7 +1969,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         ui.editingHighscore=0;selectedLevel=index;camera=-0.0;[self resetEnemies];playerX=30;playerY=190;
         [self finishPlayerStart];
         memset(keys,0,sizeof(keys));automatic=YES;paused=NO;menuVisible=NO;
-        astro_flow_ready(&flow,campaign.level,campaign.half);[self unlockStage];
+        astro_flow_ready(&flow,campaign.level,campaign.half);cardClockStarted=NO;[self unlockStage];
         [audio setPaused:NO];[audio playMusic:1];
     } else if(command.action==ASTRO_UI_QUIT) [NSApp terminate:nil];
     else if(command.action==ASTRO_UI_RESUME) {[self resumePause];}
