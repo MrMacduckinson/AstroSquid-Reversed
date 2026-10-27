@@ -1822,7 +1822,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         controlKeys[editingKey]=key;editingKey=-1;[self refreshKeyLabels];[self saveSettings];return;
     }
     if(!selftestPath) {
-        if((key==53||key==50)) {
+        if(key==53) {
             if(menuVisible&&paused) {[self resumePause];}
             else if(!menuVisible&&flow.phase==ASTRO_FLOW_PLAY&&(!changingStage||transition.allow_input)) {menuVisible=YES;paused=YES;[audio playCue:@"Menu"];[ui show:@"Pause"];[self drawPanelTransition];}
         }

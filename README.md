@@ -16,8 +16,8 @@ all runtime assets. No Python, developer tools or original installation is neede
 The build is unsigned. Tested on the Intel reference iMac with macOS 10.13.6;
 newer macOS releases have not been tested on Intel hardware.
 
-Arrows move, Command fires, Option uses a special attack. Escape or the grave key
-pauses; any key resumes. Use Settings to reassign keys, adjust sound/music and
+Arrows move, Command fires, Option uses a special attack. Escape pauses; any key
+resumes. Use Settings to reassign keys, adjust sound/music and
 change filtering. Keys, settings, scores and unlocked stages persist between
 launches. Close the window or use Command-Q to quit.
 

@@ -27,8 +27,16 @@ captures; those captures do not establish equivalence of the current full game.
   loop tail, WAIT/blink, card and special input boundaries. The Intel provider
   call was checked without logging key values. `tests/keymap_host_test.m` checks
   all128 positions, replacement of stale state and call ordering with injected
-  snapshots; it is not an original G5 physical-key capture. Quit/screenshot side
-  effects and the original loop's extra bit128 remain unresolved.
+  snapshots; it is not an original G5 physical-key capture. Execution of the
+  original quit/screenshot actions is not covered by those host checks.
+- `tests/keymap_native.csv` records137 private-original G5 GETKEYMAP cases with
+  scripted maps and a screenshot observer. The host matches control bits and
+  key counts for136 API-conforming maps, including every single key. A separate
+  padding-write diagnostic exercises bit128; original local clearing left that
+  byte zero before every captured call. Native results identify Escape as the
+  pause key, Command-Q as the stop flag and keypad multiply as the debug-enabled
+  screenshot key. This does not prove physical-device input, pause-loop timing
+  or implementation of the stop/screenshot actions in the port.
 - `tests/caret_vectors.csv` contains4225 original DRAWMYEDITFIELD captures of
   deadline, visibility and conditional TickCount reads. GL/font drawing is
   replaced by no-ops in the private native oracle; original caret logic runs.
