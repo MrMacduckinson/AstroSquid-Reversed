@@ -1,14 +1,16 @@
-// Actual CALC/DOBULLET clock boundary; source-backed, run only on Intel.
+// Actual CALC clock boundary with source cases and original G5 DOBULLET traces.
 #define main astrosquid_application_main
 #include "../src/preview.m"
 #undef main
 static BOOL observing;
 static uint32_t values[2];
 static unsigned count,used;
+static FILE *nativeFile;
+static AstroScriptState *observedState;
 @interface AstroBulletClockView : AstroView
 @end
 @implementation AstroBulletClockView
-- (uint32_t)playerClockTick {if(observing){assert(used<count);return values[used++];}return [super playerClockTick];}
+- (uint32_t)playerClockTick {if(observing){assert(used<count);if(nativeFile){char line[128];unsigned index,site,tick,update;assert(fgets(line,sizeof(line),nativeFile)&&sscanf(line,"T,%u,%x,%u,%u",&index,&site,&tick,&update)==4);assert(index==used&&site==(used?0x10061ae0u:0x10061a9cu)&&update==observedState->update_tick);used++;return tick;}return values[used++];}return [super playerClockTick];}
 - (void)display {}
 @end
 @interface AstroView (BulletClockCheck)
@@ -32,9 +34,25 @@ static unsigned count,used;
     }
     observing=NO;puts("PASS8 source-backed actual host bullet clocks: fresh compare/store, equality, wrap/signednegative, inactive states no reads, CALC movement independent of gate");
 }
+- (void)checkNativeBulletClocks:(const char *)path {
+    nativeFile=fopen(path,"r");assert(nativeFile);char line[128];unsigned cases=0,reads=0;observing=YES;
+    while(fgets(line,sizeof(line),nativeFile)){
+        unsigned id,old;int state;assert(sscanf(line,"CASE,%u,%d,%u,%u",&id,&state,&old,&count)==4&&id==cases);
+        AstroEnemy *bullet=[AstroEnemy new];bullet->kind=2;bullet->visual=(AstroVisual){1,20,30,10,10,1000};
+        bullet->definition=@{@"animated":@1};bullet->state=(AstroScriptState){.state=state,.update_tick=old,.velocity={2,3}};
+        observedState=&bullet->state;world=[NSMutableArray arrayWithObject:bullet];enemies=[NSMutableArray arrayWithObject:bullet];used=0;
+        [self stepActor:bullet];assert(used==count);unsigned expected;
+        assert(fgets(line,sizeof(line),nativeFile)&&sscanf(line,"O,%u",&expected)==1&&bullet->state.update_tick==expected);
+        assert(bullet->visual.x==22&&bullet->visual.y==33&&bullet->state.x==22&&bullet->state.y==33);
+        assert(bullet->bounds.left==22&&bullet->bounds.top==33&&bullet->state.remove==0);
+        reads+=used;cases++;
+    }
+    assert(feof(nativeFile)&&!ferror(nativeFile));fclose(nativeFile);nativeFile=NULL;observedState=NULL;observing=NO;
+    assert(cases==8&&reads==7);puts("PASS8 original DOBULLETSPRITE cases,7 native clock roles/pre-read update fields and final timers in actual host CALC");
+}
 @end
 int main(int argc,const char **argv){@autoreleasepool{
-    assert(argc==2);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
+    assert(argc==2||argc==3);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
     AstroView *view=[[AstroBulletClockView alloc] initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];
-    assert(view);[view checkBulletClocks];
+    assert(view);[view checkBulletClocks];[view checkNativeBulletClocks:argc==3?argv[2]:"tests/bullet_clock_native.csv"];
 }}

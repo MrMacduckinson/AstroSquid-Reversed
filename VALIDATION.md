@@ -36,6 +36,12 @@ captures; those captures do not establish equivalence of the current full game.
   IEEE velocity bits for kind4 and the CALC kind20 branch. The private oracle
   bypasses MOVESTARS and CHECKSPRITECOLLISION; this is not a full coupled world
   or renderer proof. The5 separate source-derived clock cases remain labelled.
+- `tests/bullet_clock_native.csv` contains8 whole-original DOBULLETSPRITE cases,
+  including7 native clock reads and inactive states with no reads. The Intel
+  production-host test replays native call-site roles, pre-read update values
+  and final timers. The oracle checks that other entity bytes remain unchanged;
+  common CALC movement checks are separate and do not turn this into a coupled
+  original-world trace.
 - Keyboard polling now uses one native Carbon `GetKeys` snapshot at the ordinary
   loop tail, WAIT/blink, card and special input boundaries. The Intel provider
   call was checked without logging key values. `tests/keymap_host_test.m` checks
