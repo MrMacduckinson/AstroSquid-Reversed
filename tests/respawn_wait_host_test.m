@@ -2,14 +2,14 @@
 #define main astrosquid_application_main
 #include "../src/preview.m"
 #undef main
-static BOOL observing;
+static BOOL observing,checkEntryInventory;
 static uint32_t script[8];
 static unsigned supplied,used,steps,renders;
 static void supply(const uint32_t *ticks,unsigned count){memcpy(script,ticks,count*sizeof(*ticks));supplied=count;used=0;}
 @interface AstroRespawnWaitView : AstroView
 @end
 @implementation AstroRespawnWaitView
-- (uint32_t)playerClockTick {if(observing){assert(used<supplied);return script[used++];}return [super playerClockTick];}
+- (uint32_t)playerClockTick {if(observing){assert(used<supplied);if(checkEntryInventory)assert(inventory.upgrade==3&&playerWeapon==43);return script[used++];}return [super playerClockTick];}
 - (void)display {}
 - (void)stepEnemies {assert(!"ordinary flow dispatcher during WAIT");}
 - (void)stepWorldWithoutFlow {assert(observing);steps++;simulationTick++;}
@@ -31,7 +31,7 @@ static void supply(const uint32_t *ticks,unsigned count){memcpy(script,ticks,cou
     assert(used==1&&respawnTick&&respawnWaitStartTick==100);
     const uint32_t closed[]={140,160};supply(closed,2);[self pollGame];
     assert(used==2&&!steps&&respawnTick&&world.count==0&&lastSpawnTick==73);
-    const uint32_t open[]={140,161,170,171,172,173,180,182};supply(open,8);[self pollGame];
+    const uint32_t open[]={140,161,170,171,172,173,180,182};supply(open,8);checkEntryInventory=YES;[self pollGame];checkEntryInventory=NO;
     assert(used==8&&!steps&&!respawnTick&&invulnerableUntil&&playerCombat.kind==-1);
     assert(playerState.update_tick==170&&playerState.animation_tick==171&&lastPlayerShot==172);
     assert(playerVisual.next_tick==173+(uint32_t)spriteInfo[1].delay&&playerVisual.x==40);

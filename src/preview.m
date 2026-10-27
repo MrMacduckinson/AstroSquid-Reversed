@@ -1224,8 +1224,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if((int32_t)([self playerClockTick]-respawnWaitStartTick)>60){
         playerCombat=(AstroCombatState){.kind=-1,.hit_points=100};
         [self createPlayerAtX:camera+30 y:190];
-        inventory.upgrade=0;playerWeapon=inventory.weapon;playerSpawnTick=simulationTick;
-        [self beginRespawnBlink];respawnTick=0;
+        [self beginRespawnBlink];
+        inventory.upgrade=0;playerWeapon=inventory.weapon;playerSpawnTick=simulationTick;respawnTick=0;
     }
 }
 - (void)beginRespawnBlink {
