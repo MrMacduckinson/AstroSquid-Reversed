@@ -128,7 +128,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     double playerX,playerY,playerEntityX,playerEntityY;
     double previousTime,clockOrigin;
     uint32_t observedWallTick;
-    BOOL initialReadyCard;
+    BOOL initialReadyCard,readyLoadPending;
     double tickRemainder;
     AstroVelocity playerVelocity;
     AstroPlayer playerState;
@@ -554,16 +554,21 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     return enemy;
 }
 - (void)resetEnemies {
+    readyLoadPending=NO;
+    score=0;inventory=(AstroInventory){10,0,1,1};playerWeapon=10;
+    [self resetLevelWorld];
+    [self createPlayerAtX:30 y:190];
+}
+- (void)resetLevelWorld {
     renderClock=0;enemies=[NSMutableArray array];world=[NSMutableArray array];mapPlacements=[NSMutableArray array];
-    score=0;
+    playerNextActor=nil;
     playerCombat=(AstroCombatState){.kind=1,.hit_points=100};playerHitVisual=(AstroPlayerHitVisual){0};
     visualEffects=[NSMutableArray array];specialPolygons=[NSMutableArray array];specialFlashes=[NSMutableArray array];
     special=(AstroSpecial){0};specialLoopRunning=specialReturnPending=NO;specialTargetObjects=nil;specialTargetData=nil;
-    inventory=(AstroInventory){10,0,1,1};
     NSString *stage=levels[selectedLevel];
     campaign=(AstroCampaign){[[stage substringFromIndex:5] intValue],[stage hasSuffix:@"A"]?1:2,0,0};
     campaignAction=ASTRO_CAMPAIGN_NONE;respawnTick=invulnerableUntil=0;respawnPending=NO;gameOver=NO;gameOverPending=NO;engineGlow=departureTrail=NO;playerVisualDeleted=NO;
-    playerWeapon=10;liveBeams=[NSMutableArray array];presentedBeams=@[];
+    liveBeams=[NSMutableArray array];presentedBeams=@[];
     NSDictionary *level=game[@"levels"][levels[selectedLevel]];
     if(!starsInitialized) {astro_stars_init(stars,1,&randomSeed);starsInitialized=YES;}
     astro_stars_init(stars,0,&randomSeed);
@@ -576,7 +581,12 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [mapPlacements addObject:placement];
     }
     [self makeNewSprites];
-    [self createPlayerAtX:30 y:190];
+}
+- (void)finishPlayerStart {
+    playerCombat.kind=-1;
+    // NEWPLAYERSTART samples both local clocks even when it skips the blink loop.
+    (void)[self playerClockTick];(void)[self playerClockTick];
+    inventory.upgrade=0;playerCombat.kind=1;
 }
 - (void)createPlayerAtX:(double)x y:(double)y {
     playerState=(AstroPlayer){{0,0},12,1,1,0,0};playerVelocity=(AstroVelocity){0,0};
@@ -1143,12 +1153,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
 }
 - (void)loadCampaignStage:(AstroCampaign)next {
-    initialReadyCard=NO;
+    initialReadyCard=NO;readyLoadPending=NO;
     NSString *stage=[NSString stringWithFormat:@"Data %d%c",next.level,next.half==1?'A':'B'];
     NSUInteger index=[levels indexOfObject:stage];if(index==NSNotFound){NSLog(@"Missing stage %@",stage);exit(1);}
-    AstroInventory saved=inventory;int savedScore=score;
-    selectedLevel=index;camera=-0.0;[self resetEnemies];inventory=saved;score=savedScore;
-    inventory.weapon=10;inventory.upgrade=0;playerWeapon=10;playerX=30;playerY=190;
+    selectedLevel=index;camera=-0.0;[self resetLevelWorld];
+    playerX=30;playerY=190;
     if(selftestPath)playerCombat.hit_points=30000;
     [self unlockStage];
 }
@@ -1182,8 +1191,15 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(transition.events&ASTRO_TRANSITION_MENU_MUSIC)[audio playMusic:1];
     if(transition.phase==ASTRO_TRANSITION_DONE) {
         int oldStage=campaign.level,oldHalf=campaign.half;AstroCampaign next=pendingCampaign;
-        changingStage=NO;[self loadCampaignStage:next];
+        changingStage=NO;
+        if(oldHalf==1&&next.half==2){
+            initialReadyCard=NO;readyLoadPending=YES;
+            [enemies removeAllObjects];[world removeAllObjects];[mapPlacements removeAllObjects];playerNextActor=nil;
+            [visualEffects removeAllObjects];[liveBeams removeAllObjects];presentedBeams=@[];
+            [specialPolygons removeAllObjects];[specialFlashes removeAllObjects];playerHitVisual.active=NO;engineGlow=departureTrail=NO;
+        } else [self loadCampaignStage:next];
         astro_flow_stage_end(&flow,oldStage,oldHalf,next.level,next.half,next.complete);
+        if(flow.phase==ASTRO_FLOW_PLAY){[self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;}
     } else if(transition.phase==ASTRO_TRANSITION_CARD) {
         astro_flow_stage_end(&flow,campaign.level,campaign.half,pendingCampaign.level,pendingCampaign.half,pendingCampaign.complete);
     }
@@ -1192,9 +1208,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(campaignAction!=ASTRO_CAMPAIGN_NONE&&!changingStage) {
         if(selftestPath||(campaignAction==ASTRO_CAMPAIGN_LOAD&&campaign.level==9)) {
             AstroCampaign next=campaign;[self loadCampaignStage:next];
+            [self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;
         } else [self beginStageTransition];
     }
     if(changingStage)[self stepStageTransition];
+    if(flow.phase!=ASTRO_FLOW_PLAY)return;
     if(changingStage&&!transition.simulate_world){simulationTick++;tickedScroll=transition.scroll_x;return;}
     [self stepWorldWithoutFlow];
 }
@@ -1331,19 +1349,14 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if(!next.complete)[self loadCampaignStage:next];
         else {campaign.complete=1;[enemies removeAllObjects];[world removeAllObjects];playerNextActor=nil;}
     }
-    if(previous==ASTRO_FLOW_READY&&flow.phase==ASTRO_FLOW_PLAY&&!initialReadyCard) {
-        if(flow.half==2)for(AstroEnemy *enemy in enemies){
-            enemy->state.update_tick=enemy->state.animation_tick=enemy->state.action_tick=simulationTick;
-            enemy->visual.next_tick=simulationTick+(uint32_t)spriteInfo[enemy->visual.sprite].delay;
-        }
-        playerState.update_tick=playerState.animation_tick=lastPlayerShot=simulationTick;
-        playerVisual.next_tick=simulationTick+(uint32_t)spriteInfo[playerVisual.sprite].delay;
-        playerRenderBirth=++renderClock;
-    }
     if(previous==ASTRO_FLOW_READY&&flow.phase==ASTRO_FLOW_PLAY){
         [audio stopMusic];if(ui.musicVolume>0)[audio playMusic:2];
         if(initialReadyCard)[self beginGameLoop];
-        else {[self pollMapSpawns];specialReturnPending=NO;}
+        else {
+            if(readyLoadPending)[self loadCampaignStage:pendingCampaign];
+            [self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;
+            [self pollMapSpawns];specialReturnPending=NO;
+        }
     }
     if(flow.phase==ASTRO_FLOW_FINISHED)[self beginGameOver];
 }
@@ -1628,12 +1641,15 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             [self stepEnemies];[self renderTick];
         }
         assert(steps<1200);
-        if(half==1)assert(flow.phase==ASTRO_FLOW_READY&&[levels[selectedLevel] isEqual:@"Data 1B"]);
+        if(half==1)assert(flow.phase==ASTRO_FLOW_READY&&readyLoadPending&&world.count==0&&[levels[selectedLevel] isEqual:@"Data 1A"]);
         else {
             assert(flow.phase==ASTRO_FLOW_END_CARD&&engineGlow&&departureTrail);
             [self advanceFlowWithKey:YES];
             assert(flow.phase==ASTRO_FLOW_READY&&[levels[selectedLevel] isEqual:@"Data 2A"]);
         }
+        assert(![world containsObject:[NSNull null]]);
+        flow.ticks=59;[self advanceFlowWithKey:YES];
+        assert(flow.phase==ASTRO_FLOW_PLAY&&[world containsObject:[NSNull null]]&&!readyLoadPending);
         assert(inventory.weapon==10&&inventory.upgrade==0);
     }
 }
@@ -1932,6 +1948,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if(!selftestPath&&!campaignTestPath)simulationTick=(uint32_t)floor((NSProcessInfo.processInfo.systemUptime-clockOrigin)*60);
         initialReadyCard=YES;changingStage=NO;transition=(AstroTransition){0};pendingCampaign=(AstroCampaign){0};
         ui.editingHighscore=0;selectedLevel=index;camera=-0.0;[self resetEnemies];playerX=30;playerY=190;
+        [self finishPlayerStart];
         memset(keys,0,sizeof(keys));automatic=YES;paused=NO;menuVisible=NO;
         astro_flow_ready(&flow,campaign.level,campaign.half);[self unlockStage];
         [audio setPaused:NO];[audio playMusic:1];

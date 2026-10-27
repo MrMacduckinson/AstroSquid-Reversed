@@ -19,12 +19,15 @@ static NSMutableString *events;
 - (void)checkReadyMusic {
     [timer invalidate];timer=nil;[audio stop];audio=[ReadyAudioProbe new];
     events=[NSMutableString string];initialReadyCard=NO;
+    [world removeObjectIdenticalTo:[NSNull null]];
     astro_flow_ready(&flow,1,1);ui.musicVolume=1;flow.ticks=58;
     [self advanceFlowWithKey:YES];assert(flow.phase==ASTRO_FLOW_READY&&events.length==0);
     [self advanceFlowWithKey:YES];assert(flow.phase==ASTRO_FLOW_PLAY&&[events isEqual:@"SP"]);
     [self advanceFlowWithKey:YES];assert([events isEqual:@"SP"]);
+    [world removeObjectIdenticalTo:[NSNull null]];
     astro_flow_ready(&flow,1,2);ui.musicVolume=0;flow.ticks=59;[events setString:@""];
     [self advanceFlowWithKey:YES];assert(flow.phase==ASTRO_FLOW_PLAY&&[events isEqual:@"S"]);
+    [world removeObjectIdenticalTo:[NSNull null]];
     astro_flow_ready(&flow,2,1);ui.musicVolume=.1;flow.ticks=60;[events setString:@""];
     [self advanceFlowWithKey:NO];assert(flow.phase==ASTRO_FLOW_READY&&events.length==0);
     [self advanceFlowWithKey:YES];assert(flow.phase==ASTRO_FLOW_PLAY&&[events isEqual:@"SP"]);
