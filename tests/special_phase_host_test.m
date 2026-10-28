@@ -1,4 +1,4 @@
-// Actual synchronous production stack; only OS clock, keys, GL/audio observed.
+// Actual synchronous production stack; native phase timing + source-backed outer tail.
 #define main astrosquid_application_main
 #include "../src/preview.m"
 #undef main
@@ -65,6 +65,7 @@ static NSMutableString *events;
 @end
 @implementation AstroView (SpecialPhaseCheck)
 - (void)checkSpecialPhases {
+    FILE *fixture=fopen("tests/special_phase_native.csv","r");assert(fixture);char line[256];assert(fgets(line,sizeof(line),fixture));
     [timer invalidate];timer=nil;[audio stop];audio.soundVolume=audio.musicVolume=0;
     int intervals[]={2,3,0,-1,3,3,3};
     for(unsigned scenario=0;scenario<sizeof(intervals)/sizeof(intervals[0]);scenario++){
@@ -85,9 +86,13 @@ static NSMutableString *events;
         keys[controlKeys[1]]=YES;observing=YES;[self calculateActors];
         assert(!special.active&&!specialLoopRunning&&playerCombat.kind==1);
         assert(depth==0&&outerFrames==0&&animations==beams&&posttails==beams+1&&innerFrames==presents);
-        if(scenario==6)assert(beams==0&&clockReads==4);
-        else if(ui.frameInterval==3)assert(beams==30);
-        else assert(beams>=30&&beams<=31);
+        unsigned id,calcs,nativeBeams,reads,action,cpu,render,last,frames,swaps;int interval;
+        assert(fgets(line,sizeof(line),fixture));
+        assert(sscanf(line,"%u,%d,%u,%u,%u,%u,%u,%u,%u,%u,%u",&id,&interval,&calcs,&nativeBeams,
+            &reads,&action,&cpu,&render,&last,&frames,&swaps)==11);
+        assert(id==scenario&&interval==ui.frameInterval&&calcs==beams&&nativeBeams==beams);
+        assert(reads==clockReads&&action==lastPlayerShot&&cpu==observedWallTick&&render==worldRenderTick);
+        assert(last==latestTick&&frames==innerFrames&&swaps==presents);
         NSMutableString *expected=[NSMutableString stringWithString:@"A"];
         unsigned seenFrames=0;
         for(unsigned i=0;i<beams;i++){
@@ -97,12 +102,12 @@ static NSMutableString *events;
         }
         [expected appendString:@"TI"];assert([events isEqual:expected]&&seenFrames==innerFrames);
         assert(playerState.update_tick==131&&simulationTick==131);
-        if(scenario==6)assert(lastPlayerShot==162);else if(ui.frameInterval==3)assert(lastPlayerShot==192);
         unsigned previous=outerFrames;[self renderTick];assert(animations==beams+1);
-        if(ui.frameInterval<=0||scenario>=5)assert(outerFrames==previous+1);
+        assert(outerFrames==previous+(ui.frameInterval<=0||scenario==6));
         observing=NO;
         printf("PASS synchronous host interval%d: %u nested CALCs, cached gun, inner posttails/LM and outer continuation before parent pass\n",ui.frameInterval,beams);
     }
+    assert(!fgets(line,sizeof(line),fixture)&&!ferror(fixture));fclose(fixture);
     simulationTick=130;worldRenderTick=128;ui.frameInterval=3;
     specialReturnPending=NO;outerClockReads=0;unsigned previousFrames=outerFrames;
     observing=outerClockTest=YES;[self renderTick];observing=outerClockTest=NO;

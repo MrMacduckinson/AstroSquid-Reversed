@@ -103,12 +103,13 @@ captures; those captures do not establish equivalence of the current full game.
   world-before-special RNG, first-flash IEEE coordinates and terminal outer
   render eligibility match. This replays captured CPU ticks; it does not replace
   the original busy-loop TickCount read schedule with a fixed31-update claim.
-- A current audit reproduced the old `special_phase_host_test.m` assertion
-  `beams==30` failure both before and after the pause change. Its synthetic
-  clock schedule needs comparison with a native capture; the cause is still
-  unresolved and this test is not counted as passing. The16 native coupled special and48 coupled
-  beam trace gates passed with the pause change.
-- `tests/special_phase_host_test.m` historically checked the actual host at intervals2/3/0/-1:
+- `tests/special_phase_native.csv` now resolves the old hardcoded `beams==30`
+  failure with7 actual G5 timed-plasma captures. Under the host probe's clock
+  schedule, interval3 produces31 updates/action193, not30/action192. All7 cases
+  match186082 advancing clock queries, final CPU/render/action times, frame and
+  swap counts on Intel. CALC/LM clocks are held fixed inside those boundaries;
+  GPU/audio are observers. This is not an unrestricted real-time world proof.
+- `tests/special_phase_host_test.m` checks the actual host at intervals2/3/0/-1:
   gun coordinates cached before nested CALC, parent inheritance before damage,
   world render before special visuals, inner animation before restoring kind1,
   suppressed outer rendering while blocked, and terminal shared-deadline reuse.
