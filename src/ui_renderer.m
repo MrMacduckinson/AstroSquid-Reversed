@@ -148,6 +148,10 @@
     state->sprite=sprite;_hoverDeadlines[object[@"name"]]=@(tick+(sprite==902?1u:0u));
 }
 
+- (void)setButton:(NSString *)name pressed:(BOOL)pressed {
+    [self changeSprite:pressed?901:900 object:[self object:name]];
+    _pressed=pressed?name:nil;
+}
 - (NSString *)mouseDownX:(double)x y:(double)y {
     if(_pressed)return nil;
     if([_anchor isEqual:@"Credits"]){if(_beforeNavigate)_beforeNavigate(@"Yeah");[self show:@"Main Menu"];return @"Yeah";}

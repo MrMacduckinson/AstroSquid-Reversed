@@ -373,7 +373,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self appendDebugMessage:@"Loading Sound..."];
     NSError *error=nil;
     audio=[[AstroAudio alloc] initWithAssets:assetPath beforeMusic:^(AstroAudio *sound){
-        sound.soundVolume=ui.soundVolume;[self appendDebugMessage:@"Loading Music..."];
+        sound.soundVolume=ui.soundVolume/2;[self appendDebugMessage:@"Loading Music..."];
     } error:&error];
     if(!audio){NSLog(@"Cannot load original audio: %@",error);return NO;}
     audio.musicVolume=ui.musicVolume;[audio playMusic:1];return YES;
@@ -2365,7 +2365,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)performMenuAction:(NSString *)name {
     AstroUICommand command=astro_ui_command(name.UTF8String);
     double position=[ui clickPosition:name];
-    if(command.action!=ASTRO_UI_NONE||isfinite(position))[audio playCue:@"Click" position:position];
+    if(command.action!=ASTRO_UI_SOUND_VOLUME&&(command.action!=ASTRO_UI_NONE||isfinite(position)))[audio playCue:@"Click" position:position];
     if(command.action==ASTRO_UI_CLEAR_SCORES){astro_scores_clear(highscores);ui.editingHighscore=0;[self saveScores];}
     if(command.action==ASTRO_UI_KEY) {editingKey=command.key;keyCaptureDeadline=NSProcessInfo.processInfo.systemUptime+10;NSMutableArray *labels=[ui.keyLabels mutableCopy];labels[editingKey]=@"Press a key";ui.keyLabels=labels;}
     if(command.action==ASTRO_UI_SMOOTH) {
@@ -2374,7 +2374,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,ui.smooth?GL_LINEAR:GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,ui.smooth?GL_LINEAR:GL_NEAREST);}
     }
-    if(command.action==ASTRO_UI_SOUND_VOLUME) {ui.soundVolume=((int)lround(ui.soundVolume*10)+1)%11/10.0;audio.soundVolume=ui.soundVolume;}
+    if(command.action==ASTRO_UI_SOUND_VOLUME) {
+        ui.soundVolume=((int)lround(ui.soundVolume*10)+1)%11/10.0;audio.soundVolume=ui.soundVolume/2;
+        [audio playCue:@"Click"];[ui setButton:name pressed:YES];[self display];[ui setButton:name pressed:NO];
+    }
     if(command.action==ASTRO_UI_MUSIC_VOLUME) {ui.musicVolume=((int)lround(ui.musicVolume*10)+1)%11/10.0;audio.musicVolume=ui.musicVolume;}
     if(command.action==ASTRO_UI_NEW_GAME||command.action==ASTRO_UI_CONTINUE) {
         NSString *stage=[NSString stringWithFormat:@"Data %d%c",command.stage,command.section==1?'A':'B'];
