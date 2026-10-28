@@ -106,10 +106,14 @@
 - (NSString *)hitX:(double)x y:(double)y {
     NSString *result=nil;
     if(_transitioning)return nil;
-    for(int kind=9;kind<=10;kind++)for(NSDictionary *object in _objects){
+    for(int kind=1;kind<=10;kind++)for(NSDictionary *object in _objects){
         if([object[@"kind"] intValue]!=kind||![self enabled:object])continue;
-        NSRect r=[self bounds:object];
-        if(astro_ui_contains(r.origin.x,r.origin.y,r.size.width,r.size.height,x,y))result=object[@"name"];
+        NSRect r=[self bounds:object];double pointY=y;
+        if([_anchor isEqual:@"Pause"]||[_anchor isEqual:@"GameOver"]){
+            const AstroUIMotion *state=[_orbStates[object[@"name"]] bytes];
+            r.origin.y=state->y+_cameraY;pointY-=70;
+        }
+        if(astro_ui_contains(r.origin.x,r.origin.y,r.size.width,r.size.height,x,pointY))result=object[@"name"];
     }
     return result;
 }

@@ -2317,7 +2317,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)mouseDown:(NSEvent *)event {
     if(!menuVisible||splashVisible||editingKey>=0)return;NSPoint p=[self menuPoint:event];
     if([ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0&&p.x>=223&&p.x<423&&p.y>=255&&p.y<277) {
-        scoreEditor.cursor=[ui scoreCursorAtX:p.x];[self refreshScoreEditor];return;
+        scoreEditor.cursor=[ui scoreCursorAtX:p.x];[self refreshScoreEditor];
     }
     [self performMenuAction:[ui mouseDownX:p.x y:p.y]];
 }
@@ -2334,7 +2334,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)performMenuAction:(NSString *)name {
     AstroUICommand command=astro_ui_command(name.UTF8String);
-    if(command.action!=ASTRO_UI_NONE)[audio playCue:@"Click" position:[ui clickPosition:name]];
+    double position=[ui clickPosition:name];
+    if(command.action!=ASTRO_UI_NONE||isfinite(position))[audio playCue:@"Click" position:position];
     if(command.action==ASTRO_UI_CLEAR_SCORES){astro_scores_clear(highscores);ui.editingHighscore=0;[self saveScores];}
     if(command.action==ASTRO_UI_KEY) {editingKey=command.key;keyCaptureDeadline=NSProcessInfo.processInfo.systemUptime+10;NSMutableArray *labels=[ui.keyLabels mutableCopy];labels[editingKey]=@"Press a key";ui.keyLabels=labels;}
     if(command.action==ASTRO_UI_SMOOTH) {

@@ -16,8 +16,20 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- `tests/gameover_scene_mouse_host.sh` matches46 records from27 routes through
+  all three DataB1 scene nodes: OK, fade and offscreen player. Original
+  GAMEOVERTRANS settles the panel in60 steps before real DOMOUSE/LMPOINTSPRITE;
+  rendering, scene construction and OS bookkeeping are controlled. Background
+  and empty-name field clicks also play Click using fade position0, while the
+  field cursor updates first. Hit testing includes kinds1..10 and converts
+  overlay Y before integer rectangle truncation; this preserves the negative
+  fade origin at its lower edge. Hover, held-button latch and whole-loop Button
+  scheduling remain outside this gate. The original SetSVolume sound exception
+  is a separate remaining audit.
+
 - `tests/gameover_mouse_host.sh` matches20 records for14 actual original
-  DOMOUSE/LMPOINTSPRITE routes and host mouseDown/UI hit tests: button edges,
+  DOMOUSE/LMPOINTSPRITE routes and host mouseDown/UI hit tests in an explicitly
+  isolated single-button scene: button edges,
   center, outside and focus/no focus. Native mouse bookkeeping is shimmed;
   hit testing, name dispatch and state changes execute unchanged. GameOverOK
   sets the end flag before the terminal tail, whereas the keyboard sets it
