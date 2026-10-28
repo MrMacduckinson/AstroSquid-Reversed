@@ -16,6 +16,17 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- `tests/gameover_held_host.sh` matches171 records from three original GAMEOVER
+  schedules with held mouse and queued A/B/Enter at intervals1/2/3. The original
+  TRANS and DOMOUSE body execute; a validated PC-independent prologue trampoline
+  supplies the controlled empty mouse-action name. Scene construction/IO,
+  hover/render/music and terminal sprite change are observers. A/B advances
+  are the verified font129 values. Actual field selection runs on closed
+  gates and after frame-body clock storage, so A/B produces BA. Host uses the
+  same shared field/action handler for AppKit and held polling. Closing-state
+  coordinates and duplicate terminal-tail prevention have separate assertions.
+  This does not verify factory-derived field geometry or every mixed input.
+
 - `tests/mouse_latch_host.sh` matches52 original MOUSEOVERMENU/DOMOUSE primitive
   records, including10 exact clock reads, hover902 deadlines, latch/input state
   and IEEE rectangle coordinates. The original50 records remain unchanged;

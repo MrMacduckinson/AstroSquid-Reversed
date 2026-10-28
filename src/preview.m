@@ -1758,7 +1758,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     BOOL gameOverPanel=[ui.anchor isEqual:@"GameOver"];
     if(gameOverPanel)[self readKeyMap];
     uint32_t comparison=[self currentGameTick];
-    if((int32_t)(comparison-observedWallTick)<ui.frameInterval)return;
+    if((int32_t)(comparison-observedWallTick)<ui.frameInterval){[self pollHeldMenuMouse];return;}
     BOOL overlay=[ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"];
     if(!overlay)observedWallTick=[self currentGameTick];
     BOOL finishGameOver=NO;
@@ -1779,7 +1779,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(overlay)observedWallTick=[self currentGameTick];
     if([ui.anchor isEqual:@"Pause"]&&paused)[self readPauseKeys];
     else if(!gameOverPanel)[self readKeyMap];
-    else if(finishGameOver)[self finishGameOver];
+    [self pollHeldMenuMouse];
+    if(gameOverPanel&&finishGameOver)[self finishGameOver];
 }
 - (uint32_t)cardDelayClockTick {
     return (uint32_t)(uint64_t)floor(NSProcessInfo.processInfo.systemUptime*60);
@@ -2326,14 +2327,22 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     return NSMakePoint(p.x*640/self.bounds.size.width,(self.bounds.size.height-p.y)*480/self.bounds.size.height);
 }
 - (BOOL)menuMouseButtonPressed {return ([NSEvent pressedMouseButtons]&1)!=0;}
-- (void)mouseDown:(NSEvent *)event {
-    if(!menuVisible||splashVisible||editingKey>=0||ui.transitioning)return;NSPoint p=[self menuPoint:event];
-    if([ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0&&p.x>=223&&p.x<423&&p.y>=255&&p.y<277) {
+- (void)handleMenuMouseAtPoint:(NSPoint)p {
+    double fieldTop=ui.gameOverClosing?185:255;
+    if([ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0&&p.x>=223&&p.x<423&&p.y>=fieldTop&&p.y<fieldTop+22) {
         scoreEditor.cursor=[ui scoreCursorAtX:p.x];[self refreshScoreEditor];
     }
     if(menuMouseLatched)return;
     menuMouseLatched=YES;
     [self performMenuAction:[ui mouseDownX:p.x y:p.y]];
+}
+- (void)pollHeldMenuMouse {
+    if(!menuVisible||splashVisible||editingKey>=0||ui.transitioning||![self menuMouseButtonPressed])return;
+    [self handleMenuMouseAtPoint:[self currentMenuMousePoint]];
+}
+- (void)mouseDown:(NSEvent *)event {
+    if(!menuVisible||splashVisible||editingKey>=0||ui.transitioning)return;
+    [self handleMenuMouseAtPoint:[self menuPoint:event]];
 }
 - (void)mouseMoved:(NSEvent *)event {[self mouseDragged:event];}
 - (BOOL)resignFirstResponder {memset(keys,0,sizeof(keys));return [super resignFirstResponder];}
@@ -2373,7 +2382,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [audio setPaused:NO];[audio playMusic:1];
     } else if(command.action==ASTRO_UI_QUIT) [self requestQuit];
     else if(command.action==ASTRO_UI_RESUME) {[self resumePause];}
-    else if(command.action==ASTRO_UI_GAME_OVER_OK){gameEndRequested=YES;[self finishGameOver];}
+    else if(command.action==ASTRO_UI_GAME_OVER_OK){gameEndRequested=YES;if(!ui.gameOverClosing)[self finishGameOver];}
     else if(command.action==ASTRO_UI_QUIT_GAME) {
         gameEndRequested=YES;gameEndHighscores=NO;
         paused=NO;gameOver=NO;menuVisible=NO;

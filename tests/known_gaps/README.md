@@ -45,7 +45,8 @@ with two additional closing-state polls in the current52-record reference.
 
 The current host passes `../mouse_latch_host.sh` for all52 primitive records,
 including per-sprite hover deadlines and original geometry operations. Actual
-GL rendering uses the sampled sprite state without another clock read. This
-still does not prove repeated held DOMOUSE dispatch from the complete frame
-loop, field dragging between frames, initial scene factory deadlines or the
-normal-menu LMHANDLE lifecycle. These remain required work, not exclusions.
+GL rendering uses the sampled sprite state without another clock read. `../gameover_held_host.sh` additionally matches171 records from three whole
+GAMEOVER control-flow schedules with real DOMOUSE body and A/B/Enter while held,
+including closed gates and post-frame dispatch. Initial scene construction,
+all moving-pointer/mixed-input cases, factory deadlines and normal-menu
+LMHANDLE remain unproved. These remain required work, not exclusions.
