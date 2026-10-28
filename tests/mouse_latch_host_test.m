@@ -24,7 +24,7 @@ static NSPoint point;
 - (void)checkLatch {
     [timer invalidate];timer=nil;[audio stop];audio=[LatchAudio new];splashVisible=NO;editingKey=-1;
     for(scenario=0;scenario<2;scenario++){
-        [ui show:@"GameOver"];[ui animateTicks:60];ui.editingHighscore=scenario;
+        ui.readTick=nil;[ui show:@"GameOver"];[ui animateTicks:60];ui.editingHighscore=scenario;
         astro_score_editor_begin(&scoreEditor);scoreEditor.cursor=77;[self refreshScoreEditor];
         menuVisible=gameOver=YES;menuMouseLatched=NO;gameEndRequested=NO;reads=0;
         ui.readTick=^uint32_t{uint32_t tick=100+reads++;printf("%u,%u,T,%u\n",scenario,step,tick);return tick;};

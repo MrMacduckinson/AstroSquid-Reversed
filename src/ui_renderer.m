@@ -27,6 +27,7 @@
         _data=[NSJSONSerialization JSONObjectWithData:bytes options:0 error:error];
         if(![_data[@"scenes"] isKindOfClass:[NSDictionary class]]||![_data[@"font"][@"advance"] isKindOfClass:[NSArray class]])return nil;
         _orbStates=[NSMutableDictionary dictionary];_hoverDeadlines=[NSMutableDictionary dictionary];_registered=YES;_registeredName=@"";_editingName=@"";
+        _scoreField=NSMakeRect(223,185,200,22);
         _frameInterval=1;_unlockedLevel=1;_smooth=YES;_soundVolume=.6;_musicVolume=1;
         _keyLabels=@[@"Space",@"Option",@"Up",@"Down",@"Left",@"Right"];
         _highscores=@[];astro_score_caret_begin(&_caret,0);
@@ -48,6 +49,8 @@
             NSInteger counter=[object[@"animation_counter"] integerValue];
             AstroUIMotion state={[object[@"x"] doubleValue],[object[@"y"] doubleValue],[object[@"width"] doubleValue],[object[@"height"] doubleValue],(int32_t)counter,[object[@"sprite"] shortValue]};
             _orbStates[object[@"name"]]=[NSMutableData dataWithBytes:&state length:sizeof(state)];
+            // All initial UI sprites (0,1,900,998) have zero animation delay.
+            _hoverDeadlines[object[@"name"]]=@(self.readTick?self.readTick():0);
         }
     }
     _targetX=0;_targetY=0;
@@ -174,6 +177,13 @@
     }
 }
 - (BOOL)editingCaretVisible {return _caret.visible==1;}
+- (void)prepareScoreField {
+    AstroUIMotion *fade=[_orbStates[@"GameOverFade"] mutableBytes];
+    _scoreField=NSMakeRect(223+fade->x,185+fade->y,200,22);
+}
+- (BOOL)scoreFieldContainsX:(double)x y:(double)y {
+    return astro_ui_contains(_scoreField.origin.x,_scoreField.origin.y,_scoreField.size.width,_scoreField.size.height,x,y-(_gameOverClosing?0:70));
+}
 - (void)beginScoreClock:(uint32_t)tick {astro_score_caret_begin(&_caret,tick);}
 - (double)textWidth:(NSString *)text size:(double)size {
     NSData *bytes=[text dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:YES];
@@ -252,22 +262,24 @@
         if(button)[self label:@"OK" object:button left:NO texture:texture];
     }
     if([_anchor isEqual:@"GameOver"]&&self.editingHighscore>0){
+        int left=(int)_scoreField.origin.x,top=(int)_scoreField.origin.y+70;
+        int right=left+(int)_scoreField.size.width,bottom=top+(int)_scoreField.size.height;
         glColor4d(1,1,1,1);
         glDisable(GL_TEXTURE_2D);glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);glBegin(GL_QUADS);
-        glVertex2d(223,255);glVertex2d(423,255);glVertex2d(423,277);glVertex2d(223,277);glEnd();glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
-        [self drawText:@"Name:" x:225 baseline:255 size:12 texture:texture];
+        glVertex2d(left,top);glVertex2d(right,top);glVertex2d(right,bottom);glVertex2d(left,bottom);glEnd();glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+        [self drawText:@"Name:" x:left+2 baseline:top size:12 texture:texture];
         NSString *name=self.editingName?:@"";
         NSUInteger cursor=MIN((NSUInteger)MAX(self.editingCursor,0),name.length);
         double cursorWidth=[self textWidth:[name substringToIndex:cursor] size:20];
-        [self drawText:name x:225 baseline:278 size:20 texture:texture];
+        [self drawText:name x:left+2 baseline:top+23 size:20 texture:texture];
         if(self.readTick){
             uint32_t tick=self.readTick();
             uint32_t reset=(int32_t)_caret.deadline<(int32_t)tick?self.readTick():tick;
             astro_score_caret_draw(&_caret,tick,reset);
         }
         if(self.editingCaretVisible){
-            double x=225+cursorWidth;
-            glDisable(GL_TEXTURE_2D);glBegin(GL_QUADS);glVertex2d(x,256);glVertex2d(x+1,256);glVertex2d(x+1,275);glVertex2d(x,275);glEnd();
+            double x=left+2+cursorWidth;
+            glDisable(GL_TEXTURE_2D);glBegin(GL_QUADS);glVertex2d(x,top+1);glVertex2d(x+1,top+1);glVertex2d(x+1,bottom-2);glVertex2d(x,bottom-2);glEnd();
         }
         [self drawText:@"Highscore!" x:240 baseline:240 size:32 texture:texture];
     }
@@ -300,7 +312,7 @@
 }
 - (NSInteger)scoreCursorAtX:(double)x {
     NSString *name=self.editingName?:@"";
-    int position=(int)(x-223);NSInteger cursor=-1;
+    int position=(int)(x-_scoreField.origin.x);NSInteger cursor=-1;
     for(NSUInteger i=0;i<=name.length;i++)
         if([self textWidth:[name substringToIndex:i] size:20]<position)cursor++;
     return cursor;

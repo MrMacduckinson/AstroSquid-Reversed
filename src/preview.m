@@ -2058,7 +2058,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self performMenuAction:@"SetKeyFire"];[self testModifier:58 flags:NSEventModifierFlagOption|NX_DEVICELALTKEYMASK];
     assert(controlKeys[0]==58&&editingKey==-1);[self testModifier:58 flags:0];controlKeys[0]=fire;
     AstroScore saved[10];memcpy(saved,highscores,sizeof(saved));astro_scores_clear(highscores);
-    int oldScore=score;score=12345;[self beginGameOver];assert(ui.editingHighscore>0);
+    int oldScore=score;score=12345;[self beginGameOver];assert(ui.editingHighscore>0);assert((int)ui.scoreField.origin.y==183);
     NSEvent *text=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0
         timestamp:0 windowNumber:self.window.windowNumber context:nil characters:@"TEST"
         charactersIgnoringModifiers:@"TEST" isARepeat:NO keyCode:17];
@@ -2241,6 +2241,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     flow.phase=savedPhase;simulationTick=[self currentGameTick];
     menuVisible=YES;[ui show:@"GameOver"];[self drawPanelTransition];
     ui.editingHighscore=astro_scores_qualifies(highscores,score)?1:0;
+    if(ui.editingHighscore>0)[ui prepareScoreField];
     astro_score_editor_begin(&scoreEditor);[ui beginScoreClock:[self currentGameTick]];[self refreshScoreEditor];
     scoreKeyEvents=nil;[self flushGameEvents];
 }
@@ -2328,8 +2329,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (BOOL)menuMouseButtonPressed {return ([NSEvent pressedMouseButtons]&1)!=0;}
 - (void)handleMenuMouseAtPoint:(NSPoint)p {
-    double fieldTop=ui.gameOverClosing?185:255;
-    if([ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0&&p.x>=223&&p.x<423&&p.y>=fieldTop&&p.y<fieldTop+22) {
+    if([ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0&&[ui scoreFieldContainsX:p.x y:p.y]) {
         scoreEditor.cursor=[ui scoreCursorAtX:p.x];[self refreshScoreEditor];
     }
     if(menuMouseLatched)return;
