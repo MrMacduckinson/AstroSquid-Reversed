@@ -395,3 +395,29 @@ final_restore1; watchdog/recovery unused. The real DSp fallback is therefore
 necessary on this hardware. This does not establish full original startup,
 fullscreen GETPICT pixels, Intel backend behavior or host fullscreen parity.
 Temporary inputs/helper executable are removed after recording.
+
+## Actual Intel Cocoa fullscreen prototype
+
+tools/intel_fullscreen_probe.m is standalone, authorized Intel iMac only.
+Compile ARC with Cocoa/OpenGL. Default invocation only lists eligible640x480
+32-bit CG modes; --run invokes a monitored child that creates its own GL view.
+HighSierra SDK NSView.h declares NSFullScreenModeSetting takes a CG display-mode
+dictionary. Using that dictionary plus NSFullScreenModeAllScreens:NO switches
+via enterFullScreenMode. A separate parent copies original mode, imposes15sec
+watchdog on12sec child, and reports native_restore independently from recovery.
+
+Actual Intel mode available640x480/32bpp/hz0. Initial prototype mode switching
+and restoration succeeded but front pixel was black, so that attempt failed
+rendering verification. Final prototype calls displayIfNeeded,lockFocus,context
+update/makeCurrent before drawing, then unlocks focus. Two native final runs
+PASS:2048x1152 ->640x480 ->2048x1152, inFullScreenMode1, red255/0/0 in owned
+GL_BACK and GL_FRONT, no GL error, native_restore1/final_restore1. No recovery
+or watchdog used. No user desktop pixels are read; only own cleared GL surface.
+No original preferences modified. Temporary probe/log/build files are cleaned.
+Evidence log internal fidelity-audit/intel-fullscreen-prototype.log.
+
+This proves the modern backend primitive on this target, not production game
+startup/fullscreen integration, frequency-selection parity on other hardware,
+full-game rendering/input or screenshot semantics. Production still defaults
+windowed; next wire startupOption58/defaultfull,640x480 window and safe exit
+into delegate/view while preserving existing deferred quit lifecycle.
