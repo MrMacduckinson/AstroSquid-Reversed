@@ -7,22 +7,22 @@ static NSMutableArray *events;static BOOL observing;
 @end
 @implementation StartupMapsView
 - (GLuint)texture:(NSInteger)identifier {if(observing)[events addObject:@(identifier)];return [super texture:identifier];}
-- (void)presentFrame {if(observing)[events addObject:@"swap"];[super presentFrame];}
-- (BOOL)appendDebugMessage:(NSString *)message {if(observing)[events addObject:message];return YES;}
+- (void)presentFrame {if(observing){if(!spriteMapsPreloaded)assert(!audio);[events addObject:@"swap"];}[super presentFrame];}
+- (BOOL)appendDebugMessage:(NSString *)message {if(observing){if([message isEqual:@"Loading Sound..."]||[message isEqual:@"Loading Music..."])assert(spriteMapsPreloaded&&!audio);[events addObject:message];}return YES;}
 @end
 @implementation AstroView(StartupMapsCheck)
 - (void)checkStartupMaps {
- [timer invalidate];timer=nil;[audio stop];campaignTestPath=@"startup-test";assert(!spriteMapsPreloaded&&!textures.count);
+ [timer invalidate];timer=nil;[audio stop];campaignTestPath=@"startup-test";ui.soundVolume=.7;assert(!audio&&!spriteMapsPreloaded&&!textures.count);
  [[self openGLContext]makeCurrentContext];GLuint fb,color;glGenFramebuffersEXT(1,&fb);glBindFramebufferEXT(GL_FRAMEBUFFER_EXT,fb);glGenTextures(1,&color);glBindTexture(GL_TEXTURE_2D,color);glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,640,480,0,GL_RGBA,GL_UNSIGNED_BYTE,NULL);glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT,GL_COLOR_ATTACHMENT0_EXT,GL_TEXTURE_2D,color,0);assert(glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT)==GL_FRAMEBUFFER_COMPLETE_EXT);
  observing=YES;[self drawRect:self.bounds];observing=NO;
  assert(events.count>110&&[events[0]isEqual:@40]&&[events[1]isEqual:@"swap"]&&[events[2]isEqual:@"Loading SpriteMaps..."]);
  for(unsigned i=0;i<107;i++)assert([events[i+3]isEqual:@(i)]);
- assert([events[110]isEqual:@41]&&spriteMapsPreloaded&&textures.count==54);
+ assert([events[110]isEqual:@"Loading Sound..."]&&[events[111]isEqual:@"Loading Music..."]&&[events[112]isEqual:@41]&&spriteMapsPreloaded&&textures.count==54&&audio.music.isPlaying&&fabs(audio.soundVolume-ui.soundVolume)<1e-6&&fabs(audio.musicVolume-ui.musicVolume)<1e-6);
  NSArray *expected=@[@0,@1,@2,@3,@4,@5,@6,@7,@8,@9,@10,@11,@12,@13,@14,@15,@16,@17,@18,@19,@20,@21,@22,@40,@41,@50,@51,@52,@53,@54,@55,@56,@57,@58,@61,@62,@63,@64,@65,@66,@67,@68,@70,@71,@72,@73,@74,@75,@76,@77,@78,@98,@99,@100];
  assert([[textures.allKeys sortedArrayUsingSelector:@selector(compare:)]isEqual:expected]);GLuint picture=[textures[@40]unsignedIntValue];glBindTexture(GL_TEXTURE_2D,picture);GLint filter;glGetTexParameteriv(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,&filter);assert(filter==GL_NEAREST);
- NSDictionary *first=[textures copy];[events removeAllObjects];observing=YES;[self drawRect:self.bounds];observing=NO;assert([events[0]isEqual:@41]&&![events containsObject:@"Loading SpriteMaps..."]&&[textures isEqual:first]&&glGetError()==GL_NO_ERROR);
- glBindFramebufferEXT(GL_FRAMEBUFFER_EXT,0);glDeleteFramebuffersEXT(1,&fb);glDeleteTextures(1,&color);[self releaseGraphics];
- puts("PASS actual startup picture40/swap -> map calls0..106 -> picture41;54 original maps cached, picture40 NEAREST retained, repeated draw does not preload/reallocate");
+ AstroAudio *firstAudio=audio;AVAudioPlayer *firstTrack=audio.music;NSDictionary *first=[textures copy];[events removeAllObjects];observing=YES;[self drawRect:self.bounds];observing=NO;assert([events[0]isEqual:@41]&&![events containsObject:@"Loading SpriteMaps..."]&&[textures isEqual:first]&&audio==firstAudio&&audio.music==firstTrack&&glGetError()==GL_NO_ERROR);
+ glBindFramebufferEXT(GL_FRAMEBUFFER_EXT,0);glDeleteFramebuffersEXT(1,&fb);glDeleteTextures(1,&color);[self releaseGraphics];[audio stop];
+ puts("PASS actual startup picture40/swap -> map calls0..106 -> picture41;sound/music after maps,54 original maps cached, picture40 NEAREST retained, repeated draw does not preload/reallocate");
 }
 @end
 int main(int argc,char **argv){@autoreleasepool{

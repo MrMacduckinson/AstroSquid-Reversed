@@ -328,8 +328,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     timer = [NSTimer scheduledTimerWithTimeInterval:1.0/60.0 target:self
                                            selector:@selector(tick:) userInfo:nil repeats:YES];
     [[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
-    audio=[[AstroAudio alloc] initWithAssets:path error:&error];
-    if(!audio) {NSLog(@"Cannot load original audio: %@",error);return nil;}
     ui=[[AstroUIRenderer alloc] initWithAssets:path error:&error];
     if(!ui) {NSLog(@"Cannot load original interface: %@",error);return nil;}
     __weak AstroView *weakView=self;ui.readTick=^{return [weakView currentGameTick];};
@@ -349,13 +347,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         NSArray *stored=settings[@"keys"];
         if(stored.count==6)for(int i=0;i<6;i++)if([stored[i] intValue]>=0&&[stored[i] intValue]<128)controlKeys[i]=[stored[i] intValue];
     }
-    audio.soundVolume=ui.soundVolume;audio.musicVolume=ui.musicVolume;
     [self refreshKeyLabels];
     [self loadScores];
     hud=[[AstroHUDRenderer alloc] initWithGame:game ui:ui];
     hud.didDrawSprite=^(NSInteger sprite,double x,double y,double w,double h){[weakView countSpriteX:x y:y width:w height:h];};
     menuVisible=YES;splashVisible=YES;
-    [audio playMusic:1];
     return self;
 }
 - (BOOL)acceptsFirstResponder { return YES; }
@@ -366,6 +362,16 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glClearColor(0,0,0,0);
+}
+- (BOOL)initializeAudio {
+    if(audio)return YES;
+    [self appendDebugMessage:@"Loading Sound..."];
+    NSError *error=nil;
+    audio=[[AstroAudio alloc] initWithAssets:assetPath beforeMusic:^(AstroAudio *sound){
+        sound.soundVolume=ui.soundVolume;[self appendDebugMessage:@"Loading Music..."];
+    } error:&error];
+    if(!audio){NSLog(@"Cannot load original audio: %@",error);return NO;}
+    audio.musicVolume=ui.musicVolume;[audio playMusic:1];return YES;
 }
 - (void)preloadSpriteMaps {
     if(spriteMapsPreloaded)return;
@@ -463,7 +469,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
         glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);glMatrixMode(GL_MODELVIEW);glLoadIdentity();glClear(GL_COLOR_BUFFER_BIT);
         [ui drawPicture:40 x:0 y:0 width:0 height:0 texture:^GLuint(NSInteger n){return [self texture:n];}];
-        [self presentFrame];[self preloadSpriteMaps];
+        [self presentFrame];[self preloadSpriteMaps];if(![self initializeAudio])exit(1);
     }
     glViewport(0,(GLint)(bounds.size.height*30/480),(GLsizei)bounds.size.width,(GLsizei)(bounds.size.height*380/480));
     glClear(GL_COLOR_BUFFER_BIT);

@@ -12,6 +12,9 @@
 }
 @synthesize music = _music;
 - (instancetype)initWithAssets:(NSString *)path error:(NSError **)error {
+    return [self initWithAssets:path beforeMusic:nil error:error];
+}
+- (instancetype)initWithAssets:(NSString *)path beforeMusic:(void (^)(AstroAudio *sound))beforeMusic error:(NSError **)error {
     self=[super init]; if (!self) return nil;
     NSData *data=[NSData dataWithContentsOfFile:[path stringByAppendingPathComponent:@"audio.json"] options:0 error:error];
     if (!data) return nil;
@@ -29,6 +32,7 @@
         if (!probe || probe.duration<=0) return nil;
         samples[name]=sample;
     }
+    if(beforeMusic)beforeMusic(self);
     NSMutableArray *musicTracks=[NSMutableArray array];
     for (int i=1;i<=3;i++) {
         NSString *file=manifest[@"music"][[NSString stringWithFormat:@"%d",i]][@"file"];

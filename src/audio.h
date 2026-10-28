@@ -7,6 +7,8 @@
 @property(nonatomic) BOOL stereo;
 @property(nonatomic, readonly) AVAudioPlayer *music;
 - (instancetype)initWithAssets:(NSString *)path error:(NSError **)error;
+// Callback runs after cues are ready, before any music file is opened.
+- (instancetype)initWithAssets:(NSString *)path beforeMusic:(void (^)(AstroAudio *sound))beforeMusic error:(NSError **)error;
 - (BOOL)playCue:(NSString *)name;
 - (BOOL)playCue:(NSString *)name position:(double)position;
 - (BOOL)playCueIfNotPlaying:(NSString *)name position:(double)position;

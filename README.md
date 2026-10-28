@@ -21,7 +21,8 @@ newer macOS releases have not been tested on Intel hardware.
 The game starts fullscreen at 640×480; hold left Option during startup for a
 fixed 640×480 window. If the display mode is unavailable, it uses the window.
 The previous display mode is restored on exit. The loading picture is shown
-before the 54 texture maps are preloaded and the credits appear.
+before the 54 texture maps are preloaded. Sound and music are then prepared
+before the credits appear.
 
 Arrows move, Command fires, Option uses a special attack. Escape pauses; any key
 resumes at the next eligible input poll. As in the original, a key still held
