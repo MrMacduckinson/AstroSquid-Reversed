@@ -64,6 +64,12 @@ captures; those captures do not establish equivalence of the current full game.
   pause key, Command-Q as the stop flag and keypad multiply as the debug-enabled
   screenshot key. This does not prove physical-device input, pause-loop timing
   or implementation of the stop/screenshot actions in the port.
+- `tests/quit_loop_native.csv` records8 original GAMELOOP terminal-tail cases,
+  188 event/state observations with closed CPU/spawn gates. It verifies latched
+  input, exact positive1 exit checks, actual image/entity/map cleanup and menu/
+  event/music/cursor callback order. UI/audio/GL are observers; original outer
+  CLOSEDOWN and advancing/nested world exits are outside this proof. The host
+  still needs the deferred quit latch and terminal-tail implementation.
 - `tests/pause_native.csv` records16 original G5 PAUSE/GETKEYMAP cases and708
   boundary/state observations. Two captures were byte-identical. It establishes
   held-key exit at eligible frame polls, interval1/2/3 gates, fresh post-swap CPU
