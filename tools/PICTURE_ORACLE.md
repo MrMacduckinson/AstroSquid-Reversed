@@ -216,3 +216,37 @@ _FOLDER may change the default volume, so later current working-directory reads
 cannot replace this retained startup base. Do not assume POSIX cwd, bundle
 Resources, executable parent or Downloads without launch-context evidence.
 The original LaunchServices/CFM startup directory mapping remains unresolved.
+
+## Version3 CFM launch directory
+
+An owned executable copy was made on G5 from the old reference only to preserve
+APPL Finder metadata; its data fork and resource fork were replaced by the
+selected download3 AstroSquid.stub.pef (2510 bytes) and AstroSquid.rsrc
+(7328466 bytes). MD5 of source and installed resource fork both
+7a8ea3807ca1a6f52d2a5ce984ebb8de. The old reference was unchanged. No Data folder
+was copied; the debugger intentionally stops before normal gameplay.
+
+Run LaunchCFMApp under G5 native GDB using tools/ppc_launch_directory.gdb and
+this owned path /tmp/astrosquid-launch-dir-20261028/AstroSquid. GDB6.3 requires
+`set breakpoint pending on` before `break PBHGetVolSync`, because Carbon loads
+after launch; use -batch -x commandfile, not -ex. An initial attempt without
+pending breakpoints failed to stop and reached an EXC_BAD_ACCESS; it did not
+prove any directory result. Corrected runs stop at the imported function and
+finish only that call, reading PB volume at22 and directoryID at48.
+
+Observed two calls: first stack is GETVOL -> FBGETVOLREF -> FBCOREINIT; second
+is GETVOL -> INITRUNTIME (the saved g23e source). Both return volume-100 and
+directory612671. Read-only tools/carbon_directory_probe.c independently maps
+the owned executable parent to that volume/node. A separate owned `othercwd`
+node612688 was the POSIX working directory for the second launch; both Carbon
+reads still return executable-parent612671. Initial launch from executable
+parent also returned612671. This establishes CFM-loader direct-launch behavior
+on G5/Tiger, and the saved original screenshot base is the executable parent
+in those tests. It does not prove Finder/LaunchServices, alternate launchers,
+other OS versions or an NSApplication bundle's automatic Carbon default folder.
+Do not replace the original saved startup reference with a later current folder.
+
+GDB quits/kills the owned inferior after the second read. No completed UI/game/
+audio initialization, original live process patch, or original on-disk change
+is part of this successful test. Temporary copied executable/resources and
+directory helper binary are removed after evidence is recorded.
