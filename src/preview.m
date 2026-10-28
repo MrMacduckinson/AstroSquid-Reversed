@@ -4,8 +4,40 @@
 #import <IOKit/hidsystem/IOLLEvent.h>
 #import <OpenGL/gl.h>
 #import <AVFoundation/AVFoundation.h>
+#include <dlfcn.h>
+#include <unistd.h>
+#include <errno.h>
 #include "physics.h"
 #include "picture.h"
+static void *debugAGLLibrary(void){
+    static void *library;static dispatch_once_t once;
+    dispatch_once(&once,^{library=dlopen("/System/Library/Frameworks/AGL.framework/AGL",RTLD_LAZY|RTLD_LOCAL);});return library;
+}
+static NSString *debugField(double value,int width){
+    NSString *text=[NSString stringWithFormat:@"%*.0f",width,value];
+    return text.length>(NSUInteger)width?[@"?" stringByAppendingString:[text substringFromIndex:text.length-width+1]]:text;
+}
+static NSData *debugHeader(NSDateComponents *date,int32_t clock,int32_t memory,uint32_t version,int major,int minor,BOOL fullscreen){
+    unsigned packed=((version>>12)&15)*1000+((version>>8)&15)*100+((version>>4)&15)*10+(version&15);
+    if(packed<100)return nil;
+    NSString *system=[NSString stringWithFormat:@" %u",packed];system=[system substringFromIndex:system.length-4];
+    NSString *text=[NSString stringWithFormat:
+        @"---------- Lost Minds Sprite Engine Debug File -----------\r"
+         "If you are having problems, send this file to bugs@lostminds.com\r"
+         "File created %02ld/%02ld/%02ld    at %02ld:%02ld:%02ld\r\r"
+         "---------- System Info -----------\rProcessor: %@ MHz\rMemory:%@ MB\r"
+         "MacOS version: %@.%@.%@\rAGL version: % d.%d\r\r"
+         "---------- LM Engine Info -----------\rBuild # 22\r\r"
+         "LMSettings.ScreenWidth =  640\rLMSettings.ScreenHeight =  480\r"
+         "LMSettings.SpriteCullingFlag = TRUE\rLMSettings.ClearBackgroundFlag = FALSE\r"
+         "LMSettings.DebugFlag= TRUE\rLMSettings.FullscreenFlag= %@\r"
+         "LMSettings.WindowTitle$ = 'AstroSquid'\rLMSettings.SmoothScalingFlag = TRUE\r"
+         "LMSettings.ClassicFlag = FALSE\r\r\r---------- Startup -----------\r",
+        (long)date.month,(long)date.day,(long)(date.year%100),(long)date.hour,(long)date.minute,(long)date.second,
+        debugField(clock/1000000.0,4),debugField(memory/1048576.0,5),[system substringToIndex:2],
+        [system substringWithRange:NSMakeRange(2,1)],[system substringFromIndex:3],major,minor,fullscreen?@"TRUE":@"FALSE"];
+    return [text dataUsingEncoding:NSMacOSRomanStringEncoding];
+}
 static __weak NSView *fullscreenView;
 static void restoreFullscreen(void){
     @autoreleasepool {NSView *view=fullscreenView;if(view.inFullScreenMode){[view setHidden:YES];[view exitFullScreenModeWithOptions:nil];}fullscreenView=nil;}
@@ -831,7 +863,33 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)copyKeyMap:(unsigned char *)bytes {
     KeyMap snapshot;GetKeys(snapshot);memcpy(bytes,snapshot,sizeof(snapshot));
 }
+- (NSString *)debugJournalPath {return [screenshotBase stringByAppendingPathComponent:@"LMEngine Debug file"];}
+- (int)debugAGLError {
+    void *library=debugAGLLibrary();int (*readError)(void)=library?dlsym(library,"aglGetError"):NULL;return readError?readError():0;
+}
+- (NSData *)debugJournalHeader {
+    SInt32 clock=0,memory=0,version=0;Gestalt('pclk',&clock);Gestalt('ram ',&memory);if(Gestalt(gestaltSystemVersion,&version))return nil;
+    int major=0,minor=0;void *library=debugAGLLibrary();void (*readVersion)(int *,int *)=library?dlsym(library,"aglGetVersion"):NULL;if(readVersion)readVersion(&major,&minor);
+    NSDateComponents *date=[[NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian] components:NSCalendarUnitYear|NSCalendarUnitMonth|NSCalendarUnitDay|NSCalendarUnitHour|NSCalendarUnitMinute|NSCalendarUnitSecond fromDate:[NSDate date]];
+    return debugHeader(date,clock,memory,version,major,minor,fullscreenRequested);
+}
+- (BOOL)initializeDebugJournal {
+    if(!engineDebug)return YES;
+    NSString *path=[self debugJournalPath];if(unlink(path.fileSystemRepresentation)&&errno!=ENOENT)return NO;
+    NSData *header=[self debugJournalHeader];FILE *file=fopen(path.fileSystemRepresentation,"wb");if(!file)return NO;
+    BOOL ok=header&&fwrite(header.bytes,1,header.length,file)==header.length;if(fclose(file))ok=NO;
+    if(ok)ok=[NSFileManager.defaultManager setAttributes:@{NSFileHFSTypeCode:@(0x54455854)} ofItemAtPath:path error:NULL];return ok;
+}
+- (BOOL)appendDebugMessage:(NSString *)message {
+    if(!engineDebug)return YES;
+    FILE *file=fopen([self debugJournalPath].fileSystemRepresentation,"ab");if(!file)return NO;
+    NSData *bytes=[message dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:YES];size_t length=MIN(bytes.length,255);
+    BOOL ok=fwrite(bytes.bytes,1,length,file)==length;if(fputc('\r',file)==EOF)ok=NO;
+    int error=[self debugAGLError];if(error&&fprintf(file,"   *** AGL Error: % d\r",error)<0)ok=NO;
+    if(fclose(file))ok=NO;return ok;
+}
 - (BOOL)startFullscreen {
+    [self initializeDebugJournal];
     if(!fullscreenRequested)return NO;
     for(NSDictionary *mode in (__bridge NSArray *)CGDisplayAvailableModes(CGMainDisplayID())) {
         if([mode[(__bridge NSString *)kCGDisplayWidth] intValue]!=640||[mode[(__bridge NSString *)kCGDisplayHeight] intValue]!=480||[mode[(__bridge NSString *)kCGDisplayBitsPerPixel] intValue]!=32)continue;
@@ -875,7 +933,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         for(unsigned i=0;i<128;i++)keys[i]=(snapshot[i>>3]>>(i&7))&1;
     }
     if(keys[55]&&keys[12])[self requestQuit];
-    if(engineDebug&&keys[67]&&![self saveScreenshot])NSLog(@"*** Error while taking screenshot");
+    if(engineDebug&&keys[67]&&![self saveScreenshot])[self appendDebugMessage:@"*** Error while taking screenshot"];
 }
 - (void)readGameKeys {
     [self readKeyMap];[self handleMiscKeys];

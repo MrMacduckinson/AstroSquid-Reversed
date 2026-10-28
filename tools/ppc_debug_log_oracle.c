@@ -38,12 +38,12 @@ int main(int argc,char **argv){
  invoke_fb(code+0x37620,g,toc,NULL,NULL,NULL);if(kills!=1||opens!=1||closes!=1||errorReads||route||*(uint32_t *)(g+0x53c)!=0x54455854)return 3;
  const char *expectedHeader="---------- Lost Minds Sprite Engine Debug File -----------\rIf you are having problems, send this file to bugs@lostminds.com\rFile created 01/01/04    at 00:02:03\r\r---------- System Info -----------\rProcessor: 1000 MHz\rMemory:  512 MB\rMacOS version: 04.1.1\rAGL version:  1.4\r\r---------- LM Engine Info -----------\rBuild # 22\r\rLMSettings.ScreenWidth =  640\rLMSettings.ScreenHeight =  480\rLMSettings.SpriteCullingFlag = TRUE\rLMSettings.ClearBackgroundFlag = FALSE\rLMSettings.DebugFlag= TRUE\rLMSettings.FullscreenFlag= TRUE\rLMSettings.WindowTitle$ = 'AstroSquid'\rLMSettings.SmoothScalingFlag = TRUE\rLMSettings.ClassicFlag = FALSE\r\r\r---------- Startup -----------\r";if(length!=strlen(expectedHeader)||memcmp(output,expectedHeader,length))return 3;
  printf("header,hex");for(unsigned i=0;i<length;i++)printf("%02x",(unsigned char)output[i]);puts("");
- SInt32 clocks[]={100000000,2000000000,-2147483647},memories[]={67108864,1073741824,-2147483647};
- const char *processor[]={"Processor:  100 MHz\r","Processor: 2000 MHz\r","Processor: ?147 MHz\r"};
+ SInt32 clocks[]={100000000,2000000000,-2147483647,100499999,100500000,100500001,98500000},memories[]={67108864,1073741824,-2147483647};
+ const char *processor[]={"Processor:  100 MHz\r","Processor: 2000 MHz\r","Processor: ?147 MHz\r","Processor:  100 MHz\r","Processor:  100 MHz\r","Processor:  101 MHz\r","Processor:   98 MHz\r"};
  const char *memory[]={"Memory:   64 MB\r","Memory: 1024 MB\r","Memory:-2048 MB\r"};
- for(unsigned i=0;i<3;i++){clockValue=clocks[i];memoryValue=memories[i];kills=length=opens=closes=errorReads=0;route=0;*(void **)(g+0x38c)=heap;invoke_fb(code+0x37620,g,toc,NULL,NULL,NULL);output[length]=0;
+ for(unsigned i=0;i<7;i++){clockValue=clocks[i];memoryValue=memories[i%3];kills=length=opens=closes=errorReads=0;route=0;*(void **)(g+0x38c)=heap;invoke_fb(code+0x37620,g,toc,NULL,NULL,NULL);output[length]=0;
   printf("format%u,hex",i);for(unsigned j=0;j<length;j++)printf("%02x",(unsigned char)output[j]);puts("");
-  if(!strstr(output,processor[i])||!strstr(output,memory[i])||kills!=1||opens!=1||closes!=1||errorReads||route)return 3;
+  if(!strstr(output,processor[i])||!strstr(output,memory[i%3])||kills!=1||opens!=1||closes!=1||errorReads||route)return 3;
  }
  puts("PASS original exact-debug gate, append-open/close per message, CR line endings and AGL error queried after message only when enabled");return 0;
 }
