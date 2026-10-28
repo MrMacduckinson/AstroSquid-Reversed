@@ -1,5 +1,21 @@
 # Historical allocator-dependent reference
 
+## Open key capture difference
+
+On the Intel reference Mac, `bash tests/known_gaps/key_capture_host.sh`
+characterizes an unfixed difference. Its successful exit means the discrepancy
+is reproduced, **not** that original/host behavior matches. It is not part of
+the passing parity suite.
+
+Original `WAITFORKEY` samples held key state immediately, scans Classic bit
+indices in ascending order and keeps the last pressed index. For simultaneous
+raw key codes 0 and 7 it selects 0. The current event-based host ignores that
+held state, then accepts the first new `keyDown` instead. The unchanged original
+trace in `../wait_key_native.csv.gz` covers every single raw key bit, two
+simultaneous maps, delayed input, interval gates, strict timeout and clock wrap.
+Render/movement boundaries in this probe are observers; it does not establish
+coupled frame-state parity. Replacing the host capture loop remains required.
+
 On2026-10-28 the user selected “Определённая логика без этой ошибки” after the
 original's freed cached-tail behavior was demonstrated. Reproducing that
 use-after-free and a particular system allocator layout is excluded from the
