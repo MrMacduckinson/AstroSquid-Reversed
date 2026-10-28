@@ -6,6 +6,10 @@
 #import <AVFoundation/AVFoundation.h>
 #include "physics.h"
 #include "picture.h"
+static __weak NSView *fullscreenView;
+static void restoreFullscreen(void){
+    @autoreleasepool {NSView *view=fullscreenView;if(view.inFullScreenMode)[view exitFullScreenModeWithOptions:nil];fullscreenView=nil;}
+}
 #include "ppc_math.h"
 #include "script.h"
 #include "weapons.h"
@@ -93,7 +97,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     int16_t visualFrames;
     double visualRate;
     BOOL visualDebug,wallClockPoll,nestedWorldRender;
-    BOOL engineDebug;
+    BOOL engineDebug,fullscreenRequested;
     NSString *screenshotBase;
     uint32_t simulationTick,lastSpawnTick;
     NSUInteger scriptSteps;
@@ -264,6 +268,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     self = [super initWithFrame:frame pixelFormat:format];
     if (!self) return nil;
     unsigned char startupKeys[16];[self copyKeyMap:startupKeys];engineDebug=(startupKeys[55>>3]>>(55&7))&1;
+    fullscreenRequested=!((startupKeys[58>>3]>>(58&7))&1);
     screenshotBase=[[[NSBundle mainBundle] bundlePath] stringByDeletingLastPathComponent];
     clockOrigin=NSProcessInfo.processInfo.systemUptime;visualRateTick=[self currentGameTick];
     assetPath = [path copy];
@@ -805,6 +810,15 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)copyKeyMap:(unsigned char *)bytes {
     KeyMap snapshot;GetKeys(snapshot);memcpy(bytes,snapshot,sizeof(snapshot));
 }
+- (BOOL)startFullscreen {
+    if(!fullscreenRequested)return NO;
+    for(NSDictionary *mode in (__bridge NSArray *)CGDisplayAvailableModes(CGMainDisplayID())) {
+        if([mode[(__bridge NSString *)kCGDisplayWidth] intValue]!=640||[mode[(__bridge NSString *)kCGDisplayHeight] intValue]!=480||[mode[(__bridge NSString *)kCGDisplayBitsPerPixel] intValue]!=32)continue;
+        if(![self enterFullScreenMode:NSScreen.mainScreen withOptions:@{NSFullScreenModeAllScreens:@NO,NSFullScreenModeSetting:mode}])return NO;
+        fullscreenView=self;[self lockFocus];[[self openGLContext] update];[self unlockFocus];[self display];return YES;
+    }
+    return NO;
+}
 - (uint32_t)screenshotSeconds {
     CFAbsoluteTime now=CFAbsoluteTimeGetCurrent();CFTimeZoneRef zone=CFTimeZoneCopySystem();
     double local=now+kCFAbsoluteTimeIntervalSince1904+CFTimeZoneGetSecondsFromGMT(zone,now);CFRelease(zone);
@@ -812,6 +826,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (BOOL)saveScreenshot {
     /* shortcut: verified window backing only; extend after fullscreen port reference. */
+    if(self.inFullScreenMode)return NO;
     size_t pixels=640u*480u*3u;unsigned char *rgb=malloc(pixels),*picture=NULL;size_t size=0;
     if(!rgb)return NO;memset(rgb,255,pixels);
     int encoded=astro_picture_window_encode(rgb,640*3,640,480,&picture,&size);free(rgb);if(!encoded)return NO;
@@ -2060,7 +2075,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)closeDown {
     if(terminationAllowed)return;
     [self saveSettings];[self saveScores];[audio stop];[self destroyGameWorld];
-    [timer invalidate];timer=nil;terminationAllowed=YES;[self terminateApplication];
+    [timer invalidate];timer=nil;restoreFullscreen();terminationAllowed=YES;[self terminateApplication];
 }
 - (void)completeGameLoopIfRequested {
     if(!gameLoopActive||(!quitRequested&&!gameEndRequested)||respawnTick||invulnerableUntil||
@@ -2148,6 +2163,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 
 @interface AstroDelegate : NSObject<NSApplicationDelegate,NSWindowDelegate>
 @property(strong) NSWindow *window;
+@property(strong) AstroView *view;
 @end
 @implementation AstroDelegate
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
@@ -2160,24 +2176,25 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         else if([arguments[i] isEqualToString:@"--preferences-probe"] && i+1<arguments.count) preferenceProbe=arguments[++i];
         else if([arguments[i] isEqualToString:@"--assets"] && i+1<arguments.count) path=arguments[++i];
     }
-    NSRect frame=NSMakeRect(0,0,campaignPath?640:960,campaignPath?480:720);
+    NSRect frame=NSMakeRect(0,0,640,480);
     self.window=[[NSWindow alloc] initWithContentRect:frame
-        styleMask:NSWindowStyleMaskTitled|NSWindowStyleMaskClosable|NSWindowStyleMaskMiniaturizable|NSWindowStyleMaskResizable
+        styleMask:NSWindowStyleMaskTitled|NSWindowStyleMaskClosable|NSWindowStyleMaskMiniaturizable
         backing:NSBackingStoreBuffered defer:NO];
     self.window.title=@"AstroSquid";
     self.window.delegate=self;self.window.acceptsMouseMovedEvents=YES;
     AstroView *view=[[AstroView alloc] initWithFrame:frame assets:path];
     if(!view) { NSLog(@"Missing or invalid extracted game assets at %@",path); [NSApp terminate:nil]; return; }
-    self.window.contentView=view;
+    self.view=view;self.window.contentView=view;
     [self.window center];
     [self.window makeKeyAndOrderFront:nil];
     [NSApp activateIgnoringOtherApps:YES];
+    [view startFullscreen];
     if(preferenceProbe)[view probePreferences:preferenceProbe];
     if(testPath) [view beginSelfTest:testPath];
     if(campaignPath) [view beginCampaignTest:campaignPath];
 }
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender {
-    AstroView *view=(AstroView *)self.window.contentView;
+    AstroView *view=self.view ?: (AstroView *)self.window.contentView;
     if(![view isKindOfClass:[AstroView class]]||[view canTerminateApplication])return NSTerminateNow;
     [view requestQuit];return NSTerminateCancel;
 }
@@ -2186,10 +2203,12 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(![view isKindOfClass:[AstroView class]]||[view canTerminateApplication])return YES;
     [view requestQuit];return NO;
 }
+- (void)applicationWillTerminate:(NSNotification *)notification {restoreFullscreen();}
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender { return YES; }
 @end
 
 int main(int argc,const char **argv) {
+    atexit(restoreFullscreen);
     @autoreleasepool {
         NSApplication *app=[NSApplication sharedApplication];
         [app setActivationPolicy:NSApplicationActivationPolicyRegular];

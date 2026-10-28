@@ -421,3 +421,36 @@ startup/fullscreen integration, frequency-selection parity on other hardware,
 full-game rendering/input or screenshot semantics. Production still defaults
 windowed; next wire startupOption58/defaultfull,640x480 window and safe exit
 into delegate/view while preserving existing deferred quit lifecycle.
+
+## Production fullscreen integration
+
+preview.m now freezes fullscreenRequested from startup physical leftOption58
+(absent means fullscreen), alongside Command55 debug. Delegate creates a fixed
+640x480 window, then enters a640x480/32bit CG mode through the verified Cocoa
+backend. Unavailable mode/failed entry leaves the window. The target Intel has
+one matching hz0 mode; other-hardware frequency choice is not proved equivalent
+to original AGL/DSp selection. Surface lockFocus/contextupdate/display follows
+entry. Delegate retains game view explicitly because fullscreen moves it out of
+the original window's contentView; Quit still uses the deferred lifecycle.
+
+closeDown restores fullscreen before application termination. applicationWillTerminate
+also restores it, and main registers atexit cleanup for existing selftest/fatal
+exit paths. Fullscreen screenshots explicitly return failure until a native
+fullscreen QuickDraw reference exists; windowed screenshot tests still pass.
+Other original debug consumers and later in-game window-port changes remain open.
+
+Actual tests/fullscreen_host.sh runs production AstroView on Intel in monitored
+children. Default entry and actual game frame (116110 nonblack pixels), left
+Option bypass/rightOption distinction, rejected backend entry, delegate Quit
+after view movement, closeDown and directexit/atexit mode restoration all PASS.
+Parent independently verifies originalmode retained in both child scenarios.
+Keymap128, quit lifecycle/native projections and complete PICT file/gates/error
+regressions PASS. Primary/Intel builds PASS, no primary runtime.
+
+Actual newly built app also ran its complete --self-test in an owned copied
+bundle with unique local.astrosquid.fullscreen-test-20261028 identifier and
+independent parent mode recovery. PASS4specials,393beams,178effects,102shots,
+32hits,355scriptsteps,stage switch,640x480 renderer and music. Child exited0,
+native_restore1, no recovery. Internal logs fullscreen-app-result.json and
+fullscreen-app-run.log. Temporary app/screenshot/testdomain/probe binaries removed
+after recording; no releasedZIP regenerated. Whole-game parity remains unproved.

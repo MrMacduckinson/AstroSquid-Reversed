@@ -18,6 +18,10 @@ all runtime assets. No Python, developer tools or original installation is neede
 The build is unsigned. Tested on the Intel reference iMac with macOS 10.13.6;
 newer macOS releases have not been tested on Intel hardware.
 
+The game starts fullscreen at 640×480; hold left Option during startup for a
+fixed 640×480 window. If the display mode is unavailable, it uses the window.
+The previous display mode is restored on exit.
+
 Arrows move, Command fires, Option uses a special attack. Escape pauses; any key
 resumes at the next eligible input poll. As in the original, a key still held
 while entering pause (including Escape) can immediately dismiss it. Use Settings
@@ -32,11 +36,11 @@ upgrades, enemies, bosses, pickups, deaths/respawns, menus, score entry, stage
 transitions and the four ending pages. The optional graphics archive contains the
 original Infini-D models; it is not required to play or compile this port.
 
-Hold left Command during startup to enable the original diagnostic screenshot
+Hold left Command and left Option during startup to enable the windowed diagnostic screenshot
 key: keypad multiply saves `Screenshots/Screen <seconds>.pict` beside the app.
 It repeats on every input poll while held and overwrites the same-second file.
 The verified windowed original captures its white QuickDraw backing rather than
-the OpenGL scene. Fullscreen capture remains unverified.
+the OpenGL scene. Fullscreen capture is not implemented yet.
 
 ## Build from the source archive
 
