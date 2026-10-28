@@ -317,3 +317,19 @@ PASS; shellsyntax/diff checks PASS. App-wide rendered selftest/full native suite
 not rerun this milestone. build.sh and both coupled host build scripts link
 picture.c. Fullscreen startup/capture, later in-game QuickDraw port changes and
 other engineDebug effects/logging still need separate evidence/integration.
+
+## Native fullscreen selection policy
+
+ppc_fullscreen_policy_oracle.c executes original LMSETUPAGLFULLSCREEN36898
+and LMTRYFULLSCREENHZ367a4 in a private PEF. AGL imports are observers only:
+no display/context/window is actually changed. Original strings/formatting and
+loop remain intact; debug message sink is replaced. Eight cases cover success
+at200/199/60/56, all-fail, current-context failure, format failure and context
+failure. Native G5 PASS: attempts descend200..56 inclusive (145 maximum), stop
+after first success; pixel format attributes exactly4,5,73,54,50,32,0; dimensions
+640x480/device0. Format is destroyed whenever chosen, even context failure.
+An allocated context is returned even if fullscreen/current selection fails;
+global e8a is zero unless both succeed. Callers must use e8a for fallback.
+This is policy evidence, not actual display switching/restoration proof.
+LMEXIT38ecc statically kills maps/list then deactivates AGL and disposes DSp
+when present; cleanup execution and native fallback remain next.
