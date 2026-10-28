@@ -3,10 +3,12 @@
 #include "../src/preview.m"
 #undef main
 static unsigned char fixtureMap[16];
+static unsigned pauseEntries;
 @interface NativeKeysView : AstroView
 @end
 @implementation NativeKeysView
 - (void)display {}
+- (void)enterPause {pauseEntries++;[super enterPause];}
 - (void)copyKeyMap:(unsigned char *)bytes {memcpy(bytes,fixtureMap,16);}
 @end
 @implementation AstroView (NativeKeysCheck)
@@ -34,8 +36,10 @@ static unsigned char fixtureMap[16];
     memset(keys,0,sizeof(keys));splashVisible=menuVisible=paused=gameOver=changingStage=NO;flow.phase=ASTRO_FLOW_PLAY;editingKey=-1;
     [self keyDown:[self testEvent:NSKeyDown code:50]];assert(!paused&&!menuVisible);
     [self keyUp:[self testEvent:NSKeyUp code:50]];
-    [self keyDown:[self testEvent:NSKeyDown code:53]];assert(paused&&menuVisible);
-    [self keyUp:[self testEvent:NSKeyUp code:53]];[self resumePause];
+    [self keyDown:[self testEvent:NSKeyDown code:53]];assert(!paused&&!menuVisible);
+    memset(fixtureMap,0,16);fixtureMap[6]=0x20;[self readGameKeys];
+    assert(pauseEntries==1&&!paused&&!menuVisible);
+    [self keyUp:[self testEvent:NSKeyUp code:53]];
     puts("PASS host pause binding matches original Escape; grave does not pause");
 }
 @end

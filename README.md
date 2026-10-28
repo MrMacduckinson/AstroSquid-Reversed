@@ -19,7 +19,9 @@ The build is unsigned. Tested on the Intel reference iMac with macOS 10.13.6;
 newer macOS releases have not been tested on Intel hardware.
 
 Arrows move, Command fires, Option uses a special attack. Escape pauses; any key
-resumes. Use Settings to reassign keys, adjust sound/music and
+resumes at the next eligible input poll. As in the original, a key still held
+while entering pause (including Escape) can immediately dismiss it. Use Settings
+to reassign keys, adjust sound/music and
 change filtering. Keys, settings, scores and unlocked stages persist between
 launches. Close the window or use Command-Q to quit.
 

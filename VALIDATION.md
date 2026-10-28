@@ -68,9 +68,15 @@ captures; those captures do not establish equivalence of the current full game.
   boundary/state observations. Two captures were byte-identical. It establishes
   held-key exit at eligible frame polls, interval1/2/3 gates, fresh post-swap CPU
   clock stores, HUD dirty decrements, CmdQ state, clock wrap and cleanup order.
-  UI/audio/render/mouse are controlled observers. This native reference does
-  not establish host pause equivalence: event-driven immediate pause/resume
-  and interrupted WAIT/blink continuation still require a connected fix.
+  UI/audio/render/mouse are controlled observers. The actual Intel host replays
+  the230 clock/frame/input/mouse-boundary projections (100 clock reads), including
+  CPU stores and paused/key-count state. Pause now runs synchronously from the
+  ordinary/WAIT/blink/READY-return input checkpoints, with a timer reentry guard.
+  Separate actual-host checks verify WAIT and blink continue after pause without
+  an extra world/factory step; special raw input does not invoke misc keys.
+  The full app selftest exercises the production pause loop and panel rendering.
+  Native HUD/resource/cursor/quit side effects, held mouse input and real queued
+  mouse delivery are not established by this projected replay.
 - `tests/caret_vectors.csv` contains4225 original DRAWMYEDITFIELD captures of
   deadline, visibility and conditional TickCount reads. GL/font drawing is
   replaced by no-ops in the private native oracle; original caret logic runs.
@@ -97,7 +103,12 @@ captures; those captures do not establish equivalence of the current full game.
   world-before-special RNG, first-flash IEEE coordinates and terminal outer
   render eligibility match. This replays captured CPU ticks; it does not replace
   the original busy-loop TickCount read schedule with a fixed31-update claim.
-- `tests/special_phase_host_test.m` checks the actual host at intervals2/3/0/-1:
+- A current audit reproduced the old `special_phase_host_test.m` assertion
+  `beams==30` failure both before and after the pause change. Its synthetic
+  clock schedule needs comparison with a native capture; the cause is still
+  unresolved and this test is not counted as passing. The16 native coupled special and48 coupled
+  beam trace gates passed with the pause change.
+- `tests/special_phase_host_test.m` historically checked the actual host at intervals2/3/0/-1:
   gun coordinates cached before nested CALC, parent inheritance before damage,
   world render before special visuals, inner animation before restoring kind1,
   suppressed outer rendering while blocked, and terminal shared-deadline reuse.

@@ -48,8 +48,29 @@ The oracle asserts frame/poll/lookup/transition counts and final key/quit states
 The capture was additionally checked for complete callback order, fresh CPU
 stores, interval gates, HUD decrements and wrap behavior.
 
-This is a native reference, not a passing production-host pause replay. The
-port's event-driven immediate pause/resume still needs replacement at actual
-GETKEYMAP/HANDLEMISCKEYS boundaries. Preserve the interrupted WAIT/blink caller
-continuation when adding the pause loop. Mouse clicks, actual UI geometry,
-rendering, music implementation and full-game equivalence remain unproved.
+## Production host replay
+
+Compile tests/pause_native_host_test.m with the source files/frameworks from
+build.sh, replacing src/preview.m with this test. Execute only on the Intel
+reference Mac:
+
+```
+build/pause_native_host_test assets tests/pause_native.csv
+```
+
+The actual production pause loop matches the230 clock/frame/input/mouse-boundary
+projections from these16 native cases, including100 clock reads and CPU/paused
+states. Rendering and event dispatch are observers in this host replay. It also
+checks timer reentry is suppressed, world simulation/spawn/render clocks remain
+untouched under those observers, the WAIT timeout/constructor and blink timeout
+continue in the same call after pause, the ordinary tail invokes pause, and a
+special raw-key poll does not invoke HANDLEMISCKEYS. UI entry/exit transitions
+still execute; their draw calls are observed. The full Intel app selftest also
+executes the production pause loop with its real renderer/event pump and held
+controlled input, in addition to the existing direct mouse Resume handler check.
+
+These are bounded checks. Original HUD/resource/cursor/quit/screenshot side
+effects, actual queued mouse delivery, held mouse behavior and full renderer/
+music equivalence remain unproved. Standalone queued-click experiments could
+not activate their background test window and are not counted as proof.
+Full-game equivalence remains open.

@@ -20,6 +20,7 @@ static NSMutableString *events;
     return injecting?[self currentGameTick]:[super playerClockTick];
 }
 - (void)display {}
+- (void)copyKeyMap:(unsigned char *)bytes {memset(bytes,0,16);}
 - (void)stepEnemies {
     if(!injecting){[super stepEnemies];return;}
     [events appendString:@"E"];steps++;cpuAtStep=observedWallTick;simulationAtStep=simulationTick;
@@ -82,11 +83,12 @@ static NSMutableString *events;
         respawnTick=1;respawnWaitStartTick=100;[self pollMapSpawns];assert(used==5&&factories==2&&lastSpawnTick==73);checked++;}
     {[self resetClockCase:NULL count:0];lastSpawnTick=0xaabbccdd;constantClock=YES;constantValue=777;
         [self resetEnemies];assert(lastSpawnTick==0xaabbccdd);constantClock=NO;checked++;}
-    {const uint32_t c[]={130,140};[self resetClockCase:c count:2];
+    {const uint32_t c[]={110,111,112,113,114,115,130,140};[self resetClockCase:c count:8];
         flow.phase=ASTRO_FLOW_READY;flow.ticks=59;initialReadyCard=NO;
         [self advanceFlowWithKey:YES];
-        assert(flow.phase==ASTRO_FLOW_PLAY&&used==2&&factories==1&&lastSpawnTick==140);
-        assert(observedWallTick==100&&worldRenderTick==100&&!steps&&!renders&&[events isEqual:@"CFC"]);checked++;}
+        assert(flow.phase==ASTRO_FLOW_PLAY&&used==8&&factories==1&&lastSpawnTick==140);
+        assert(playerState.update_tick==110&&playerState.animation_tick==111&&lastPlayerShot==112);
+        assert(observedWallTick==100&&worldRenderTick==100&&!steps&&!renders&&[events isEqual:@"CCCCCCCFC"]);checked++;}
     injecting=NO;assert(checked==10);
     puts("PASS10 actual host source-backed outer clocks: entry3, closedCPUspawn, freshCPU/factorystores, signedspawn, blockedresume, blink exception, reset preservation and READY return tail");
 }
