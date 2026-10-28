@@ -260,12 +260,11 @@
     if(!width)width=pw;if(!height)height=ph;if(!x)x=320-width/2;if(!y)y=240-height/2;
     double u=pw/[p[@"texture_width"] doubleValue],v=ph/[p[@"texture_height"] doubleValue];
     glEnable(GL_TEXTURE_2D);glBindTexture(GL_TEXTURE_2D,texture(identifier));glColor4d(1,1,1,1);
+    // Original LMDRAWPICTURE leaves the map in NEAREST after a natural-size draw.
     if(natural){glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);}
     glBegin(GL_QUADS);
     glTexCoord2d(0,0);glVertex2d(x,y);glTexCoord2d(u,0);glVertex2d(x+width,y);
     glTexCoord2d(u,v);glVertex2d(x+width,y+height);glTexCoord2d(0,v);glVertex2d(x,y+height);glEnd();
-    GLint filter=self.smooth?GL_LINEAR:GL_NEAREST;
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,filter);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,filter);
 }
 - (NSInteger)scoreCursorAtX:(double)x {
     NSString *name=self.editingName?:@"";
