@@ -304,6 +304,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     fullscreenRequested=!((startupKeys[58>>3]>>(58&7))&1);
     screenshotBase=[[[NSBundle mainBundle] bundlePath] stringByDeletingLastPathComponent];
     clockOrigin=NSProcessInfo.processInfo.systemUptime;visualRateTick=[self currentGameTick];
+    randomSeed=[self macLocalSeconds];astro_random(&randomSeed,1);
     assetPath = [path copy];
     NSData *data = [NSData dataWithContentsOfFile:[path stringByAppendingPathComponent:@"game.json"]];
     NSError *error = nil;
@@ -333,7 +334,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(!ui) {NSLog(@"Cannot load original interface: %@",error);return nil;}
     __weak AstroView *weakView=self;ui.readTick=^{return [weakView currentGameTick];};
     ui.beforeNavigate=^(NSString *name){if([name isEqual:@"Back"])[weakView saveSettings];};
-    randomSeed=1;[self reloadMainMenu];
+    [self reloadMainMenu];
     ui.registered=YES;ui.registeredName=@"MACSPB";editingKey=-1;
     ui.unlockedLevel=MAX(1,MIN(16,[[NSUserDefaults standardUserDefaults] integerForKey:@"AstroSquidUnlockedLevel"]));
     int defaults[6]={55,58,126,125,123,124};memcpy(controlKeys,defaults,sizeof(defaults));
@@ -917,7 +918,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
     return NO;
 }
-- (uint32_t)screenshotSeconds {
+- (uint32_t)screenshotSeconds {return [self macLocalSeconds];}
+- (uint32_t)macLocalSeconds {
     CFAbsoluteTime now=CFAbsoluteTimeGetCurrent();CFTimeZoneRef zone=CFTimeZoneCopySystem();
     double local=now+kCFAbsoluteTimeIntervalSince1904+CFTimeZoneGetSecondsFromGMT(zone,now);CFRelease(zone);
     return (uint32_t)(uint64_t)floor(local);
