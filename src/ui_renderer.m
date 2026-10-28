@@ -38,7 +38,7 @@
     return nil;
 }
 - (void)show:(NSString *)anchor {
-    _panelFrames=0;_panelOffset=0;
+    _panelFrames=0;_panelOffset=0;_gameOverClosing=NO;
     NSString *scene=[anchor isEqual:@"Pause"]?@"Data B3":[anchor isEqual:@"GameOver"]?@"Data B1":@"Data B2";
     BOOL sameScene=[scene isEqual:@"Data B2"]&&_objects==_data[@"scenes"][scene];
     _objects=_data[@"scenes"][scene];_anchor=[anchor copy];_hover=nil;_pressed=nil;
@@ -72,6 +72,14 @@
             state->y=(state->y-380)-70;
         }
     }
+}
+- (void)beginGameOverExit {
+    _gameOverClosing=YES;_pressed=@"GameOverOK";
+}
+- (void)finishGameOverExit {
+    NSArray *names=@[@"GameOverOK",@"GameOverFade"];
+    _objects=[_objects filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(NSDictionary *object,NSDictionary *bindings){return ![names containsObject:object[@"name"]];}]];
+    [_orbStates removeObjectsForKeys:names];
 }
 - (void)beginPauseExit {
     if(![_anchor isEqual:@"Pause"])return;
@@ -214,7 +222,7 @@
         [self drawText:_data[@"labels"][@"224"] x:x baseline:(int)(NSMidY(r)+230) size:10 texture:texture];
     }
     if([_anchor isEqual:@"Pause"]&&!_transitioning){glColor4d(1,1,1,1);[self drawText:@"Game Paused" x:220 baseline:220 size:32 texture:texture];}
-    if([_anchor isEqual:@"GameOver"]&&!_transitioning){double shade=self.editingHighscore>0?.5:1;glColor4d(shade,shade,shade,1);[self drawText:@"Game Over" x:240 baseline:190 size:32 texture:texture];}
+    if([_anchor isEqual:@"GameOver"]&&!_transitioning&&!_gameOverClosing){double shade=self.editingHighscore>0?.5:1;glColor4d(shade,shade,shade,1);[self drawText:@"Game Over" x:240 baseline:190 size:32 texture:texture];}
     if([_anchor isEqual:@"GameOver"]){
         NSDictionary *button=[self object:@"GameOverOK"];glColor4d(.8,.8,.8,1);
         if(button)[self label:@"OK" object:button left:NO texture:texture];

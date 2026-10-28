@@ -16,6 +16,16 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- `tests/gameover_exit_host.sh` matches23 terminal events from actual original
+  GAMEOVER control flow, with and without a qualifying score. World, IO, input,
+  scene loading and score implementation are semantic observers on the native
+  side. Actual host finishGameOver/drawRect sets button901, hides the title,
+  draws world/panel/HUD twice with one intervening swap, requests game end,
+  inserts/saves the score, and removes button/fade records. Caller presentation
+  deferral is restored. Input timing before the terminal tail, including the
+  final eligible input-frame render and asynchronous focused keyDown handling,
+  remains outside this gate.
+
 - `tests/panel_projection_host.sh` checks actual drawRect for all30 Pause and
   60 GameOver transition frames plus two steady frames, at1x and2x backing size
   (188 frames). Native `ppc_panel_projection_oracle.c` executes original HUD ->
@@ -27,12 +37,12 @@ Current bounded evidence:
   The original whole transition input loop and complete scene composite remain
   outside these checks.
 
-- `tests/gameover_draw_host.sh` matches17 original whole
-  DRAWGAMEOVEROVERLAY text/field commands across four focused/unfocused and
+- `tests/gameover_draw_host.sh` matches30 original whole
+  DRAWGAMEOVEROVERLAY text/field commands across eight active/closing, focused/unfocused and
   caret-visible/hidden profiles. Original PEF execution retains sprite lookup,
   resource strings and field code. Exact MacRoman bytes, command order and IEEE
   coordinates/sizes/RGBA match: title, OK, field, then Highscore. The title is
-  gray while editing a record. Logical menu Y is normalized by70; inherited
+  gray while editing a record and absent in closing frames; the closing button is901. Logical menu Y is normalized by70; inherited
   viewport/projection, scene sprite drawing and transition frames remain
   outside this fixture.
 

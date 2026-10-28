@@ -36,9 +36,12 @@ int main(int argc,const char **argv){@autoreleasepool{
     NSOpenGLContext *context=[[NSOpenGLContext alloc]initWithFormat:[[NSOpenGLPixelFormat alloc]initWithAttributes:attributes] shareContext:nil];assert(context);[context makeCurrentContext];
     FieldDrawUI *ui=[[FieldDrawUI alloc]initWithAssets:[NSString stringWithUTF8String:argv[1]] error:NULL];assert(ui);
     [ui show:@"GameOver"];[ui animateTicks:120];ui.readTick=^uint32_t{return 100;};ui.editingName=@"TEST";ui.editingCursor=2;
-    for(unsigned focus=0;focus<2;focus++)for(unsigned visible=0;visible<2;visible++){
+    for(unsigned closing=0;closing<2;closing++)for(unsigned focus=0;focus<2;focus++)for(unsigned visible=0;visible<2;visible++){
+        if(closing)[ui beginGameOverExit];
         ui.editingHighscore=focus;[ui beginScoreClock:visible?100:0];recording=NO;
         if(!visible)[ui drawSprites:^(NSInteger n,double x,double y,double w,double h){} texture:^GLuint(NSInteger n){return 0;}];
-        command_index=0;recording=YES;[ui drawSprites:^(NSInteger n,double x,double y,double w,double h){} texture:^GLuint(NSInteger n){return 0;}];recording=NO;field_case++;
+        command_index=0;recording=YES;__block unsigned buttons=0;
+        [ui drawSprites:^(NSInteger n,double x,double y,double w,double h){if(n==900||n==901){assert(n==(closing?901:900));buttons++;}} texture:^GLuint(NSInteger n){return 0;}];
+        recording=NO;assert(buttons==1);field_case++;
     }
 }}

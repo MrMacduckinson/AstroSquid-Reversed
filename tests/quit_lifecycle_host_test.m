@@ -128,7 +128,7 @@ static BOOL rawQuit;
     [self resetQuit];astro_scores_clear(highscores);score=100;strcpy(scoreEditor.name,"Score Test");ui.editingHighscore=1;
     unsigned saved=scoreSaves;[self finishGameOver];assert(scoreSaves==saved+1&&highscores[0].score==100);
     [self resetQuit];ui.editingHighscore=0;saved=scoreSaves;[self finishGameOver];assert(scoreSaves==saved);
-    puts("PASS qualifying GameOver saves immediately; nonqualifying GameOver and normal shutdown add no score writes");
+    puts("PASS qualifying GameOver saves once after terminal redraws; nonqualifying GameOver and normal shutdown add no score writes");
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{

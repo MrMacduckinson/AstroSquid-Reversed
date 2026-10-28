@@ -40,13 +40,13 @@ int main(int argc,char **argv){
     jump_to(code+0x41730,field_box_fb);jump_to(code+0x3572c,field_text_fb);jump_to(code+0x342b4,noop);MakeDataExecutable(code,433284);
     unsigned char button[312]={0};double button_bounds[]={381,222,65,65};memcpy(button,button_bounds,32);
     GetIndString(text,25000,209);memcpy(button+40,text,text[0]+1);*(void **)(g+0xe86)=button;
-    for(unsigned focus=0;focus<2;focus++)for(unsigned visible=0;visible<2;visible++){
+    for(unsigned closing=0;closing<2;closing++)for(unsigned focus=0;focus<2;focus++)for(unsigned visible=0;visible<2;visible++){
         unsigned char field[600]={0};double bounds[]={223,185,200,22};memcpy(field,bounds,32);
         *(uint32_t *)(field+32)=200;*(int16_t *)(field+36)=2;*(int16_t *)(field+38)=visible?1:-1;
         field[40]=5;memcpy(field+41,"Name:",5);field[296]=4;memcpy(field+297,"TEST",4);
-        *(void **)(g+0xa06)=focus?field:NULL;*(int16_t *)(g+0xa68)=1;
+        *(void **)(g+0xa06)=focus?field:NULL;*(int16_t *)(g+0xa68)=closing?0:1;
         command_index=0;invoke_fb(code+0x44e10,g,toc,NULL,NULL,NULL);
-        assert(command_index==(focus?(visible?7u:6u):2u));field_case++;
+        assert(command_index==(focus?(visible?7u:6u):2u)-closing);field_case++;
     }
-    CloseResFile(rf);fprintf(stderr,"PASS native4 wholeGameOver profiles; title/OK/field/highscore order andRGBA\n");return 0;
+    CloseResFile(rf);fprintf(stderr,"PASS native8 active/closing GameOver profiles,30 commands; title/OK/field/highscore order andRGBA\n");return 0;
 }

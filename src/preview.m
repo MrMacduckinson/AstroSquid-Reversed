@@ -2220,8 +2220,14 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)finishGameOver {
     BOOL entered=ui.editingHighscore>0;
-    if(entered){ui.editingHighscore=astro_scores_insert(highscores,score,scoreEditor.name);[self saveScores];}
+    [ui beginGameOverExit];BOOL previous=deferPresent;
+    @try {
+        deferPresent=NO;[self display];
+        deferPresent=YES;[self display];
+    } @finally {deferPresent=previous;}
     gameEndRequested=YES;gameEndHighscores=entered;
+    if(entered){ui.editingHighscore=astro_scores_insert(highscores,score,scoreEditor.name);[self saveScores];}
+    [ui finishGameOverExit];
     paused=NO;gameOver=NO;menuVisible=NO;flow.phase=ASTRO_FLOW_PLAY;
 }
 - (void)requestQuit {quitRequested=YES;}

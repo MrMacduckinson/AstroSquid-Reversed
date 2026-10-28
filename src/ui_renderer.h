@@ -14,6 +14,9 @@ typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
 - (void)advanceMenuCamera;
 - (void)animateMenuObjects;
 - (void)beginPauseExit;
+@property(nonatomic,readonly) BOOL gameOverClosing;
+- (void)beginGameOverExit;
+- (void)finishGameOverExit;
 @property(nonatomic) BOOL registered;
 @property(nonatomic,copy) NSString *registeredName;
 /* 1-based row, zero disables new-score entry. Root handles text input. */
