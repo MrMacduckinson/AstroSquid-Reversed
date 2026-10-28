@@ -69,7 +69,7 @@ static unsigned entityID(id object){return object==[NSNull null]?playerTraceID:[
     campaignAction=ASTRO_CAMPAIGN_NONE;changingStage=NO;playerWeapon=10;
     selftestPath=nil;int controls[6]={55,58,126,125,123,124};memcpy(controlKeys,controls,sizeof(controls));
     for(traceTick=1;traceTick<=traceSteps;traceTick++){
-        simulationTick=traceTick;camera=traceTick;tickedScroll=1;memset(keys,0,sizeof(keys));
+        simulationTick=traceTick;camera=traceTick-1;tickedScroll=1;memset(keys,0,sizeof(keys));
         unsigned input=(traceTick/30)%16;
         keys[126]=(input&1)!=0;keys[125]=(input&2)!=0;keys[123]=(input&4)!=0;keys[124]=(input&8)!=0;keys[55]=traceTick%7==0;
         tracePhase="calc";[self calculateActors];tracePhase=NULL;[self dumpWorldTrace:@"calc"];

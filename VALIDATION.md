@@ -16,6 +16,14 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- The first active frame after tag-2 final-arena loading matches94 original
+  cleanup/CALC records, including camera1,211 independent clock reads, RNG,
+  all active actors and image links. `tests/loaded_world_composite_host.sh`
+  checks this together with the96060-byte star/parallax phase. Only the
+  observation tick column is normalized (native100, host310); actor timers
+  and every gameplay payload remain exact. Rendering is suppressed at this
+  boundary; this does not establish whole-campaign equality.
+
 Native comparisons below describe individual verification milestones. Later
 clock, actor and lifecycle changes are not automatically covered by older world
 captures; those captures do not establish equivalence of the current full game.

@@ -881,7 +881,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     context->gun_x=bounds.left+74;context->gun_y=bounds.top+12;
 }
 - (void)calculateSpecialContext:(AstroSpecialContext *)context world:(BeamContext *)worldContext {
-    simulationTick=observedWallTick;[self cleanupWorld];camera=astro_camera_advance(camera,tickedScroll);[self calculateActors];
+    simulationTick=observedWallTick;[self cleanupWorld];[self calculateActors];
     specialTargetObjects=[world copy];specialTargetData=[self targetsForObjects:specialTargetObjects];
     worldContext->objects=specialTargetObjects;worldContext->targets=specialTargetData.mutableBytes;
     context->targets=worldContext->targets;context->target_count=specialTargetObjects.count;
@@ -1542,6 +1542,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     actorVisits=0;
     astro_stars_move(stars,-camera,0,camera,worldTop,camera+640,worldBottom,tickedScroll,0,0,0,ui.frameInterval,&randomSeed,
         parallaxData.mutableBytes,backgrounds.count,0);
+    camera=astro_camera_advance(camera,tickedScroll);
     worldTop=-0.0;worldBottom=380;
     [specialPolygons removeAllObjects];[specialFlashes removeAllObjects];
     [self syncActorLinks];actorTraversalDepth++;
@@ -1601,10 +1602,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [audio serviceMusic];[self pollMapSpawns];if(flow.phase==ASTRO_FLOW_PLAY){[self readGameKeys];[self completeGameLoopIfRequested];}specialReturnPending=NO;
 }
 - (void)advanceWorldForWait:(BOOL)waiting {
-    double old=camera;
-    if(changingStage&&transition.simulate_world)camera=astro_camera_advance(camera,transition.scroll_x);
-    else if(!changingStage&&automatic&&!campaign.arena&&campaignAction==ASTRO_CAMPAIGN_NONE)camera=astro_camera_advance(camera,1);
-    tickedScroll=camera-old;
+    tickedScroll=changingStage&&transition.simulate_world?transition.scroll_x:
+        (!changingStage&&automatic&&!campaign.arena&&campaignAction==ASTRO_CAMPAIGN_NONE?1:0);
     simulationTick=observedWallTick-1;
     if(waiting)[self stepWorldWithoutFlow];else [self stepEnemies];
     BOOL previous=nestedWorldRender;nestedWorldRender=waiting;
@@ -1700,10 +1699,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
                     break;
                 }
             }
-            double previous=camera;
-            if(changingStage&&transition.simulate_world)camera=astro_camera_advance(camera,transition.scroll_x);
-            else if(!changingStage&&automatic&&!campaign.arena&&campaignAction==ASTRO_CAMPAIGN_NONE)camera=astro_camera_advance(camera,1);
-            tickedScroll=camera-previous;[self stepEnemies];
+            tickedScroll=changingStage&&transition.simulate_world?transition.scroll_x:
+                (!changingStage&&automatic&&!campaign.arena&&campaignAction==ASTRO_CAMPAIGN_NONE?1:0);
+            [self stepEnemies];
         }
         if(!waitDriven){[self renderTick];[audio serviceMusic];[self pollMapSpawns];specialReturnPending=NO;}
         int bossHP=0;
@@ -1811,12 +1809,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     while(tickRemainder>=1.0/60.0&&flow.phase==ASTRO_FLOW_PLAY&&!menuVisible&&!paused) {
         tickRemainder-=1.0/60.0;
         if(respawnPending||respawnTick||invulnerableUntil){simulationTick++;[self pollGame];continue;}
-        double previousCamera=camera;
-        if(changingStage&&transition.simulate_world)camera=astro_camera_advance(camera,transition.scroll_x);
-        else if(selftestPath&&keys[7])camera=astro_camera_advance(camera,2);
-        else if(automatic&&!campaign.arena&&campaignAction==ASTRO_CAMPAIGN_NONE)camera=astro_camera_advance(camera,1);
-        if(selftestPath&&keys[6])camera=fmax(0,camera-2);
-        tickedScroll=camera-previousCamera;
+        tickedScroll=changingStage&&transition.simulate_world?transition.scroll_x:
+            selftestPath&&keys[7]?2:
+            automatic&&!campaign.arena&&campaignAction==ASTRO_CAMPAIGN_NONE?1:0;
+        if(selftestPath&&keys[6])tickedScroll=fmax(0,astro_camera_advance(camera,tickedScroll)-2)-camera;
         [self stepEnemies];[self renderTick];[audio serviceMusic];[self pollMapSpawns];specialReturnPending=NO;
     }
     if(!selftestPath) self.window.title=[NSString stringWithFormat:@"AstroSquid — %@ — HP %d · Lives %d · Score %d%@",
@@ -1945,7 +1941,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         campaign=(AstroCampaign){half==1?1:2,half==1?2:1,0,0};[self beginStageTransition];
         int steps=0;
         while(flow.phase==ASTRO_FLOW_PLAY&&steps++<1200) {
-            double old=camera;if(transition.simulate_world)camera=astro_camera_advance(camera,transition.scroll_x);tickedScroll=camera-old;
+            tickedScroll=transition.simulate_world?transition.scroll_x:0;
             [self stepEnemies];[self renderTick];
         }
         assert(steps<1200);
@@ -2201,7 +2197,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     AstroFlowPhase savedPhase=flow.phase;flow.phase=ASTRO_FLOW_PLAY;
     for(int milliseconds=10;milliseconds<=100;milliseconds+=10){
         simulationTick=[self currentGameTick];[self cleanupWorld];
-        camera=astro_camera_advance(camera,tickedScroll);[self calculateActors];[self handleVisualEffects];
+        [self calculateActors];[self handleVisualEffects];
         simulationRender=YES;[self display];simulationRender=NO;
         [self gameOverDelayTicks:(uint32_t)(milliseconds*60/1000)];
     }

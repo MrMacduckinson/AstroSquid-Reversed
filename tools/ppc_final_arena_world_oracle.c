@@ -6,7 +6,7 @@
 static FILE *input_file;static long input_size;static const char *data_directory;
 static unsigned clock_reads,opens,records,map_records,scene_records;
 static int advancing;
-static uint32_t arena_tick(void){unsigned index=clock_reads++;return tick+(advancing&&phase&&!strcmp(phase,"cleanup")?index:0);}
+static uint32_t arena_tick(void){unsigned index=clock_reads++;return tick+(advancing&&phase&&strcmp(phase,"before")?index:0);}
 int arena_system(int selector){assert(selector==1);return 123;}
 int arena_folder(int volume){
     assert(volume==123);unsigned char *p=*(unsigned char **)(world_globals+0x38c)-256;
@@ -64,6 +64,12 @@ int main(int argc,char **argv){
     unsigned char *survivor=spawn(code,toc,7,3,1600,100);set_short(survivor,88,71);
     set_double(g,0xea2,-1234.25);set_double(g,0xa1e,1234.25);set_double(g,0xa26,1874.25);set_double(g,0xa2e,-0.0);set_double(g,0xa36,380);
     set_double(g,0xaa0,.3);snapshot();clock_reads=0;
+    if(argc==8&&!strcmp(argv[7],"outer")){
+        phase="outer";invoke_fb(code+0x539b8,g,toc,NULL,NULL,NULL);invoke_fb(code+0x54c64,g,toc,NULL,NULL,NULL);snapshot();
+        assert(opens==2&&map_records==247&&scene_records==3);
+        assert(clock_reads==211&&-*(double *)(g+0xea2)==1&&*(unsigned *)(g+0x244)==0xf8ce7428&&entity_birth==33&&render_birth==52);
+        fprintf(stderr,"NATIVE outerbody camera%.17g clocks%u RNG%08x entities%u images%u\n",-*(double *)(g+0xea2),clock_reads,*(unsigned *)(g+0x244),entity_birth,render_birth);return 0;
+    }
     phase="cleanup";invoke_fb(code+0x539b8,g,toc,NULL,NULL,NULL);snapshot();
     assert(opens==2&&map_records==247&&scene_records&&records==map_records+scene_records&&!input_file);
     assert(*(short *)(player+88)==73&&*(short *)(survivor+88)==71&&*(short *)(g+0xa82)==8&&*(short *)(g+0xa84)==2&&*(double *)(g+0xaa0)==-.2);
