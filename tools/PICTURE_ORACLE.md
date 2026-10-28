@@ -129,3 +129,34 @@ window or fullscreen DrawSprocket/AGL path, not Intel/AppKit. Original window
 style/current-port initialization and fullscreen semantics remain unresolved.
 The tool deliberately asserts this calibrated G5 result and disposes its own
 window/context on success. It does not install hooks or modify original files.
+
+## Original window constructor and calibrated window codec
+
+`ppc_picture_window_oracle.c` invokes actual _FBWINDOW10026040 with
+(id1, owned title,80/80/560/720 rect,style5,0,0) using a private six-argument
+FB bridge. Runtime window/style/clip tables and string heap are empty owned
+allocations; system version/font defaults are seeded as FBCOREINIT does.
+No window constructor or _CLS callback is replaced. The original maps style5
+to NewCWindow proc4, sets its port, calls _CLS1002b460 and restores clipping.
+Native assertions confirm owned current port, black foreground, white background
+and rectangular0/0/480/640 clip. Position is explicit rather than original
+centered zero-origin input; full LMINITMINI and fullscreen are outside this probe.
+
+Build as the AGL oracle. Arguments: original.pef original.literals.bin output.pict.
+Original GETPICT_ before/after red AGL front yields307200 white pixels, zero
+changed pixels,1228936-byte PICT. Two initial captures are byte-identical, and
+the final color/clip-guarded build reproduces those bytes exactly. Retained
+compressed reference: tests/picture_native/window-white.pict.gz.
+
+`astro_picture_window_encode` emits this default window format: finite full
+clip, black foreground, DirectBitsRgn packType1/cmpCount3 with interleaved
+FF/R/G/B bytes and no row length prefix. It shares bounds, allocation and header
+logic with the offscreen encoder. All11 fixtures match on primary strict C,
+ASan/UBSan and Intel strict C after only pmTable/pmExt zeroing; original file
+metadata/prefix regression passes on primary/Intel. Generated640x480 white
+payload is independently decoded pixel-for-pixel by G5 QuickDraw. No arbitrary
+colored window reference yet; no application integration or full-suite rerun.
+The file helper still uses the offscreen encoder until a capture caller exists.
+The app must capture default QuickDraw content rather than redraw/GL-readback;
+full original startup/current-port lifecycle, save folder/error semantics and
+fullscreen remain open.

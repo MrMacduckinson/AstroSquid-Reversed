@@ -6,6 +6,9 @@
  * PICT payload, without the file's512-byte prefix. Caller frees *output. */
 int astro_picture_encode(const unsigned char *rgb,size_t stride,unsigned width,unsigned height,
                          unsigned char **output,size_t *size);
+/* Default original window: finite clip, black foreground, raw xRGB with FF padding. */
+int astro_picture_window_encode(const unsigned char *rgb,size_t stride,unsigned width,unsigned height,
+                                unsigned char **output,size_t *size);
 /* Original open-file metadata; filesystem application is not implemented here. */
 enum { ASTRO_PICTURE_TYPE=0x50494354, ASTRO_PICTURE_CREATOR=0x3f3f3f3f };
 int astro_picture_filename(uint32_t mac_seconds,char *name,size_t capacity);

@@ -18,7 +18,7 @@ static size_t pack(const unsigned char *data,size_t count,unsigned char *out){
  }
  return used;
 }
-int astro_picture_encode(const unsigned char *rgb,size_t stride,unsigned width,unsigned height,unsigned char **output,size_t *size){
+static int picture_encode(const unsigned char *rgb,size_t stride,unsigned width,unsigned height,unsigned char **output,size_t *size,int window){
  if(!output||!size)return 0;*output=NULL;*size=0;
  if(!rgb||!width||width>640||!height||height>480||stride<width*3||stride>SIZE_MAX/height)return 0;
  size_t row=width*4,capacity=136+height*(2*row+2);
@@ -27,13 +27,14 @@ int astro_picture_encode(const unsigned char *rgb,size_t stride,unsigned width,u
  unsigned char *p=bytes;
  word(&p,0);rect(&p,height,width);word(&p,0x11);word(&p,0x2ff);word(&p,0xc00);
  longword(&p,0xfffe0000);longword(&p,72u<<16);longword(&p,72u<<16);rect(&p,height,width);longword(&p,0);
- word(&p,0x1e);word(&p,1);word(&p,10);word(&p,0x8001);word(&p,0x8001);word(&p,0x7fff);word(&p,0x7fff);
+ word(&p,0x1e);word(&p,1);word(&p,10);if(window)rect(&p,height,width);else {word(&p,0x8001);word(&p,0x8001);word(&p,0x7fff);word(&p,0x7fff);}
  word(&p,0x9b);longword(&p,0xff);word(&p,0x8000|row);rect(&p,height,width);
- word(&p,0);word(&p,4);longword(&p,0);longword(&p,72u<<16);longword(&p,72u<<16);
- word(&p,16);word(&p,32);word(&p,4);word(&p,8);longword(&p,32);
+ word(&p,0);word(&p,window?1:4);longword(&p,0);longword(&p,72u<<16);longword(&p,72u<<16);
+ word(&p,16);word(&p,32);word(&p,window?3:4);word(&p,8);longword(&p,32);
  /* QuickDraw serializes process-local pmTable/pmExt handles here; omit addresses. */
  longword(&p,0);longword(&p,0);rect(&p,height,width);rect(&p,height,width);word(&p,0);word(&p,10);rect(&p,height,width);
  for(unsigned y=0;y<height;y++){
+  if(window){for(unsigned x=0;x<width;x++){*p++=255;for(unsigned c=0;c<3;c++)*p++=rgb[y*stride+3*x+c];}continue;}
   for(unsigned x=0;x<width;x++){planar[x]=0;for(unsigned c=0;c<3;c++)planar[(c+1)*width+x]=rgb[y*stride+3*x+c];}
   size_t n=row<8?row:pack(planar,row,packed);
   if(row>=8){if(row>250)word(&p,(unsigned)n);else *p++=(unsigned char)n;}
@@ -42,6 +43,13 @@ int astro_picture_encode(const unsigned char *rgb,size_t stride,unsigned width,u
  if((size_t)(p-bytes)&1)*p++=0;word(&p,0xff);
  *size=(size_t)(p-bytes);unsigned char *header=bytes;word(&header,(unsigned)*size);
  free(planar);free(packed);*output=bytes;return 1;
+}
+
+int astro_picture_encode(const unsigned char *rgb,size_t stride,unsigned width,unsigned height,unsigned char **output,size_t *size){
+ return picture_encode(rgb,stride,width,height,output,size,0);
+}
+int astro_picture_window_encode(const unsigned char *rgb,size_t stride,unsigned width,unsigned height,unsigned char **output,size_t *size){
+ return picture_encode(rgb,stride,width,height,output,size,1);
 }
 
 int astro_picture_filename(uint32_t mac_seconds,char *name,size_t capacity){
