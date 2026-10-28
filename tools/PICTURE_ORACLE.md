@@ -348,3 +348,22 @@ ordered events per case. Graphics API errors are ignored and do not skip later
 cleanup; original e8a/e8e globals retain their supplied values. The observer
 does not prove actual resource destruction, hardware mode restoration or safe
 repeated cleanup. Native fallback and real display lifecycle still need proof.
+
+## Native startup fallback branch prefix
+
+ppc_fullscreen_fallback_oracle.c executes LMINITMINI37ec4 through its final
+context load38240, stopping before fatal handling or GL initialization. Setup
+AGL/DSp/drawable/window calls are observers; no screen or window is changed.
+Original input,version gate,strings,branches,rectangle setup and offset copy
+remain active. Nine native G5 cases PASS: requested window, AGL success, AGL
+failure->DSp success, both fail->window, classic version skips AGL, classic DSp
+failure->window, failed DSp drawable, failed window drawable and leftOption.
+SYSTEM8>=1000 tries AGL first; lower version starts DSp. Setup AGL return9999
+is deliberately ignored while its global active context decides fallback.
+DSp front port rect12/34/492/674 yields original x/y offsets34/12. On DSp
+drawable failure, fullscreen remains1 and context0; no window fallback occurs,
+and the following original context check selects fatal handling (not executed
+by this prefix probe). Window creation uses id1/style5/rect0/0/480/640 and
+WINDOW31 returns its port before drawable setup. All cases consume one GetKeys.
+This establishes branch policy; actual AGL/DSp/backend availability, hardware
+restoration, fatal UI and modern-host implementation remain outside proof.
