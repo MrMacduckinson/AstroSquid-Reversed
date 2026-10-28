@@ -97,7 +97,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     int16_t visualFrames;
     double visualRate;
     BOOL visualDebug,wallClockPoll,nestedWorldRender;
-    BOOL engineDebug,fullscreenRequested;
+    BOOL engineDebug,fullscreenRequested,graphicsReleased;
     NSString *screenshotBase;
     uint32_t simulationTick,lastSpawnTick;
     NSUInteger scriptSteps;
@@ -405,6 +405,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     for(int i=0;i<4;i++) {glTexCoord2d(uv[i*2],uv[i*2+1]);glVertex2d(scene->xy[i*2],scene->xy[i*2+1]);}glEnd();
 }
 - (void)drawRect:(NSRect)dirty {
+    if(graphicsReleased)return;
     [[self openGLContext] makeCurrentContext];
     NSRect bounds = [self convertRectToBacking:self.bounds];
     glViewport(0,(GLint)(bounds.size.height*30/480),(GLsizei)bounds.size.width,(GLsizei)(bounds.size.height*380/480));
@@ -2079,10 +2080,19 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)flushGameEvents {[NSApp discardEventsMatchingMask:NSEventMaskAny beforeEvent:nil];}
 - (void)terminateApplication {[NSApp terminate:nil];}
+- (void)releaseGraphics {
+    if(graphicsReleased)return;graphicsReleased=YES;
+    NSOpenGLContext *context=[self openGLContext];[context makeCurrentContext];
+    for(NSNumber *identifier in [textures.allKeys sortedArrayUsingSelector:@selector(compare:)]){GLuint texture=[textures[identifier] unsignedIntValue];glDeleteTextures(1,&texture);}
+    [textures removeAllObjects];presentedBeams=@[];
+    [NSOpenGLContext clearCurrentContext];[context clearDrawable];restoreFullscreen();
+    [NSOpenGLContext clearCurrentContext];[self setOpenGLContext:nil];
+}
 - (void)closeDown {
     if(terminationAllowed)return;
-    [self saveSettings];[self saveScores];[audio stop];[self destroyGameWorld];
-    [timer invalidate];timer=nil;restoreFullscreen();terminationAllowed=YES;[self terminateApplication];
+    [timer invalidate];timer=nil;
+    [self saveSettings];[self saveScores];[self releaseGraphics];[audio stopEffects];[self destroyGameWorld];[audio stopMusic];audio=nil;
+    terminationAllowed=YES;[self terminateApplication];
 }
 - (void)completeGameLoopIfRequested {
     if(!gameLoopActive||(!quitRequested&&!gameEndRequested)||respawnTick||invulnerableUntil||

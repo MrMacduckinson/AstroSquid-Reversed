@@ -494,3 +494,34 @@ previous7f4117d fullselftest remains earlier evidence. Other fullscreen backends
 otherhardware/later in-game port behavior and whole-game equivalence remain
 unproved. Diagnostic raw captures and temp executable/Data copies are cleaned;
 only compressed required fixtures and concise internal reports are retained.
+
+## Normal CLOSEDOWN resource order
+
+ppc_closedown_oracle.c executes actual CLOSEDOWN66c74 with six controlled
+callee boundaries (no real resources/preferences). Four initial quit values
+0..3 all produce seven ordered calls: SAVEPREFS,LMEXIT,SOUNDEXIT,
+DESTROYSPRITELIST,DISPOSETRACK(&g+a3e),DISPOSETRACK(&g+a42),EXITMIDWORLD,
+then final quit1. Only original PEF is needed; no literal/resource IO occurs.
+This is boundary-order evidence, not a test of all nested disposals.
+Static SOUNDEXIT3d6d8 clears/disposes six sound channels; music track disposal
+comes later. EXITMIDWORLD32a68 disposes its current movie/resource container.
+
+Host closeDown now cancels its asynchronous timer before cleanup, saves current
+settings/scores, releases graphics, stops effects, destroys world, stops music
+and releases audio, then allows termination. Existing stop retains its old
+all-audio behavior through the shared stopEffects helper. releaseGraphics
+marks rendering closed, deletes all cached texture names by ascending map ID,
+clears presented beams, detaches/restores fullscreen and releases the view's
+context. drawRect refuses late rendering so it cannot reload textures.
+Managed context/media lifetimes are Cocoa/ARC rather than original CFM handles;
+this is not a claim of identical allocator operations or every backend call.
+
+Intel actual fullscreen tests retain the old context only to verify every
+previously loaded glIsTexture is false after closeDown; current context is nil,
+cache empty, and late drawRect stays inert. Real muted music remains playing
+at world destruction and audio is nil afterward. Deferred/idempotent Quit
+trace now verifies settings/scores/graphics/effects/world/music/termination.
+Keymap128, window/fullscreen PICT, failure paths and mode restoration in normal
+and directexit scenarios PASS. Primary/Intel builds PASS. Full app-wide selftest
+not rerun this cleanup-only milestone. Temporary probes/binaries are removed;
+whole-game equivalence remains unproved.

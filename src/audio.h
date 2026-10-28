@@ -14,5 +14,6 @@
 - (BOOL)playMusic:(int)track;
 - (void)setPaused:(BOOL)paused;
 - (void)stopMusic;
+- (void)stopEffects;
 - (void)stop;
 @end

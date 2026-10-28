@@ -10,9 +10,10 @@ static BOOL rawQuit;
 @interface QuitAudio : AstroAudio
 @end
 @implementation QuitAudio
-- (void)stopMusic {if(observing)[actual addObject:@"stop_track"];}
+- (void)stopMusic {if(shutdownMode)[shutdownEvents addObject:@"music_stop"];if(observing)[actual addObject:@"stop_track"];}
 - (BOOL)playMusic:(int)n {if(observing){assert(n==1);[actual addObject:@"play_track"];}return YES;}
-- (void)stop {if(shutdownMode)[shutdownEvents addObject:@"audio_stop"];}
+- (void)stopEffects {if(shutdownMode)[shutdownEvents addObject:@"sound_stop"];}
+- (void)stop {}
 @end
 @interface QuitView : AstroView
 @end
@@ -36,6 +37,7 @@ static BOOL rawQuit;
     BOOL wasActive=gameLoopActive;[super completeGameLoopIfRequested];
     if(observing&&wasActive&&!gameLoopActive)[actual addObject:@"return"];
 }
+- (void)releaseGraphics {[super releaseGraphics];if(shutdownMode)[shutdownEvents addObject:@"graphics"];}
 - (void)saveSettings {if(shutdownMode)[shutdownEvents addObject:@"settings"];}
 - (void)saveScores {if(shutdownMode)[shutdownEvents addObject:@"scores"];}
 - (void)terminateApplication {assert(terminationAllowed&&!gameLoopActive&&!world.count&&!mapPlacements.count);[shutdownEvents addObject:@"terminate"];}
@@ -45,7 +47,7 @@ static BOOL rawQuit;
 - (void)resetQuit {
     observing=shutdownMode=NO;[timer invalidate];timer=nil;[audio stop];audio=[QuitAudio new];
     selftestPath=campaignTestPath=nil;
-    quitRequested=gameEndRequested=gameEndHighscores=terminationAllowed=NO;gameLoopActive=YES;
+    quitRequested=gameEndRequested=gameEndHighscores=terminationAllowed=graphicsReleased=NO;gameLoopActive=YES;
     menuVisible=paused=splashVisible=gameOver=gameOverPending=changingStage=NO;
     respawnPending=NO;respawnTick=invulnerableUntil=0;flow.phase=ASTRO_FLOW_PLAY;editingKey=-1;
     world=[NSMutableArray arrayWithObject:[NSNull null]];enemies=[NSMutableArray array];
@@ -75,7 +77,7 @@ static BOOL rawQuit;
         assert(!gameLoopActive&&quitRequested&&!terminationAllowed&&menuVisible&&!world.count&&!mapPlacements.count&&playerVisualDeleted);
         assert([actual isEqual:expected]&&clockReads==nativeReads&&keyPolls==nativePolls&&menuCode==nativeMenu);
         shutdownMode=YES;[self closeDown];[self closeDown];shutdownMode=NO;
-        assert(([shutdownEvents isEqual:@[@"settings",@"scores",@"audio_stop",@"destroy",@"terminate"]]));
+        assert(([shutdownEvents isEqual:@[@"settings",@"scores",@"graphics",@"sound_stop",@"destroy",@"music_stop",@"terminate"]]));
     }
     puts("PASS5 native quit-tail projections: input latch, clock totals, cleanup/menu/flush/music then return; shutdown follows return and is idempotent");
     [self resetQuit];rawQuit=YES;[self readSpecialKeys];assert(quitRequested&&gameLoopActive&&!terminationAllowed);

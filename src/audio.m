@@ -96,9 +96,9 @@
 - (void)stopMusic {
     [_music stop];_music=nil;
 }
-- (void)stop {
-    [self stopMusic];
+- (void)stopEffects {
     for (NSArray *pair in voices) for (AVAudioPlayer *player in pair) [player stop];
     [voices removeAllObjects];
 }
+- (void)stop {[self stopMusic];[self stopEffects];}
 @end
