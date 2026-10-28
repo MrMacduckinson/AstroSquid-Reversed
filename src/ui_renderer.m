@@ -115,7 +115,7 @@
 }
 - (BOOL)enabled:(NSDictionary *)object {
     NSString *name=object[@"name"];
-    if(self.registered&&[@[@"Register",@"RegOK",@"Register Menu",@"Reg Thanks",@"Back3",@"Back5"] containsObject:name])return NO;
+    if(self.registered&&[name isEqual:@"Register"])return NO;
     if([name hasPrefix:@"Level"]){int n=[[name substringFromIndex:5] intValue];return n>0&&n<=self.unlockedLevel;}
     return YES;
 }

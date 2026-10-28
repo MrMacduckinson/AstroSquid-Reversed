@@ -135,6 +135,13 @@ at every clock read. The original registration-field clock reads and unrendered
 camera movement are retained. Registration UI state and unlock filtering are
 outside this all-enabled fixture.
 
+`bash tests/menu_visibility_host.sh` extends that fixture to registered and
+unregistered menus at all 16 unlock thresholds: 103,456 ordered records,
+1,408 surviving objects and 1,664 original hit selections. Original registration
+validation and linked-list deletion run on the G5 with synthetic test inputs;
+no user registration data or preference files are accessed. The registered game
+removes only the `Register` button, retaining the other registration-scene objects.
+
 The complete controlled campaign route passed on the Intel iMac: all 17 stages
 and the ending, through normal world updates and stage transitions. The pilot
 replenishes its shield and uses weapon 53; this proves route connectivity, not an
