@@ -192,6 +192,7 @@
     for(NSDictionary *object in _objects){
         if([object[@"kind"] intValue]<9||![self enabled:object])continue;
         NSString *name=object[@"name"],*label=labelMap[name]?:name;
+        if([_anchor isEqual:@"GameOver"]&&[name isEqual:@"GameOverOK"])continue;
         if([name isEqual:@"SetSVolume"])label=[label stringByAppendingString:self.soundVolume>0?[NSString stringWithFormat:@" %d",(int)lround(self.soundVolume*10)]:@"Mute"];
         if([name isEqual:@"SetMVolume"])label=[label stringByAppendingString:self.musicVolume>0?[NSString stringWithFormat:@" %d",(int)lround(self.musicVolume*10)]:@"Mute"];
         if([name hasPrefix:@"Level"]){NSInteger index=[[name substringFromIndex:5] integerValue]-1;
@@ -213,9 +214,13 @@
         [self drawText:_data[@"labels"][@"224"] x:x baseline:(int)(NSMidY(r)+230) size:10 texture:texture];
     }
     if([_anchor isEqual:@"Pause"]&&!_transitioning){glColor4d(1,1,1,1);[self drawText:@"Game Paused" x:220 baseline:220 size:32 texture:texture];}
-    if([_anchor isEqual:@"GameOver"]&&!_transitioning){glColor4d(1,1,1,1);[self drawText:@"Game Over" x:240 baseline:190 size:32 texture:texture];}
+    if([_anchor isEqual:@"GameOver"]&&!_transitioning){double shade=self.editingHighscore>0?.5:1;glColor4d(shade,shade,shade,1);[self drawText:@"Game Over" x:240 baseline:190 size:32 texture:texture];}
+    if([_anchor isEqual:@"GameOver"]){
+        NSDictionary *button=[self object:@"GameOverOK"];glColor4d(.8,.8,.8,1);
+        if(button)[self label:@"OK" object:button left:NO texture:texture];
+    }
     if([_anchor isEqual:@"GameOver"]&&self.editingHighscore>0){
-        glColor4d(1,1,1,1);[self drawText:@"Highscore!" x:240 baseline:240 size:32 texture:texture];
+        glColor4d(1,1,1,1);
         glDisable(GL_TEXTURE_2D);glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);glBegin(GL_QUADS);
         glVertex2d(223,255);glVertex2d(423,255);glVertex2d(423,277);glVertex2d(223,277);glEnd();glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
         [self drawText:@"Name:" x:225 baseline:255 size:12 texture:texture];
@@ -232,6 +237,7 @@
             double x=225+cursorWidth;
             glDisable(GL_TEXTURE_2D);glBegin(GL_QUADS);glVertex2d(x,256);glVertex2d(x+1,256);glVertex2d(x+1,275);glVertex2d(x,275);glEnd();
         }
+        [self drawText:@"Highscore!" x:240 baseline:240 size:32 texture:texture];
     }
     if([_anchor isEqual:@"Highscores Menu"]){
         NSDictionary *object=[self object:@"Highscores Menu"];NSRect r=[self bounds:object];NSInteger i=0;

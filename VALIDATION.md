@@ -16,6 +16,15 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- `tests/gameover_draw_host.sh` matches17 original whole
+  DRAWGAMEOVEROVERLAY text/field commands across four focused/unfocused and
+  caret-visible/hidden profiles. Original PEF execution retains sprite lookup,
+  resource strings and field code. Exact MacRoman bytes, command order and IEEE
+  coordinates/sizes/RGBA match: title, OK, field, then Highscore. The title is
+  gray while editing a record. Logical menu Y is normalized by70; inherited
+  viewport/projection, scene sprite drawing and transition frames remain
+  outside this fixture.
+
 - `tests/field_draw_host.sh` matches316 original field records:90 focused
   text/cursor/visibility profiles and the absent-field case. Text bytes,
   logical rectangles, coordinates, sizes, fill mode and RGBA match exactly.
