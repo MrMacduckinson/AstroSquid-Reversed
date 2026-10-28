@@ -8,6 +8,8 @@ project. Original art, levels, sounds and music belong to their original authors
 Bitwise fidelity verification is in progress. The earlier packaged release is
 playable; full original-logic equivalence has not yet been proved. See
 [VALIDATION.md](VALIDATION.md) for the verified scope and remaining limits.
+Fidelity targets defined gameplay behavior; allocator-dependent use-after-free
+from the original is intentionally excluded.
 
 ## Play
 

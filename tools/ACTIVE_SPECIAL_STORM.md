@@ -132,15 +132,31 @@ until the return boundary; then native clocks127215/visits49 differ from host
 native execution matches the host exactly (5290records,127206clockvalues),
 isolating this discrepancy to freed-address semantics.
 
-This case is **OPEN**, not a passing host fixture. Independent real-allocator
+This was an **OPEN** mismatch before the user clarified the target; see the
+2026-10-28 scope resolution below. It is not a passing equality fixture. Independent real-allocator
 reference is in tests/known_gaps/freed_tail_51_native.tsv and its compressed PC
 clock stream. Reproduce host with `storm 51 tailkill`; the normal comparator
 correctly fails. The16-case passing gate deliberately does not claim this case.
-Do not mark whole-game fidelity complete while this known mismatch remains.
+The original undefined-memory outcome is not evidence of defined-gameplay
+equality; whole-game fidelity is still unproved for the other stated limits.
 
 A same-size last-freed-first hypothesis was measured without changing allocator
 selection: only63/460 entity selections and2358/2768 image selections matched it.
 Thus replacing the allocator with a simple LIFO pool would not reproduce the
 observed Carbon allocation sequence. No such emulation or production shortcut
-was added. The exact portable treatment of the original stale pointer remains
-unresolved; no original disk executable, live game or approval settings changed.
+was added. At that milestone portable treatment of the stale pointer was unresolved; no
+original disk executable, live game or approval settings changed.
+
+## User-confirmed defined-behavior scope,2026-10-28
+
+The user explicitly chose defined gameplay without this memory error. Production
+CALC traversal now checks that a cached actor still belongs to the world before
+updating it; retained next links allow continuation past one or several retired
+identities. Pending removal flags alone do not suppress updates. The old stored
+object is not updated as a ghost and a newly allocated entity cannot acquire its
+logical identity. `world_lifetime_host_test.m` checks seven mutation cases.
+The original heap-dependent fixture is preserved, with its new classification
+in tests/known_gaps/README.md. Reproducing Carbon malloc policy is not required.
+All5200 state/event records before the invalid original continuation still match.
+The defined return reads127204clocks with42visits; the unsafe reference reads
+127215/49. These post-fault differences are intentional, not claimed equal.

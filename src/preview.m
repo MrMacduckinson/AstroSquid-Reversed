@@ -44,7 +44,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     AstroRect bounds,previousBounds;
     BOOL active,visualDeleted;
     __unsafe_unretained AstroEnemy *parent;
-    // shortcut: retained deleted nodes omit original allocator reuse; revisit with native reuse traces.
+    // Keep the traversal link alive when nested cleanup retires a cached node.
     id nextActor;
     uint64_t renderBirth;
 }
@@ -1347,7 +1347,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     id actor=world.firstObject;
     while(actor){
         // CALC caches only this next pointer; nested cleanup can change later links.
-        id next=[self nextActor:actor];[self stepActor:actor];actor=next;
+        id next=[self nextActor:actor];
+        if([world indexOfObjectIdenticalTo:actor]!=NSNotFound)[self stepActor:actor];
+        actor=next;
     }
     [self inheritParentState];
     if(!--actorTraversalDepth&&![world containsObject:[NSNull null]])playerNextActor=nil;

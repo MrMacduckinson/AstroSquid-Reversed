@@ -6,7 +6,15 @@ No game, GUI, OpenGL or audio test is launched on the primary development Mac.
 
 ## Bitwise fidelity work in progress
 
-Full original-logic equivalence remains unproved. Current bounded evidence:
+Full defined-gameplay equivalence remains unproved. On2026-10-28 the user
+explicitly excluded reproducing allocator-dependent use-after-free. When nested
+cleanup deletes a cached next actor, production traversal skips that retired
+identity and follows its retained next link. It still visits actors merely
+marked for removal until cleanup actually removes them. The original unsafe
+reference remains documented in `tests/known_gaps/README.md`; its post-free
+allocator outcome is an intentional difference, not a passing equality claim.
+
+Current bounded evidence:
 
 Native comparisons below describe individual verification milestones. Later
 clock, actor and lifecycle changes are not automatically covered by older world
