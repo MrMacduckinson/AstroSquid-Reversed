@@ -2446,9 +2446,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     double position=[ui clickPosition:name];
     if(command.action!=ASTRO_UI_SOUND_VOLUME&&(command.action!=ASTRO_UI_NONE||isfinite(position)))[audio playCue:@"Click" position:position];
     if(command.action==ASTRO_UI_NAVIGATE){
-        if([name isEqual:@"Register"])ui.activeRegistrationField=0;
         if([@[@"Back3",@"Back4",@"Back5",@"Back6",@"Back7"]containsObject:name])ui.activeRegistrationField=-1;
         navigationButton=[name copy];[ui setButton:name pressed:YES];
+        if([name isEqual:@"Register"])ui.activeRegistrationField=0;
         if([name isEqual:@"Back"])[self saveSettings];
         [ui show:[NSString stringWithUTF8String:command.destination]];observedWallTick=[self currentGameTick];
         if(!ui.transitioning)[self finishMenuNavigation];

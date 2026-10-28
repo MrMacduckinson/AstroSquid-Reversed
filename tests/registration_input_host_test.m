@@ -2,9 +2,11 @@
 #include "../src/preview.m"
 #undef main
 #import <objc/runtime.h>
-static NSMutableString *events;static BOOL observing;
+static NSMutableString *events;static BOOL observing,checkRegisterFocus;
 @interface RegistrationInputUI:AstroUIRenderer @end
 @implementation RegistrationInputUI
+- (void)setButton:(NSString *)name pressed:(BOOL)pressed {if(checkRegisterFocus&&pressed&&[name isEqual:@"Register"])assert(self.activeRegistrationField==-1);[super setButton:name pressed:pressed];}
+- (void)show:(NSString *)anchor {if(checkRegisterFocus&&[anchor isEqual:@"Register Menu"])assert(self.activeRegistrationField==0);[super show:anchor];}
 - (int)editRegistrationByte:(unsigned)byte {if(observing)[events appendString:@"E"];return [super editRegistrationByte:byte];}
 @end
 @interface RegistrationInputAudio:AstroAudio @end
@@ -54,7 +56,7 @@ static NSMutableString *events;static BOOL observing;
         ui.activeRegistrationField=0;[self performMenuAction:button];assert(ui.activeRegistrationField==-1);
         while(ui.transitioning)[ui advanceMenuCamera];[self finishMenuNavigation];
     }
-    ui.activeRegistrationField=-1;[self performMenuAction:@"Register"];assert(ui.activeRegistrationField==0);
+    ui.activeRegistrationField=-1;checkRegisterFocus=YES;[self performMenuAction:@"Register"];checkRegisterFocus=NO;assert(ui.activeRegistrationField==0);
     while(ui.transitioning)[ui advanceMenuCamera];[self finishMenuNavigation];
     selftestPath=@"registration-input";[self testCaptureKey:14];assert(ui.activeRegistrationField==-1);selftestPath=nil;
     [self releaseGraphics];
