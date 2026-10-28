@@ -19,6 +19,8 @@ int astro_score_editor_key(AstroScoreEditor *editor,unsigned key);
 /* Original StopAlert150: Stop terminates the app; Continue keeps first255bytes.
    The host presents that choice before refreshing or accepting another key. */
 int astro_score_editor_resolve_alert(AstroScoreEditor *editor,int continue_editing);
+/* HANDLEFIELDKEYS: Tab changes the active registration field if its width is positive. */
+int astro_registration_editor_key(AstroScoreEditor fields[2],const double widths[2],int *focus,unsigned key);
 typedef struct {uint32_t deadline;int16_t visible;} AstroScoreCaret;
 void astro_score_caret_begin(AstroScoreCaret *caret,uint32_t tick);
 void astro_score_caret_draw(AstroScoreCaret *caret,uint32_t comparison_tick,uint32_t reset_tick);

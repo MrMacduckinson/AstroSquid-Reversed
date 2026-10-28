@@ -69,3 +69,9 @@ void astro_score_caret_draw(AstroScoreCaret *caret,uint32_t comparison_tick,uint
         caret->visible=(int16_t)-caret->visible;caret->deadline=reset_tick+20u;
     }
 }
+
+int astro_registration_editor_key(AstroScoreEditor fields[2],const double widths[2],int *focus,unsigned key){
+    if(*focus<0||*focus>1)return 0;
+    if(key==9){if(widths[1-*focus]>0)*focus=1-*focus;return 0;}
+    return astro_score_editor_key(&fields[*focus],key);
+}
