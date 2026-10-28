@@ -36,7 +36,7 @@ static uint64_t word(double x){uint64_t b;memcpy(&b,&x,8);return b;}
             printf("M,%u,%d,%d,%d,%d,%d,%d,%d\n",c,y,scoreEditor.cursor!=77,scoreEditor.cursor,(int)r.origin.x,(int)r.origin.y,(int)r.origin.x+(int)r.size.width,(int)r.origin.y+(int)r.size.height);
             assert((scoreEditor.cursor!=77)==(y>=253&&y<275));
         }
-        [ui beginGameOverExit];
+        ui.readTick=nil;[ui beginGameOverExit];
         assert([ui scoreFieldContainsX:225 y:183]&&![ui scoreFieldContainsX:225 y:205]);
     }
 }

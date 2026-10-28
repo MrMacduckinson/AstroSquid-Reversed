@@ -8,9 +8,10 @@ static AstroScoreEditor *observedEditor;
 static uint32_t *observedWall;
 static BOOL observing;
 static AstroUIRenderer *observedUI;
+static int currentSprite(void){NSData *state=[[observedUI valueForKey:@"orbStates"]objectForKey:@"GameOverOK"];return state?((const AstroUIMotion *)state.bytes)->sprite:901;}
 static void eventValue(char code,unsigned value){
     if(!observing)return;records++;
-    printf("%u,%c,%u,%d,%d,%d,%u,",exit_case,code,value,!observedUI.gameOverClosing,[[observedUI valueForKey:@"pressed"]isEqual:@"GameOverOK"]?901:900,observedEditor->submitted,*observedWall);
+    printf("%u,%c,%u,%d,%d,%d,%u,",exit_case,code,value,!observedUI.gameOverClosing,currentSprite(),observedEditor->submitted,*observedWall);
     for(unsigned i=0;i<strlen(observedEditor->name);i++)printf("%02x",(unsigned char)observedEditor->name[i]);printf(",%d\n",observedEditor->cursor);
 }
 static void event(char code){eventValue(code,0);}
@@ -21,7 +22,10 @@ static void event(char code){eventValue(code,0);}
 @interface ExitUI:AstroUIRenderer
 @end
 @implementation ExitUI
-- (void)beginGameOverExit {[super beginGameOverExit];assert([[self valueForKey:@"gameOverClosing"] boolValue]);event('P');}
+- (void)beginGameOverExit {[super beginGameOverExit];assert([[self valueForKey:@"gameOverClosing"] boolValue]);event('P');
+    AstroUIMotion *state=[[[self valueForKey:@"orbStates"]objectForKey:@"GameOverOK"]mutableBytes];uint32_t deadline=[[[self valueForKey:@"hoverDeadlines"]objectForKey:@"GameOverOK"]unsignedIntValue];
+    printf("%u,G,%u",exit_case,deadline);double values[]={state->x,state->y,state->width,state->height};for(unsigned i=0;i<4;i++){uint64_t bits;memcpy(&bits,&values[i],8);printf(",%016llx",bits);}putchar('\n');
+}
 - (void)animateTicks:(unsigned)ticks {[super animateTicks:ticks];event('A');}
 - (void)drawSprites:(AstroUISpriteDrawer)draw texture:(AstroUITextureLoader)texture {event('O');}
 - (void)finishGameOverExit {
@@ -61,7 +65,7 @@ static void event(char code){eventValue(code,0);}
 - (void)checkExit {
     [timer invalidate];timer=nil;[audio stop];audio=[InputAudio new];selftestPath=campaignTestPath=nil;spriteMapsPreloaded=YES;splashVisible=NO;flow.phase=ASTRO_FLOW_PLAY;campaign.level=4;
     backgrounds=@[];parallaxData=[NSMutableData data];memset(stars,0,sizeof(stars));enemies=[NSMutableArray array];world=[NSMutableArray array];visualEffects=[NSMutableArray array];specialPolygons=[NSMutableArray array];specialFlashes=[NSMutableArray array];playerVisualDeleted=YES;playerHitVisual.active=NO;engineGlow=departureTrail=NO;
-    ui=[[ExitUI alloc]initWithAssets:assetPath error:NULL];hud=[[ExitHUD alloc]initWithGame:game ui:ui];observedUI=ui;observedEditor=&scoreEditor;observedWall=&observedWallTick;
+    ui=[[ExitUI alloc]initWithAssets:assetPath error:NULL];hud=[[ExitHUD alloc]initWithGame:game ui:ui];__weak ExitView *weakSelf=self;ui.readTick=^{return [weakSelf currentGameTick];};observedUI=ui;observedEditor=&scoreEditor;observedWall=&observedWallTick;
     [[self openGLContext]makeCurrentContext];GLuint framebuffer,color;glGenFramebuffersEXT(1,&framebuffer);glBindFramebufferEXT(GL_FRAMEBUFFER_EXT,framebuffer);glGenTextures(1,&color);glBindTexture(GL_TEXTURE_2D,color);glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,640,480,0,GL_RGBA,GL_UNSIGNED_BYTE,NULL);glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT,GL_COLOR_ATTACHMENT0_EXT,GL_TEXTURE_2D,color,0);assert(glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT)==GL_FRAMEBUFFER_COMPLETE_EXT);while(glGetError()!=GL_NO_ERROR){}
     for(exit_case=0;exit_case<3;exit_case++){
         [ui show:@"GameOver"];[ui animateTicks:60];ui.editingHighscore=1;ui.frameInterval=exit_case%3+1;ui.editingName=@"TEST";

@@ -78,6 +78,7 @@
 }
 - (void)beginGameOverExit {
     _gameOverClosing=YES;_pressed=@"GameOverOK";
+    [self changeSprite:901 object:[self object:_pressed]];
 }
 - (void)finishGameOverExit {
     NSArray *names=@[@"GameOverOK",@"GameOverFade"];
@@ -134,13 +135,19 @@
     if(!object||[object[@"kind"] intValue]<=8)return;
     AstroUIMotion *state=[_orbStates[object[@"name"]] mutableBytes];
     if(state->sprite!=900)return;
+    [self changeSprite:902 object:object];
+}
+- (void)changeSprite:(int16_t)sprite object:(NSDictionary *)object {
+    if(!object)return;
+    AstroUIMotion *state=[_orbStates[object[@"name"]] mutableBytes];
     uint32_t tick=self.readTick?self.readTick():0;
-    // Original900/902 both use222px images; preserve the resize/centering operations.
+    // Original900/901/902 all use222px images; preserve each centering operation.
     state->x=state->width/2+state->x;state->y=state->height/2+state->y;
     state->width=(state->width/222)*222;state->height=(state->height/222)*222;
     state->x=state->x-state->width/2;state->y=state->y-state->height/2;
-    state->sprite=902;_hoverDeadlines[object[@"name"]]=@(tick+1u);
+    state->sprite=sprite;_hoverDeadlines[object[@"name"]]=@(tick+(sprite==902?1u:0u));
 }
+
 - (NSString *)mouseDownX:(double)x y:(double)y {
     if(_pressed)return nil;
     if([_anchor isEqual:@"Credits"]){if(_beforeNavigate)_beforeNavigate(@"Yeah");[self show:@"Main Menu"];return @"Yeah";}
