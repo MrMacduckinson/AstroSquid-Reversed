@@ -2,6 +2,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 mkdir -p build
+"${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/picture_test.c src/picture.c -o build/picture_test
+picture_python=$(command -v python3 || command -v python)
+"$picture_python" tests/picture_native_test.py build/picture_test
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/ppc_math_test.c src/physics.c src/ppc_math.c -lm -o build/ppc_math_test
 build/ppc_math_test tests/physics_hex_vectors.csv tests/asin_hex_vectors.csv tests/atan_hex_vectors.csv
 for check in scene star; do
