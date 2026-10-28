@@ -32,6 +32,7 @@ static void boundary(const char *name,int value,uint32_t cpu,BOOL paused){
 - (void)display {
     if(observing&&!inTransition){frames++;boundary("world",0,observedWallTick,paused);}
 }
+- (void)presentFrame {}
 - (void)drawPanelTransition {
     if(observing)transitions++;
     inTransition=YES;@try {[super drawPanelTransition];} @finally {inTransition=NO;}

@@ -3,7 +3,18 @@
 #include "../src/preview.m"
 #undef main
 #import <OpenGL/glext.h>
+#import <objc/runtime.h>
 static NSMutableString *events;static BOOL observing,finishBlink;
+static BOOL animatingTicks;
+@interface OrderedMenuUI:AstroUIRenderer
+@end
+@implementation OrderedMenuUI
+- (void)animateMenuObjects {if(!animatingTicks)[events appendString:@"A"];[super animateMenuObjects];}
+- (void)animateTicks:(unsigned)ticks {
+    [events appendString:@"A"];animatingTicks=YES;
+    @try {[super animateTicks:ticks];} @finally {animatingTicks=NO;}
+}
+@end
 @interface ServiceAudio:AstroAudio
 @end
 @implementation ServiceAudio
@@ -35,7 +46,8 @@ static void expect(NSString *value){if(![events isEqual:value]){fprintf(stderr,"
     glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,640,480,0,GL_RGBA,GL_UNSIGNED_BYTE,NULL);
     glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT,GL_COLOR_ATTACHMENT0_EXT,GL_TEXTURE_2D,color,0);
     assert(glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT)==GL_FRAMEBUFFER_COMPLETE_EXT);
-    [self drawRect:self.bounds];[audio stop];audio=[ServiceAudio new];observing=YES;
+    [self drawRect:self.bounds];[audio stop];audio=[ServiceAudio new];
+    object_setClass(ui,[OrderedMenuUI class]);observing=YES;
     splashVisible=menuVisible=paused=gameOver=NO;flow.phase=ASTRO_FLOW_PLAY;
     observedWallTick=100;[self pollGame];expect(@"TSMKQ");
     gameEndRequested=YES;[self pollGame];expect(@"SMKQ");gameEndRequested=NO;
@@ -43,11 +55,11 @@ static void expect(NSString *value){if(![events isEqual:value]){fprintf(stderr,"
     respawnBlinkTick=respawnStartTick=100;invulnerableUntil=1;[self pollRespawnBlink];expect(@"TNSKT");invulnerableUntil=0;
     invulnerableUntil=1;finishBlink=YES;[self pollGame];expect(@"WMSKQ");finishBlink=NO;
     menuVisible=YES;ui.frameInterval=1;splashVisible=YES;[self pollMenu];expect(@"S");splashVisible=NO;
-    [ui show:@"Main"];observedWallTick=99;[self pollMenu];expect(@"CCDPSK");
+    [ui show:@"Main"];observedWallTick=99;[self pollMenu];expect(@"CCDAPSK");
     observedWallTick=100;[self pollMenu];expect(@"C");
-    [ui show:@"Pause"];paused=YES;observedWallTick=99;[self pollMenu];expect(@"CDSPCK");
+    [ui show:@"Pause"];paused=YES;observedWallTick=99;[self pollMenu];expect(@"CDSAPCK");
     [self display];expect(@"DP"); // A redraw outside the original poll does not service music.
-    [ui show:@"GameOver"];ui.editingHighscore=1;observedWallTick=99;[self pollMenu];expect(@"KCDCCPSC");
+    [ui show:@"GameOver"];ui.editingHighscore=1;observedWallTick=99;[self pollMenu];expect(@"KCDCCAPSC");
     menuVisible=paused=NO;flow.phase=ASTRO_FLOW_READY;cardClockStarted=NO;[self pollFlowCard];expect(@"");
     cardClockStarted=YES;cardDelayStartTick=41;[self pollFlowCard];expect(@"");
     cardDelayStartTick=40;[self pollFlowCard];expect(@"KSF");

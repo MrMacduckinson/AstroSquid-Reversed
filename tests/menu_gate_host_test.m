@@ -19,6 +19,7 @@ static NSMutableString *events;
     bodies++;bodyDeadline=observedWallTick;[events appendString:@"B"];[super stepMenu];
 }
 - (void)display {if(injecting){draws++;[events appendString:@"D"];}}
+- (void)presentFrame {}
 @end
 @interface AstroView (MenuGateCheck)
 - (void)checkMenuGates:(const char *)path;

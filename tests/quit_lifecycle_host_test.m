@@ -22,6 +22,7 @@ static BOOL rawQuit;
 - (uint32_t)playerClockTick {return [self currentGameTick];}
 - (uint32_t)cardDelayClockTick {return cardTick;}
 - (void)display {if(observing){menuCode=[ui.anchor isEqual:@"Highscores Menu"]?2:1;[actual addObject:@"menu"];}}
+- (void)presentFrame {}
 - (void)copyKeyMap:(unsigned char *)bytes {
     memset(bytes,0,16);keyPolls++;
     if(observing)[actual addObject:@"keys"];

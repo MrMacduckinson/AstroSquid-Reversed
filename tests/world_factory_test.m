@@ -8,6 +8,7 @@ static NSUInteger operandLeft,operandRight;
 @end
 @implementation AstroFactoryView
 - (void)display {redraws++;}
+- (void)presentFrame {}
 - (BOOL)continueScoreOverflow:(NSData *)left right:(NSData *)right {alerts++;operandLeft=left.length;operandRight=right.length;return YES;}
 - (void)fireWeapon:(int)weapon x:(int)x y:(int)y heading:(int)heading source:(int)kind {
     (void)heading;(void)kind;fired++;fireX=x;fireY=y;fireWeapon=weapon;

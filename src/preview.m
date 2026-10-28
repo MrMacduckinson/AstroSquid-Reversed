@@ -129,7 +129,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     int16_t visualFrames;
     int32_t visualSprites;
     double visualRate;
-    BOOL visualDebug,wallClockPoll,nestedWorldRender,servicePauseMusic;
+    BOOL visualDebug,wallClockPoll,nestedWorldRender;
     BOOL engineDebug,fullscreenRequested,graphicsReleased,spriteMapsPreloaded;
     NSString *screenshotBase;
     uint32_t simulationTick,lastSpawnTick;
@@ -506,7 +506,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [ui drawSprites:^(NSInteger n,double x,double y,double w,double h){
             [self sprite:n x:x y:y width:w height:h];
         } texture:^GLuint(NSInteger n){return [self texture:n];}];
-        [self presentFrame];return;
+        if(!deferPresent)[self presentFrame];return;
     }
     AstroHUDState overlay={[world containsObject:[NSNull null]]&&!(flow.phase==ASTRO_FLOW_READY&&!initialReadyCard),playerCombat.hit_points,inventory.weapon,
         inventory.upgrade,inventory.specials,inventory.lives,score};
@@ -579,7 +579,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [ui drawSprites:^(NSInteger n,double x,double y,double w,double h){[self sprite:n x:x y:y width:w height:h];}
             texture:^GLuint(NSInteger n){return [self texture:n];}];
     }
-    if(servicePauseMusic)[audio serviceMusic];
     if(!deferPresent){[self presentFrame];}
 }
 - (void)drawSpecialOverlays {
@@ -1685,11 +1684,19 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)stepMenu {
     if(splashVisible)return;
-    if([ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"]){[self display];[ui animateTicks:1];return;}
-    [ui advanceMenuCamera];
-    astro_stars_move(stars,ui.cameraX,ui.cameraY,-ui.cameraX,-ui.cameraY,640-ui.cameraX,480-ui.cameraY,
-        menuScroll.x,menuScroll.y,ui.cameraStepX,ui.cameraStepY,ui.frameInterval,&randomSeed,NULL,0,1);
-    [self display];[ui animateMenuObjects];
+    BOOL overlay=[ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"];
+    if(!overlay){
+        [ui advanceMenuCamera];
+        astro_stars_move(stars,ui.cameraX,ui.cameraY,-ui.cameraX,-ui.cameraY,640-ui.cameraX,480-ui.cameraY,
+            menuScroll.x,menuScroll.y,ui.cameraStepX,ui.cameraStepY,ui.frameInterval,&randomSeed,NULL,0,1);
+    }
+    BOOL previous=deferPresent;deferPresent=YES;
+    @try {
+        [self display];
+        if([ui.anchor isEqual:@"Pause"])[audio serviceMusic];
+        if(overlay)[ui animateTicks:1];else [ui animateMenuObjects];
+        if(!previous)[self presentFrame];
+    } @finally {deferPresent=previous;}
 }
 - (void)pollMenu {
     if(splashVisible){[audio serviceMusic];return;}
@@ -1699,8 +1706,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if((int32_t)(comparison-observedWallTick)<ui.frameInterval)return;
     BOOL overlay=[ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"];
     if(!overlay)observedWallTick=[self currentGameTick];
-    servicePauseMusic=[ui.anchor isEqual:@"Pause"];
-    @try {[self stepMenu];} @finally {servicePauseMusic=NO;}
+    [self stepMenu];
     if(![ui.anchor isEqual:@"Pause"])[audio serviceMusic];
     if(overlay)observedWallTick=[self currentGameTick];
     if([ui.anchor isEqual:@"Pause"]&&paused)[self readPauseKeys];
