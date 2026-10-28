@@ -330,7 +330,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [[self openGLContext] setValues:&interval forParameter:NSOpenGLCPSwapInterval];
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glClearColor(0,0,0,1);
+    glClearColor(0,0,0,0);
 }
 - (GLuint)texture:(NSInteger)identifier {
     NSNumber *key = @(identifier);
@@ -825,11 +825,18 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     return (uint32_t)(uint64_t)floor(local);
 }
 - (BOOL)saveScreenshot {
-    /* shortcut: verified window backing only; extend after fullscreen port reference. */
-    if(self.inFullScreenMode)return NO;
-    size_t pixels=640u*480u*3u;unsigned char *rgb=malloc(pixels),*picture=NULL;size_t size=0;
-    if(!rgb)return NO;memset(rgb,255,pixels);
-    int encoded=astro_picture_window_encode(rgb,640*3,640,480,&picture,&size);free(rgb);if(!encoded)return NO;
+    unsigned channels=self.inFullScreenMode?4:3;size_t pixels=640u*480u*channels;unsigned char *rgb=malloc(pixels),*picture=NULL;size_t size=0;
+    if(!rgb)return NO;
+    if(self.inFullScreenMode){
+        NSOpenGLContext *previous=NSOpenGLContext.currentContext;[[self openGLContext] makeCurrentContext];
+        GLint readBuffer,alignment;glGetIntegerv(GL_READ_BUFFER,&readBuffer);glGetIntegerv(GL_PACK_ALIGNMENT,&alignment);
+        glReadBuffer(GL_FRONT);glPixelStorei(GL_PACK_ALIGNMENT,1);glReadPixels(0,0,640,480,GL_RGBA,GL_UNSIGNED_BYTE,rgb);
+        GLenum error=glGetError();glReadBuffer(readBuffer);glPixelStorei(GL_PACK_ALIGNMENT,alignment);
+        if(previous)[previous makeCurrentContext];else [NSOpenGLContext clearCurrentContext];
+        if(error!=GL_NO_ERROR){free(rgb);return NO;}
+        unsigned char row[640*4];for(unsigned y=0;y<240;y++){unsigned char *top=rgb+y*640*4,*bottom=rgb+(479-y)*640*4;memcpy(row,top,sizeof(row));memcpy(top,bottom,sizeof(row));memcpy(bottom,row,sizeof(row));}
+    }else memset(rgb,255,pixels);
+    int encoded=(self.inFullScreenMode?astro_picture_fullscreen_encode:astro_picture_window_encode)(rgb,640*channels,640,480,&picture,&size);free(rgb);if(!encoded)return NO;
     NSString *folder=[screenshotBase stringByAppendingPathComponent:@"Screenshots"];
     NSFileManager *manager=NSFileManager.defaultManager;BOOL directory=NO;
     BOOL exists=[manager fileExistsAtPath:folder isDirectory:&directory];

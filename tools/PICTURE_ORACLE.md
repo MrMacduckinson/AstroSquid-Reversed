@@ -454,3 +454,43 @@ independent parent mode recovery. PASS4specials,393beams,178effects,102shots,
 native_restore1, no recovery. Internal logs fullscreen-app-result.json and
 fullscreen-app-run.log. Temporary app/screenshot/testdomain/probe binaries removed
 after recording; no releasedZIP regenerated. Whole-game parity remains unproved.
+
+## Original fullscreen port, RGBA codec and production capture
+
+ppc_fullscreen_port.gdb runs the selectedv3 owned CFM copy without forcing
+window mode; auxiliary Data is copied from the earlier G5 reference as before.
+After all initialization/intro/menu it loads ppc_fullscreen_port_reference.c
+and calls its hook with original code/globals/TOC. Metadata confirms current
+port equals DSp front port (not saved startup port), bounds0/0/480/640. The hook
+reads pixels only when that equality and size hold; no desktop port is read.
+Original GETPICT139dc captures its own game's front buffer. Native DrawPicture
+decoding matches GL_FRONT RGB at all307200 pixels (zero differences) in repeated
+captures. Native deactivation/DSpdispose restores1440x900 after each probe.
+The hook's initial stdout report was buffered when GDB killed the inferior;
+final version writes a fixed owned report file and checks exported data writes.
+
+Native fullscreen PICT has packType1/cmpCount3 but infinite clip and actual
+RGBA alpha bytes, unlike window finite clip/FF padding. Initial RGB/window
+encoding comparison correctly failed at clip46 and alpha bytes; new
+astro_picture_fullscreen_encode accepts top-down RGBA and emits raw ARGB with
+infinite clip. Retained compressed paired fixture fullscreen-menu.pict.gz and
+fullscreen-menu.rgba.gz independently compare the GL_RGBA input against actual
+GETPICT output. All13 native fixtures match except8processpointer bytes on
+primary strictC/ASan/UBSan and Intel strictC/Python2.7. Fullscreen short-stride
+validation and existing filename/file-prefix tests pass.
+
+Production saveScreenshot now reads the presented GL_FRONT without redrawing,
+restores previous GL context/read buffer/pack alignment, flips rows and calls
+the fullscreen encoder; window white backing stays unchanged. Native
+LMINITMINI clear-color components all come from literal double0; host alpha1
+was divergent, now corrected to0. The fixture carries all256 alpha values and
+whole-body equality verifies preservation. Intel actual fullscreen host saves
+a complete native-format file matching current RGBA frame, verifies row order,
+prefix, nil-context restoration/readbufferBACK/pack8 preservation and clear
+RGBA0. Normal and directexit scenarios both restore display. Keymap128/quit
+lifecycle/windowPICT errors/metadata regressions and primary+Intel buildsPASS.
+App-wide fullselftest was not repeated after this screenshot/clear-alpha change;
+previous7f4117d fullselftest remains earlier evidence. Other fullscreen backends/
+otherhardware/later in-game port behavior and whole-game equivalence remain
+unproved. Diagnostic raw captures and temp executable/Data copies are cleaned;
+only compressed required fixtures and concise internal reports are retained.

@@ -36,11 +36,12 @@ upgrades, enemies, bosses, pickups, deaths/respawns, menus, score entry, stage
 transitions and the four ending pages. The optional graphics archive contains the
 original Infini-D models; it is not required to play or compile this port.
 
-Hold left Command and left Option during startup to enable the windowed diagnostic screenshot
+Hold left Command during startup to enable the original diagnostic screenshot
 key: keypad multiply saves `Screenshots/Screen <seconds>.pict` beside the app.
 It repeats on every input poll while held and overwrites the same-second file.
-The verified windowed original captures its white QuickDraw backing rather than
-the OpenGL scene. Fullscreen capture is not implemented yet.
+Fullscreen saves the currently presented OpenGL frame. In windowed mode (left
+Option at startup), the original instead captures its white QuickDraw backing;
+this behavior is preserved.
 
 ## Build from the source archive
 

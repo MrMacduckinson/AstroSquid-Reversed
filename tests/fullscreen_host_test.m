@@ -9,6 +9,7 @@ static unsigned char startup[16];static BOOL terminated;
 @end
 @implementation FullscreenView
 - (void)copyKeyMap:(unsigned char *)bytes {memcpy(bytes,startup,16);}
+- (uint32_t)screenshotSeconds {return 123;}
 - (void)saveSettings {}
 - (void)saveScores {}
 - (void)terminateApplication {terminated=YES;}
@@ -21,6 +22,17 @@ static unsigned char startup[16];static BOOL terminated;
 @implementation AstroView(FullscreenCheck)
 - (void)stopProbeTimer {[timer invalidate];timer=nil;[audio stop];}
 - (void)checkRequest:(BOOL)value {assert(fullscreenRequested==value);}
+- (void)checkFullscreenPicture:(const unsigned char *)bottomUp {
+ char directory[]="/tmp/astrosquid-fullscreen-shot.XXXXXX";assert(mkdtemp(directory));screenshotBase=[NSString stringWithUTF8String:directory];
+ unsigned char *rgba=malloc(640*480*4),*expected=NULL;size_t size=0;assert(rgba);
+ for(unsigned y=0;y<480;y++)memcpy(rgba+y*640*4,bottomUp+(479-y)*640*4,640*4);
+ assert(astro_picture_fullscreen_encode(rgba,640*4,640,480,&expected,&size));free(rgba);
+ glReadBuffer(GL_BACK);glPixelStorei(GL_PACK_ALIGNMENT,8);[NSOpenGLContext clearCurrentContext];assert([self saveScreenshot]);assert(NSOpenGLContext.currentContext==nil);[[self openGLContext] makeCurrentContext];
+ GLint read,pack;glGetIntegerv(GL_READ_BUFFER,&read);glGetIntegerv(GL_PACK_ALIGNMENT,&pack);assert(read==GL_BACK&&pack==8);glReadBuffer(GL_FRONT);glPixelStorei(GL_PACK_ALIGNMENT,4);
+ NSData *data=[NSData dataWithContentsOfFile:[screenshotBase stringByAppendingPathComponent:@"Screenshots/Screen 123.pict"]];assert(data.length==512+size);const unsigned char *bytes=data.bytes;for(unsigned i=0;i<512;i++)assert(!bytes[i]);assert(!memcmp(bytes+512,expected,size));free(expected);
+ assert([NSFileManager.defaultManager removeItemAtPath:screenshotBase error:NULL]);
+ puts("PASS actual fullscreen PICT RGBA/row order/native format, fileprefix and GL context/readbuffer/alignment restoration");
+}
 @end
 static BOOL modeSize(int width,int height){NSDictionary *m=(__bridge NSDictionary *)CGDisplayCurrentMode(CGMainDisplayID());return [m[(__bridge NSString *)kCGDisplayWidth] intValue]==width&&[m[(__bridge NSString *)kCGDisplayHeight] intValue]==height;}
 int main(int argc,const char **argv){@autoreleasepool{
@@ -41,7 +53,7 @@ int main(int argc,const char **argv){@autoreleasepool{
  AstroDelegate *delegate=[AstroDelegate new];delegate.view=view;
  NSWindow *window=[[NSWindow alloc] initWithContentRect:NSMakeRect(0,0,640,480) styleMask:NSWindowStyleMaskTitled backing:NSBackingStoreBuffered defer:NO];window.releasedWhenClosed=NO;window.contentView=view;delegate.window=window;[window makeKeyAndOrderFront:nil];[NSApp activateIgnoringOtherApps:YES];
  assert([view startFullscreen]&&view.inFullScreenMode&&modeSize(640,480));[view display];
- [[view openGLContext] makeCurrentContext];unsigned char *rgb=malloc(640*480*3);assert(rgb);glReadBuffer(GL_FRONT);glReadPixels(0,0,640,480,GL_RGB,GL_UNSIGNED_BYTE,rgb);unsigned lit=0;for(unsigned i=0;i<640*480;i++)if(rgb[i*3]||rgb[i*3+1]||rgb[i*3+2])lit++;free(rgb);assert(glGetError()==GL_NO_ERROR&&lit>1000);
+ [[view openGLContext] makeCurrentContext];GLfloat clear[4];glGetFloatv(GL_COLOR_CLEAR_VALUE,clear);assert(!clear[0]&&!clear[1]&&!clear[2]&&!clear[3]);unsigned char *rgb=malloc(640*480*4);assert(rgb);glReadBuffer(GL_FRONT);glReadPixels(0,0,640,480,GL_RGBA,GL_UNSIGNED_BYTE,rgb);unsigned lit=0;for(unsigned i=0;i<640*480;i++)if(rgb[i*4]||rgb[i*4+1]||rgb[i*4+2])lit++;assert(glGetError()==GL_NO_ERROR&&lit>1000);[view checkFullscreenPicture:rgb];free(rgb);
  if(!strcmp(argv[2],"--exit-child")){puts("direct_exit_requested_after_actual_fullscreen_render");exit(0);}
  assert([delegate applicationShouldTerminate:NSApp]==NSTerminateCancel);[view closeDown];assert(terminated&&!view.inFullScreenMode&&[delegate applicationShouldTerminate:NSApp]==NSTerminateNow);
  startup[58>>3]=1u<<(58&7);FullscreenView *option=[[FullscreenView alloc] initWithFrame:NSMakeRect(0,0,640,480) assets:assets];assert(option);[option stopProbeTimer];[option checkRequest:NO];assert(![option startFullscreen]);
