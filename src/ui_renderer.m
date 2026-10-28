@@ -14,7 +14,7 @@
     BOOL _transitioning;
     unsigned _panelFrames;
     double _panelOffset,_panelStep;
-    NSMutableDictionary *_orbStates;
+    NSMutableDictionary *_orbStates,*_hoverDeadlines;
 }
 @synthesize anchor=_anchor;
 @synthesize transitioning=_transitioning;
@@ -26,7 +26,7 @@
         if(!bytes)return nil;
         _data=[NSJSONSerialization JSONObjectWithData:bytes options:0 error:error];
         if(![_data[@"scenes"] isKindOfClass:[NSDictionary class]]||![_data[@"font"][@"advance"] isKindOfClass:[NSArray class]])return nil;
-        _orbStates=[NSMutableDictionary dictionary];_registered=YES;_registeredName=@"";_editingName=@"";
+        _orbStates=[NSMutableDictionary dictionary];_hoverDeadlines=[NSMutableDictionary dictionary];_registered=YES;_registeredName=@"";_editingName=@"";
         _frameInterval=1;_unlockedLevel=1;_smooth=YES;_soundVolume=.6;_musicVolume=1;
         _keyLabels=@[@"Space",@"Option",@"Up",@"Down",@"Left",@"Right"];
         _highscores=@[];astro_score_caret_begin(&_caret,0);
@@ -43,7 +43,7 @@
     BOOL sameScene=[scene isEqual:@"Data B2"]&&_objects==_data[@"scenes"][scene];
     _objects=_data[@"scenes"][scene];_anchor=[anchor copy];_hover=nil;_pressed=nil;
     if(!sameScene){
-        _cameraX=0;_cameraY=0;[_orbStates removeAllObjects];
+        _cameraX=0;_cameraY=0;[_orbStates removeAllObjects];[_hoverDeadlines removeAllObjects];
         for(NSDictionary *object in _objects){
             NSInteger counter=[object[@"animation_counter"] integerValue];
             AstroUIMotion state={[object[@"x"] doubleValue],[object[@"y"] doubleValue],[object[@"width"] doubleValue],[object[@"height"] doubleValue],(int32_t)counter,[object[@"sprite"] shortValue]};
@@ -79,7 +79,7 @@
 - (void)finishGameOverExit {
     NSArray *names=@[@"GameOverOK",@"GameOverFade"];
     _objects=[_objects filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(NSDictionary *object,NSDictionary *bindings){return ![names containsObject:object[@"name"]];}]];
-    [_orbStates removeObjectsForKeys:names];
+    [_orbStates removeObjectsForKeys:names];[_hoverDeadlines removeObjectsForKeys:names];
 }
 - (void)beginPauseExit {
     if(![_anchor isEqual:@"Pause"])return;
@@ -111,7 +111,8 @@
         NSRect r=[self bounds:object];double pointY=y;
         if([_anchor isEqual:@"Pause"]||[_anchor isEqual:@"GameOver"]){
             const AstroUIMotion *state=[_orbStates[object[@"name"]] bytes];
-            r.origin.y=state->y+_cameraY;pointY-=70;
+            r.origin.y=state->y+_cameraY;
+            if(![_anchor isEqual:@"GameOver"]||!_gameOverClosing)pointY-=70;
         }
         if(astro_ui_contains(r.origin.x,r.origin.y,r.size.width,r.size.height,x,pointY))result=object[@"name"];
     }
@@ -121,6 +122,22 @@
     NSDictionary *object=[self object:name];return object?[self bounds:object].origin.x/640:NAN;
 }
 - (void)moveMouseX:(double)x y:(double)y {_hover=[self hitX:x y:y];}
+- (void)pollMouseX:(double)x y:(double)y {
+    for(NSDictionary *object in _objects){
+        AstroUIMotion *state=[_orbStates[object[@"name"]] mutableBytes];
+        if(state->sprite==902)state->sprite=900;
+    }
+    [self moveMouseX:x y:y];NSDictionary *object=[self object:_hover];
+    if(!object||[object[@"kind"] intValue]<=8)return;
+    AstroUIMotion *state=[_orbStates[object[@"name"]] mutableBytes];
+    if(state->sprite!=900)return;
+    uint32_t tick=self.readTick?self.readTick():0;
+    // Original900/902 both use222px images; preserve the resize/centering operations.
+    state->x=state->width/2+state->x;state->y=state->height/2+state->y;
+    state->width=(state->width/222)*222;state->height=(state->height/222)*222;
+    state->x=state->x-state->width/2;state->y=state->y-state->height/2;
+    state->sprite=902;_hoverDeadlines[object[@"name"]]=@(tick+1u);
+}
 - (NSString *)mouseDownX:(double)x y:(double)y {
     if(_pressed)return nil;
     if([_anchor isEqual:@"Credits"]){if(_beforeNavigate)_beforeNavigate(@"Yeah");[self show:@"Main Menu"];return @"Yeah";}
@@ -198,8 +215,8 @@
     for(int kind=1;kind<=10;kind++)for(NSDictionary *object in _objects){
         if([object[@"kind"] intValue]!=kind||![self enabled:object])continue;
         NSRect r=[self bounds:object];if(NSMaxX(r)<0||r.origin.x>640||NSMaxY(r)<0||r.origin.y>480)continue;
-        NSString *name=object[@"name"];NSInteger sprite=[object[@"sprite"] integerValue];
-        if(sprite==900){if([name isEqual:_pressed])sprite=901;else if([name isEqual:_hover])sprite=902;}
+        NSString *name=object[@"name"];const AstroUIMotion *state=[_orbStates[name] bytes];NSInteger sprite=state->sprite;
+        if(sprite>=900&&sprite<=902&&[name isEqual:_pressed])sprite=901;
         sprites(sprite,r.origin.x,r.origin.y,r.size.width,r.size.height);
     }
     glColor4d(.8,.8,.8,1);

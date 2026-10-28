@@ -192,6 +192,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     NSUInteger selftestExpectedSpecial;
 }
 - (instancetype)initWithFrame:(NSRect)frame assets:(NSString *)path;
+- (NSPoint)currentMenuMousePoint;
 - (void)beginSelfTest:(NSString *)path;
 - (void)applyBeam:(const AstroBeam *)beam context:(BeamContext *)context;
 - (AstroEnemy *)createBeam:(const AstroBeam *)beam;
@@ -1731,6 +1732,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     astro_stars_init(stars,1,&randomSeed);starsInitialized=YES;
     menuScroll.x=astro_random(&randomSeed,8)-4;menuScroll.y=astro_random(&randomSeed,8)-4;
 }
+- (void)pollMenuMouse {
+    NSPoint p=[self currentMenuMousePoint];[ui pollMouseX:p.x y:p.y];
+    if(![self menuMouseButtonPressed]){menuMouseLatched=NO;[ui mouseUpX:p.x y:p.y];}
+}
 - (void)stepMenu {
     if(splashVisible)return;
     BOOL overlay=[ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"];
@@ -1739,7 +1744,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         astro_stars_move(stars,ui.cameraX,ui.cameraY,-ui.cameraX,-ui.cameraY,640-ui.cameraX,480-ui.cameraY,
             menuScroll.x,menuScroll.y,ui.cameraStepX,ui.cameraStepY,ui.frameInterval,&randomSeed,NULL,0,1);
     }
-    if(![self menuMouseButtonPressed])menuMouseLatched=NO;
+    [self pollMenuMouse];
     BOOL previous=deferPresent;deferPresent=YES;
     @try {
         [self display];
@@ -2314,6 +2319,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (NSPoint)menuPoint:(NSEvent *)event {
     NSPoint p=[self convertPoint:event.locationInWindow fromView:nil];
+    return NSMakePoint(p.x*640/self.bounds.size.width,(self.bounds.size.height-p.y)*480/self.bounds.size.height);
+}
+- (NSPoint)currentMenuMousePoint {
+    NSPoint p=[self convertPoint:self.window.mouseLocationOutsideOfEventStream fromView:nil];
     return NSMakePoint(p.x*640/self.bounds.size.width,(self.bounds.size.height-p.y)*480/self.bounds.size.height);
 }
 - (BOOL)menuMouseButtonPressed {return ([NSEvent pressedMouseButtons]&1)!=0;}

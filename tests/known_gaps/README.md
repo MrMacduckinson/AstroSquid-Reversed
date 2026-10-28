@@ -19,7 +19,7 @@ visit counter and clock count are intentionally not required to match. No
 reference bytes were edited to make the unsafe original match the safe port.
 Other original-fidelity gaps and complete-game verification remain open.
 
-## Mouse-release boundary fixed; remaining hover/held work
+## Verified mouse primitives; remaining frame integration
 
 `../mouse_release_host.sh` now checks the actual root rapid-release boundary:
 press outside, drag onto OK, release/repress before an eligible released-button
@@ -28,7 +28,7 @@ rearms and the next click exits. Field selection still precedes click blocking.
 The previous failing test and original counterexample remain in persistent
 fidelity notes. This behavior is required, not an allocator-related exclusion.
 
-The native reference has two17-step streams (focused/unfocused),50 records,
+The native reference has two17-step streams plus closing polls (focused/unfocused),52 records,
 from actual MOUSEOVERMENU, DOMOUSE, LMPOINTSPRITE and LMCHANGESPRITEID using the
 original sprt table. H polls hover/Button, D dispatches a held mouse, U changes
 raw button state without a hover poll. T rows contain TickCount values; S rows
@@ -40,10 +40,12 @@ Hover clears old902 to900, selects the highest-kind hit, and changes eligible
 900 to902 with a new TickCount+1 deadline. Only a hover poll observing Button
 false resets the latch. DOMOUSE updates field selection even while latched;
 click sound/action are gated, and every DOMOUSE call sets the latch. Raw release
-alone leaves it set. Both original runs produced identical50-record outputs.
+alone leaves it set. The original50-record baseline was repeatable; its rows remain unchanged,
+with two additional closing-state polls in the current52-record reference.
 
-The current host also lacks a corresponding per-sprite hover deadline; the
-trace is an original reference, not a passing original/host equality claim.
-Do not mark full fidelity complete without retaining the verified hover
-clock/geometry and held-field polling behavior. The rapid-release regression
-alone does not prove the complete50-record stream.
+The current host passes `../mouse_latch_host.sh` for all52 primitive records,
+including per-sprite hover deadlines and original geometry operations. Actual
+GL rendering uses the sampled sprite state without another clock read. This
+still does not prove repeated held DOMOUSE dispatch from the complete frame
+loop, field dragging between frames, initial scene factory deadlines or the
+normal-menu LMHANDLE lifecycle. These remain required work, not exclusions.

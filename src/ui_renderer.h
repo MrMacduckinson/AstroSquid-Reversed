@@ -39,6 +39,7 @@ typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
 /* Original PUTCONTROLS: source-order random phase for orb records only. */
 - (void)reloadMenuWithRandom:(uint32_t *)seed;
 - (void)moveMouseX:(double)x y:(double)y;
+- (void)pollMouseX:(double)x y:(double)y;
 - (NSString *)mouseDownX:(double)x y:(double)y;
 /* Returns original DOMOUSE action name. Navigation is applied automatically. */
 - (NSString *)mouseUpX:(double)x y:(double)y;

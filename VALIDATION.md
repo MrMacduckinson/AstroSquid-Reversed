@@ -16,11 +16,21 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- `tests/mouse_latch_host.sh` matches52 original MOUSEOVERMENU/DOMOUSE primitive
+  records, including10 exact clock reads, hover902 deadlines, latch/input state
+  and IEEE rectangle coordinates. The original50 records remain unchanged;
+  two added closing polls verify the a68=0 coordinate conversion and no extra
+  hover clock. Root eligible-frame polling now samples window mouse position;
+  UI stores sprite902 and uint32 tick+1, retaining original222px resize/center
+  math. Actual GL drawing uses that state without clock reads and event-only
+  movement does not prematurely change it. This is not proof of whole-frame
+  held-button dispatch, initial factory deadlines or normal-menu LMHANDLE.
+
 - `tests/mouse_release_host.sh` checks the fixed root rapid-release boundary:
   outside-click latch survives raw release/repress and a closed frame gate;
   only an eligible released-button poll rearms it. Latched field selection
-  remains active. The50-record original `mouse_latch_native.csv` additionally
-  covers hover deadlines/geometry and held input; full equality to that stream
+  remains active. The52-record gate above additionally covers hover
+  deadlines/geometry and controlled held input; complete frame integration
   remains unproved. See the known-gaps README for the remaining scope.
 
 - `tests/gameover_scene_mouse_host.sh` matches46 records from27 routes through

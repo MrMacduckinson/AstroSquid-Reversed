@@ -43,6 +43,10 @@ int main(int argc,char **argv){
             if(step<16)assert(*(int16_t *)(g+0xa68)==1&&*(int16_t *)(g+0x58c)==0);
         }
         assert(*(int16_t *)(g+0xa68)==0&&*(int16_t *)(g+0x58c)==1&&clock_reads==5);
+        invoke_fb(code+0x41448,g,toc,NULL,NULL,NULL);
+            printf("%u,%u,%c,%d,%u,%d,%d,%d,%d,%d",mouse_case,step,'H',*(int16_t *)(node+38),*(uint32_t *)(node+34),*(int16_t *)(g+0x5aa),*(int16_t *)(g+0xa68),*(int16_t *)(g+0x58c),*(int16_t *)(g+0x5d6),*(void **)(g+0xa06)!=NULL);
+            for(unsigned axis=0;axis<4;axis++){uint64_t bits;memcpy(&bits,node+axis*8,8);printf(",%016llx",bits);}putchar('\n');
+        assert(*(int16_t *)(node+38)==900&&clock_reads==5);
     }
     DisposeHandle(strings);fputs("PASS2 actual hover/held/release/repress streams; real LMCHANGESPRITEID clock/geometry retained\n",stderr);return 0;
 }

@@ -50,6 +50,18 @@ int main(int argc,const char **argv){@autoreleasepool{
         printf("PASS %s rendered %lu visible pixels\n",anchor.UTF8String,(unsigned long)bright);
     }
     glViewport(0,0,640,480);glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);glMatrixMode(GL_MODELVIEW);glLoadIdentity();
+    [ui show:@"GameOver"];[ui animateTicks:60];ui.editingHighscore=0;
+    __block unsigned hoverReads=0;ui.readTick=^uint32_t{hoverReads++;return 100;};
+    [ui pollMouseX:400 y:320];
+    for(unsigned phase=0;phase<3;phase++){
+        if(phase==1)[ui moveMouseX:0 y:100];
+        if(phase==2)[ui pollMouseX:0 y:100];
+        __block NSInteger button=0;
+        [ui drawSprites:^(NSInteger n,double x,double y,double w,double h){if(n==900||n==902)button=n;sprite(n,x,y,w,h);} texture:load];
+        assert(button==(phase<2?902:900)&&hoverReads==1);
+    }
+    ui.readTick=nil;ui.editingHighscore=1;assert(glGetError()==GL_NO_ERROR);
+    puts("PASS actual UI renderer hover902 persists until next poll; drawing consumes no hover clocks");
     [ui show:@"GameOver"];[ui animateTicks:120];ui.editingName=@"";ui.editingCursor=0;
     glClear(GL_COLOR_BUFFER_BIT);[ui drawSprites:sprite texture:load];
     NSMutableData *empty=[NSMutableData dataWithLength:640*480*4],*longName=[NSMutableData dataWithLength:640*480*4];
