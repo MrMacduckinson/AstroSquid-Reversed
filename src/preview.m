@@ -122,6 +122,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     uint32_t respawnStartTick,respawnBlinkTick;
     double respawnBlinkWidth;
     BOOL paused,gameOver,gameOverPending,pauseLoopRunning;
+    BOOL menuMouseLatched;
     BOOL quitRequested,gameLoopActive,gameEndRequested,gameEndHighscores,terminationAllowed;
     NSArray *presentedBeams;
     uint32_t presentedBeamSeed;
@@ -1738,6 +1739,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         astro_stars_move(stars,ui.cameraX,ui.cameraY,-ui.cameraX,-ui.cameraY,640-ui.cameraX,480-ui.cameraY,
             menuScroll.x,menuScroll.y,ui.cameraStepX,ui.cameraStepY,ui.frameInterval,&randomSeed,NULL,0,1);
     }
+    if(![self menuMouseButtonPressed])menuMouseLatched=NO;
     BOOL previous=deferPresent;deferPresent=YES;
     @try {
         [self display];
@@ -1878,7 +1880,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     assert(menuVisible&&[ui.anchor isEqual:@"Main Menu"]);
     [self mouseDown:[self testMouse:NSLeftMouseDown x:369 y:175]];
     [self mouseUp:[self testMouse:NSLeftMouseUp x:369 y:175]];
-    assert([ui.anchor isEqual:@"Play Menu"]);[ui animateTicks:120];
+    assert([ui.anchor isEqual:@"Play Menu"]);[ui animateTicks:120];[self stepMenu];
     [self mouseDown:[self testMouse:NSLeftMouseDown x:394 y:268]];
     [self mouseUp:[self testMouse:NSLeftMouseUp x:394 y:268]];
     assert(!menuVisible&&selectedLevel==0&&flow.phase==ASTRO_FLOW_READY);
@@ -1886,7 +1888,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     assert(flow.phase==ASTRO_FLOW_PLAY);
     NSString *savedTestPath=selftestPath;selftestPath=nil;
     [self keyDown:[self testEvent:NSKeyDown code:53]];assert(!paused);[self enterPause];selftestPath=savedTestPath;
-    assert(menuVisible&&paused);[ui animateTicks:120];
+    assert(menuVisible&&paused);[ui animateTicks:120];[self stepMenu];
     [self mouseDown:[self testMouse:NSLeftMouseDown x:365 y:250]];
     [self mouseUp:[self testMouse:NSLeftMouseUp x:365 y:250]];
     assert(!menuVisible&&!paused);memset(keys,0,sizeof(keys));
@@ -2314,11 +2316,14 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     NSPoint p=[self convertPoint:event.locationInWindow fromView:nil];
     return NSMakePoint(p.x*640/self.bounds.size.width,(self.bounds.size.height-p.y)*480/self.bounds.size.height);
 }
+- (BOOL)menuMouseButtonPressed {return ([NSEvent pressedMouseButtons]&1)!=0;}
 - (void)mouseDown:(NSEvent *)event {
-    if(!menuVisible||splashVisible||editingKey>=0)return;NSPoint p=[self menuPoint:event];
+    if(!menuVisible||splashVisible||editingKey>=0||ui.transitioning)return;NSPoint p=[self menuPoint:event];
     if([ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0&&p.x>=223&&p.x<423&&p.y>=255&&p.y<277) {
         scoreEditor.cursor=[ui scoreCursorAtX:p.x];[self refreshScoreEditor];
     }
+    if(menuMouseLatched)return;
+    menuMouseLatched=YES;
     [self performMenuAction:[ui mouseDownX:p.x y:p.y]];
 }
 - (void)mouseMoved:(NSEvent *)event {[self mouseDragged:event];}

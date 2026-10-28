@@ -27,7 +27,7 @@ static const short points[][2]={{381,292},{445,356},{380,292},{446,292},{381,291
     for(unsigned focus=0;focus<2;focus++)for(unsigned p=0;p<sizeof(points)/sizeof(points[0]);p++,mouse_case++){
         if(!focus&&p==13){mouse_case--;continue;}
         [ui show:@"GameOver"];[ui animateTicks:60];assert([ui clickPosition:@"GameOverOK"]==381./640&&isnan([ui clickPosition:@"missing"]));ui.editingHighscore=focus;ui.editingName=@"TEST";
-        gameOver=menuVisible=YES;gameEndRequested=gameEndHighscores=NO;deferPresent=NO;score=focus?100:0;astro_scores_clear(highscores);strcpy(scoreEditor.name,"");scoreEditor.cursor=77;[self refreshScoreEditor];
+        gameOver=menuVisible=YES;gameEndRequested=gameEndHighscores=NO;menuMouseLatched=NO;deferPresent=NO;score=focus?100:0;astro_scores_clear(highscores);strcpy(scoreEditor.name,"");scoreEditor.cursor=77;[self refreshScoreEditor];
         mousePoint=NSMakePoint(points[p][0],points[p][1]);displays=0;observing=YES;[self mouseDown:nil];observing=NO;
         if(!displays)[self recordMouseState];else assert(displays==2&&gameEndRequested&&!menuVisible&&!gameOver&&!deferPresent);
     }

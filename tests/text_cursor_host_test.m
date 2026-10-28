@@ -14,7 +14,7 @@ static NSPoint mouseLocation;
 @implementation AstroView(CursorMouseCheck)
 - (void)checkMouseCursor {
     [timer invalidate];timer=nil;[audio stop];menuVisible=gameOver=YES;splashVisible=NO;editingKey=-1;
-    [ui show:@"GameOver"];ui.editingHighscore=1;
+    [ui show:@"GameOver"];[ui animateTicks:60];ui.editingHighscore=1;
     for(unsigned n=0;n<sizeof(text_cursor_names)/sizeof(text_cursor_names[0]);n++){
         memset(&scoreEditor,0,sizeof(scoreEditor));strcpy(scoreEditor.name,text_cursor_names[n]);
         for(unsigned ix=0;ix<sizeof(text_cursor_mouse_x)/sizeof(text_cursor_mouse_x[0]);ix++)for(unsigned iy=0;iy<sizeof(text_cursor_mouse_y)/sizeof(text_cursor_mouse_y[0]);iy++){

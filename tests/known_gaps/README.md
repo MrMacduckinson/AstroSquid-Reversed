@@ -19,13 +19,14 @@ visit counter and clock count are intentionally not required to match. No
 reference bytes were edited to make the unsafe original match the safe port.
 Other original-fidelity gaps and complete-game verification remain open.
 
-## Active required mouse-release gap (not excluded)
+## Mouse-release boundary fixed; remaining hover/held work
 
-`mouse_release_host.sh` runs only on the authorized Intel reference Mac. On
-f42afc3 it fails: press outside, drag onto OK, release and immediately press
-again without an eligible released-button hover poll ends GameOver. Original
-`tests/mouse_latch_native.csv` case0/step6 keeps active1/end0. This is required
-work, distinct from the user-excluded historical allocator behavior above.
+`../mouse_release_host.sh` now checks the actual root rapid-release boundary:
+press outside, drag onto OK, release/repress before an eligible released-button
+poll stays blocked; a closed gate cannot rearm; an eligible released poll
+rearms and the next click exits. Field selection still precedes click blocking.
+The previous failing test and original counterexample remain in persistent
+fidelity notes. This behavior is required, not an allocator-related exclusion.
 
 The native reference has two17-step streams (focused/unfocused),50 records,
 from actual MOUSEOVERMENU, DOMOUSE, LMPOINTSPRITE and LMCHANGESPRITEID using the
@@ -43,5 +44,6 @@ alone leaves it set. Both original runs produced identical50-record outputs.
 
 The current host also lacks a corresponding per-sprite hover deadline; the
 trace is an original reference, not a passing original/host equality claim.
-Do not remove this gap or mark full fidelity complete without fixing the root
-input polling path and retaining the verified clock/geometry behavior.
+Do not mark full fidelity complete without retaining the verified hover
+clock/geometry and held-field polling behavior. The rapid-release regression
+alone does not prove the complete50-record stream.
