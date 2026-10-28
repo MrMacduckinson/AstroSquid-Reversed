@@ -160,3 +160,36 @@ The file helper still uses the offscreen encoder until a capture caller exists.
 The app must capture default QuickDraw content rather than redraw/GL-readback;
 full original startup/current-port lifecycle, save folder/error semantics and
 fullscreen remain open.
+
+## Colored window and actual filesystem reference
+
+Window oracle accepts optional `bars`: eight80-pixel vertical RGB bitmask
+bands drawn through QuickDraw, foreground restored to black. Both native
+pre/post AGL pictures decode to exactly the expected colors at every pixel.
+Counts:38400 each red/blue/black/white and153600 remaining colors, zero changed
+RGB pixels after red AGL swap. Two raw captures are byte-identical; fixture
+window-bars.pict.gz. All12 PICT fixtures match on primary strict C, ASan/UBSan,
+and Intel strict C/Python2.7. G5 QuickDraw independently decodes generated bars
+correctly at every RGB pixel. Existing window encoder required no changes.
+
+`ppc_picture_file_oracle.c` executes actual SAVEPICTFILE plus SYSTEM/FOLDER/open/
+write/close; only GetDateTime (123), STR#25000 resource source and debug message
+sink are controlled. Runtime file table is empty; FBPBTOFBWD10000458 registers
+an owned scratch FSRef's volume/nodeID and seeds SYSTEM1 runtime base. The path
+is constrained to /tmp/astrosquid-window-bars-20261028/io-v4, which must not exist.
+Arguments: PEF,literals,6884-byte STR#25000,that exact base path. Compile with
+Carbon and script-oracle imports, as other private PPC probes. No window or
+original game is patched; all real writes stay below the owned directory.
+
+Original creates Screenshots/Screen123.pict (with a space before123), writes
+512zeros then16'A' bytes; second same-time save truncates to512+4'B' bytes.
+Actual FSGetCatalogInfo verifies PICT/???? metadata. Runtime error vector is
+absent in this isolated setup. Making the file0444 makes the native unguarded
+write dereference null fileblock+0x192. GDB observed EXC_BAD_ACCESS at private
+code+0xfe08 (original0x1000fe08 in WRITEFILE), address0x192. Final probe isolates
+that call in forked child, disables its core dumps, asserts SIGBUS and unchanged
+file, then restores0600. Success path prints two original success messages.
+This proves this private runtime's failure path; full app error-vector behavior
+is not proved, and undefined null dereference must not be copied into defined
+logic. No app screenshot integration, full startup base-folder mapping or
+fullscreen proof is claimed.

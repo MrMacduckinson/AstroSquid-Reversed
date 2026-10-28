@@ -16,7 +16,7 @@ static unsigned char *picture_input(const char *path,long expected){
  fclose(f);return read_file(path);
 }
 int main(int argc,char **argv){
- if(argc!=4)return 2;alarm(20);
+ if(argc!=4&&argc!=5)return 2;int bars=argc==5&&!strcmp(argv[4],"bars");if(argc==5&&!bars)return 2;alarm(20);
  unsigned char *pef=picture_input(argv[1],455780),*lit=picture_input(argv[2],11812),*code=NULL,*g=calloc(1,0x1300);uint32_t toc[489]={0};
  if(!pef||!lit||!g)return 2;code=pef+128;
  for(int i=0;i<484;i++){void *f=dlsym(RTLD_DEFAULT,import_names[i]);descriptors[i][0]=(uint32_t)(uintptr_t)(f?f:missing);toc[i]=(uint32_t)(uintptr_t)descriptors[i];}toc[0]=(uint32_t)(uintptr_t)g;*(void **)(g+0x21c)=lit;
@@ -39,6 +39,10 @@ int main(int argc,char **argv){
  RgnHandle clip=NewRgn(),expected=NewRgn();if(!clip||!expected)return 3;
  GetClip(clip);RectRgn(expected,&rect);if(!EqualRgn(clip,expected))return 4;DisposeRgn(clip);DisposeRgn(expected);
  puts("original_window current_port=owned foreground=black background=white clip=0,0,480,640");
+ if(bars){
+  for(int i=0;i<8;i++){RGBColor color={(i&1)?65535:0,(i&2)?65535:0,(i&4)?65535:0};Rect band={0,i*80,480,(i+1)*80};RGBForeColor(&color);PaintRect(&band);}
+  RGBForeColor(&fg);
+ }
  QDFlushPortBuffer(actual,NULL);
  PicHandle before=(PicHandle)(uintptr_t)invoke_fb(code+0x139dc,g,toc,&rect,NULL,NULL);
  if(!before)return 3;
@@ -69,6 +73,8 @@ int main(int argc,char **argv){
  for(unsigned y=0;y<480;y++)for(unsigned x=0;x<640;x++){
   unsigned char *p=after+y*stride+4*x,*q=base+y*stride+4*x;
   if(memcmp(p+1,q+1,3))different++;
+  unsigned band=x/80;
+  if(bars&&(p[1]!=((band&1)?255:0)||p[2]!=((band&2)?255:0)||p[3]!=((band&4)?255:0)))return 4;
   if(p[1]==255&&!p[2]&&!p[3])red++;
   else if(!p[1]&&!p[2]&&p[3]==255)blue_count++;
   else if(!p[1]&&!p[2]&&!p[3])black++;
@@ -78,5 +84,7 @@ int main(int argc,char **argv){
  printf("front=%u,%u,%u capture_red=%u blue=%u black=%u other=%u white=%u unpainted=%u changed_from_preGL=%u bytes=%ld\n",front[0],front[1],front[2],red,blue_count,black,other,white,unpainted,different,(long)GetHandleSize((Handle)picture));
  free(after);KillPicture(before);KillPicture(picture);SetGWorld(NULL,NULL);UnlockPixels(pix);DisposeGWorld(decoded);
  aglSetCurrentContext(NULL);aglSetDrawable(context,NULL);aglDestroyContext(context);DisposeWindow(window);free(windows);free(styles);free(clipflags);free(strings);free(g);free(pef);free(lit);
- if(different||red||black||blue_count||other||white!=307200)return 4;return 0;
+ if(different)return 4;
+ if(bars){if(red!=38400||black!=38400||blue_count!=38400||white!=38400||other!=153600)return 4;}
+ else if(red||black||blue_count||other||white!=307200)return 4;return 0;
 }
