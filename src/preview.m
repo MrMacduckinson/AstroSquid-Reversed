@@ -669,12 +669,19 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)loadLevelMap {
     NSDictionary *level=game[@"levels"][levels[selectedLevel]];
     if(!starsInitialized) {astro_stars_init(stars,1,&randomSeed);starsInitialized=YES;}
-    astro_stars_init(stars,0,&randomSeed);
-    backgrounds=game[@"scenes"][level[@"background"]];
+    NSMutableArray *scene=[NSMutableArray array];
+    for(NSDictionary *definition in game[@"scenes"][level[@"background"]]){
+        NSMutableDictionary *image=[definition mutableCopy];
+        image[@"birth"]=@(++renderClock);
+        image[@"animation_tick"]=@([self playerClockTick]+(uint32_t)spriteInfo[[image[@"sprite"] intValue]].delay);
+        [scene addObject:image];
+    }
+    backgrounds=scene;
     parallaxData=[NSMutableData dataWithLength:backgrounds.count*sizeof(AstroParallax)];
     AstroParallax *parallax=parallaxData.mutableBytes;
     for(NSUInteger i=0;i<backgrounds.count;i++) parallax[i]=(AstroParallax){
         number(backgrounds[i],@"x"),number(backgrounds[i],@"y"),[backgrounds[i][@"userdata"] intValue]};
+    astro_stars_init(stars,0,&randomSeed);tickedScroll=1;
     for(NSDictionary *placement in level[@"entities"]) {
         [mapPlacements addObject:placement];
     }

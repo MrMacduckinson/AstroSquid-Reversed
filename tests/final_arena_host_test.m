@@ -73,7 +73,8 @@ static NSMutableString *events;static BOOL observing,realMap;static unsigned clo
     [self cleanupWorld];
     assert([events isEqual:@"SPDL"]&&![world containsObject:boss]&&[world containsObject:survivor]);
     assert([world containsObject:[NSNull null]]&&world.count==20&&enemies.count==19&&mapPlacements.count==229);
-    assert(playerRenderBirth==42&&renderClock==95&&clocks==72&&playerCombat.hit_points==73&&playerWeapon==53);
+    assert(playerRenderBirth==42&&renderClock==98&&clocks==75&&tickedScroll==1&&playerCombat.hit_points==73&&playerWeapon==53);
+    for(unsigned i=0;i<3;i++)assert([backgrounds[i][@"birth"] unsignedLongLongValue]==78+i&&[backgrounds[i][@"animation_tick"] unsignedIntValue]==100+i);
     assert(randomSeed==expectedSeed&&!memcmp(stars,expectedStars,sizeof(expectedStars)));
     assert(campaign.level==8&&campaign.half==2&&campaignAction==ASTRO_CAMPAIGN_NONE&&finalArena);
     assert(playerVisual.x==100-1234.25&&survivor->visual.x==200-1234.25);

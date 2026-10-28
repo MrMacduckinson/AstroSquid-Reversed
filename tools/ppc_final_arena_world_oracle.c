@@ -5,7 +5,8 @@
 #include <unistd.h>
 static FILE *input_file;static long input_size;static const char *data_directory;
 static unsigned clock_reads,opens,records,map_records,scene_records;
-static uint32_t arena_tick(void){clock_reads++;return tick;}
+static int advancing;
+static uint32_t arena_tick(void){unsigned index=clock_reads++;return tick+(advancing&&phase&&!strcmp(phase,"cleanup")?index:0);}
 int arena_system(int selector){assert(selector==1);return 123;}
 int arena_folder(int volume){
     assert(volume==123);unsigned char *p=*(unsigned char **)(world_globals+0x38c)-256;
@@ -37,7 +38,7 @@ void arena_play(unsigned handle){assert(handle==0x1234);puts("A\tplay2");}
 WRAP(arena_system) WRAP(arena_folder) WRAP(arena_open) WRAP(arena_read) WRAP(arena_readfile)
 WRAP(arena_eof) WRAP(arena_length) WRAP(arena_close) WRAP(arena_stop) WRAP(arena_play)
 int main(int argc,char **argv){
-    if(argc!=6)return 2;alarm(30);data_directory=argv[5];
+    if(argc!=6&&argc!=7)return 2;alarm(30);data_directory=argv[5];advancing=argc==7;if(advancing)assert(!strcmp(argv[6],"advancing"));
     unsigned char *code=read_file(argv[1])+128,*g=calloc(1,0x1300),*heap=calloc(1,0x100000);assert(g&&heap);world_globals=g;
     uint32_t toc[489]={0};for(int i=0;i<484;i++){
         void *fn=dlsym(RTLD_DEFAULT,import_names[i]);

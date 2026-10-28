@@ -38,7 +38,7 @@ static NSMutableString *events;
     flow.ticks=58;[self advanceFlowWithKey:YES];assert(reads==0&&events.length==0);
     checkingInventory=YES;[self advanceFlowWithKey:YES];checkingInventory=NO;
     assert([events isEqual:@"SPLMC"]&&flow.phase==ASTRO_FLOW_PLAY&&!readyLoadPending);
-    assert([levels[selectedLevel] isEqual:@"Data 1B"]&&reads==4*enemies.count+6);
+    assert([levels[selectedLevel] isEqual:@"Data 1B"]&&reads==backgrounds.count+4*enemies.count+6);
     unsigned constructor=1000+reads-6;
     assert(playerState.update_tick==constructor&&playerState.animation_tick==constructor+1&&lastPlayerShot==constructor+2);
     assert(playerVisual.next_tick==constructor+3+(uint32_t)spriteInfo[1].delay);
@@ -52,7 +52,7 @@ static NSMutableString *events;
     [self advanceFlowWithKey:YES];
     assert(flow.phase==ASTRO_FLOW_READY&&[events isEqual:@"LM"]&&!readyLoadPending);
     assert(campaign.level==2&&campaign.half==1&&ui.unlockedLevel==3);
-    assert(![world containsObject:[NSNull null]]&&[levels[selectedLevel] isEqual:@"Data 2A"]&&reads==4*enemies.count);
+    assert(![world containsObject:[NSNull null]]&&[levels[selectedLevel] isEqual:@"Data 2A"]&&reads==backgrounds.count+4*enemies.count);
     NSMutableArray *snapshots=[NSMutableArray array];
     for(AstroEnemy *enemy in enemies)[snapshots addObject:@[[NSData dataWithBytes:&enemy->state length:sizeof(enemy->state)],
         [NSData dataWithBytes:&enemy->visual length:sizeof(enemy->visual)],@(enemy->renderBirth)]];
@@ -67,7 +67,7 @@ static NSMutableString *events;
     }
     // A fresh game keeps the primary BEFORE its card and adds only GAMELOOP clocks after it.
     reads=0;[events setString:@""];ui.unlockedLevel=7;readyLoadPending=YES;[self performMenuAction:@"New Game"];
-    assert(initialReadyCard&&!readyLoadPending&&flow.phase==ASTRO_FLOW_READY&&reads==4*enemies.count+6);
+    assert(initialReadyCard&&!readyLoadPending&&flow.phase==ASTRO_FLOW_READY&&reads==backgrounds.count+4*enemies.count+6);
     assert(ui.unlockedLevel==7&&campaign.level==1&&campaign.half==1);
     unsigned entryReads=reads;uint64_t birth=playerRenderBirth;uint32_t update=playerState.update_tick;
     [events setString:@""];flow.ticks=59;[self advanceFlowWithKey:YES];

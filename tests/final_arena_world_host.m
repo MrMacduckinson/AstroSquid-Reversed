@@ -1,7 +1,7 @@
 // Actual production cleanup/death/map path; compare with the original native composite.
 #define ASTRO_WORLD_TRACE_LIBRARY
 #include "world_trace_host.m"
-static unsigned compositeClocks;
+static unsigned compositeClocks;static BOOL advancing;
 @interface CompositeArenaAudio:AstroTraceAudio
 @end
 @implementation CompositeArenaAudio
@@ -11,7 +11,7 @@ static unsigned compositeClocks;
 @interface CompositeArenaView:AstroTraceView
 @end
 @implementation CompositeArenaView
-- (uint32_t)playerClockTick {compositeClocks++;return 100;}
+- (uint32_t)playerClockTick {unsigned index=compositeClocks++;return 100+(advancing&&tracePhase&&!strcmp(tracePhase,"cleanup")?index:0);}
 @end
 @implementation AstroView(CompositeArena)
 - (void)runCompositeArena {
@@ -33,7 +33,7 @@ static unsigned compositeClocks;
 }
 @end
 int main(int argc,char **argv){@autoreleasepool{
-    assert(argc==2);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
+    assert(argc==2||argc==3);advancing=argc==3;if(advancing)assert(!strcmp(argv[2],"advancing"));[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
     [[NSUserDefaults standardUserDefaults]setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}} forName:NSArgumentDomain];
     CompositeArenaView *view=[[CompositeArenaView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(view);[view runCompositeArena];
 }}

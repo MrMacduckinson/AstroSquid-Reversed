@@ -81,6 +81,7 @@ static unsigned entityID(id object){return object==[NSNull null]?playerTraceID:[
     unsigned char viewport[32]={0},scroll[16]={0},inv[10]={0},stats[12]={0};
     be64(viewport,[phase isEqualToString:@"initial"]&&camera==0?0.0:camera);be64(viewport+8,camera+640);be64(viewport+16,[phase isEqualToString:@"initial"]?0.0:-0.0);be64(viewport+24,380);
     be64(scroll,tickedScroll);be64(scroll+8,0);be16(inv,inventory.weapon);be16(inv+2,inventory.upgrade);be16(inv+4,inventory.specials);be32(inv+6,actorVisits);be32(stats,score);
+    be16(stats+4,campaign.level);be16(stats+6,campaign.half);be16(stats+8,inventory.lives);
     printf("G\t%u\t%s\t%08x\t%u\t",simulationTick,phase.UTF8String,randomSeed,playerTraceID);dump(viewport,32);putchar('\t');dump(scroll,16);putchar('\t');dump(inv,10);putchar('\t');dump(stats,12);putchar('\n');
     for(NSUInteger i=0;i<world.count;i++){
         id object=world[i];BOOL player=object==[NSNull null];AstroEnemy *e=player?nil:object;
@@ -103,6 +104,14 @@ static unsigned entityID(id object){return object==[NSNull null]?playerTraceID:[
         dump(bytes,62);dump(bytes+66,26);dump(bytes+96,2);putchar('\n');
     }
     NSMutableDictionary *renders=[NSMutableDictionary dictionary];
+    NSMutableDictionary *userdatas=[NSMutableDictionary dictionary];
+    const AstroParallax *backgroundPositions=parallaxData.bytes;
+    for(NSUInteger i=0;i<backgrounds.count;i++){
+        NSDictionary *image=backgrounds[i];if(!image[@"birth"])continue;
+        LiveEffect item={{[image[@"sprite"] intValue],backgroundPositions[i].x,backgroundPositions[i].y,
+            number(image,@"width"),number(image,@"height"),[image[@"animation_tick"] unsignedIntValue]},[image[@"kind"] intValue],[image[@"birth"] unsignedLongLongValue]};
+        renders[@(item.birth)]=[NSData dataWithBytes:&item length:sizeof(item)];userdatas[@(item.birth)]=image[@"userdata"];
+    }
     if([world containsObject:[NSNull null]]&&!playerVisualDeleted){LiveEffect item={playerVisual,6,playerRenderBirth};renders[@(item.birth)]=[NSData dataWithBytes:&item length:sizeof(item)];}
     for(AstroEnemy *e in enemies)if(!e->visualDeleted){LiveEffect item={e->visual,e->renderLayer,e->renderBirth};renders[@(item.birth)]=[NSData dataWithBytes:&item length:sizeof(item)];}
     for(NSData *item in visualEffects){const LiveEffect *effect=item.bytes;renders[@(effect->birth)]=item;}
@@ -113,7 +122,7 @@ static unsigned entityID(id object){return object==[NSNull null]?playerTraceID:[
         unsigned char bytes[40]={0};be64(bytes,v.x);be64(bytes+8,v.y);be64(bytes+16,v.width);be64(bytes+24,v.height);
         be16(bytes+32,item->layer);be32(bytes+34,v.next_tick);be16(bytes+38,v.sprite);
         printf("R\t%u\t%s\t%u\t%u\t%u\t",simulationTick,phase.UTF8String,[order[i] unsignedIntValue],i?[order[i-1] unsignedIntValue]:0,i+1<order.count?[order[i+1] unsignedIntValue]:0);
-        dump(bytes,40);puts("\t00000000");
+        dump(bytes,40);printf("\t%08x\n",[userdatas[order[i]] unsignedIntValue]);
     }
 }
 @end
