@@ -1,6 +1,7 @@
 #import "ui_renderer.h"
 #include "hud.h"
 @interface AstroHUDRenderer : NSObject
+@property(nonatomic,copy) AstroUISpriteDrawer didDrawSprite;
 - (instancetype)initWithGame:(NSDictionary *)game ui:(AstroUIRenderer *)ui;
 /* Sets full HUD projection then restores game viewport (0,30,640,380),
    ortho(0,640,379,0). Framebuffer dimensions support Retina backing pixels. */

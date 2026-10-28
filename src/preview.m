@@ -95,6 +95,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     BOOL simulationRender,deferPresent;
     uint32_t worldRenderTick,visualRateTick;
     int16_t visualFrames;
+    int32_t visualSprites;
     double visualRate;
     BOOL visualDebug,wallClockPoll,nestedWorldRender;
     BOOL engineDebug,fullscreenRequested,graphicsReleased;
@@ -320,6 +321,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self refreshKeyLabels];
     [self loadScores];
     hud=[[AstroHUDRenderer alloc] initWithGame:game ui:ui];
+    hud.didDrawSprite=^(NSInteger sprite,double x,double y,double w,double h){[weakView countSpriteX:x y:y width:w height:h];};
     menuVisible=YES;splashVisible=YES;
     [audio playMusic:1];
     return self;
@@ -359,7 +361,16 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     textures[key] = @(texture);
     return texture;
 }
+- (BOOL)countSpriteX:(double)x y:(double)y width:(double)w height:(double)h {
+    // Carbon SetRect truncates each component before testing integer intersection.
+    int16_t left=(int16_t)astro_ppc_i32(x),top=(int16_t)astro_ppc_i32(y);
+    int16_t right=(int16_t)((uint32_t)astro_ppc_i32(x)+(uint32_t)astro_ppc_i32(w));
+    int16_t bottom=(int16_t)((uint32_t)astro_ppc_i32(y)+(uint32_t)astro_ppc_i32(h));
+    if(right<=left||bottom<=top||right<=0||bottom<=0||left>=640||top>=480)return NO;
+    visualSprites=(int32_t)((uint32_t)visualSprites+1u);return YES;
+}
 - (void)sprite:(NSInteger)identifier x:(double)x y:(double)y width:(double)w height:(double)h {
+    if(![self countSpriteX:x y:y width:w height:h])return;
     NSDictionary *sprite = game[@"sprites"][[NSString stringWithFormat:@"%ld",(long)identifier]];
     if (!sprite) return;
     NSInteger atlasID = [sprite[@"texture"] integerValue];
@@ -395,6 +406,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)drawSceneSprite:(const AstroSceneSprite *)scene {
     [self createSceneSprite:scene];
     if(scene->persistent)return;
+    if(![self countSpriteX:scene->rect[0] y:scene->rect[1] width:scene->rect[2] height:scene->rect[3]])return;
     NSDictionary *sprite=game[@"sprites"][[NSString stringWithFormat:@"%d",scene->sprite]];
     int atlas=[sprite[@"texture"] intValue];NSDictionary *definition=game[@"textures"][[NSString stringWithFormat:@"%d",atlas]];
     GLuint texture=[self texture:atlas];if(!texture) return;
@@ -439,6 +451,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         }
         AstroSceneSink menuSink={(__bridge void *)self,sceneLine,sceneSprite,scenePoint,sceneTrail};
         astro_stars_draw(stars,1,campaign.level,0,&menuSink);
+        visualSprites=0;
         [ui drawSprites:^(NSInteger n,double x,double y,double w,double h){
             [self sprite:n x:x y:y width:w height:h];
         } texture:^GLuint(NSInteger n){return [self texture:n];}];
@@ -455,6 +468,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
     AstroSceneSink sink={(__bridge void *)self,sceneLine,sceneSprite,scenePoint,sceneTrail};
     astro_stars_draw(stars,0,campaign.level,tickedScroll,&sink);
+    visualSprites=0;
     glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     const AstroParallax *parallax=parallaxData.bytes;
     for(NSUInteger i=0;i<backgrounds.count;i++) {
@@ -479,7 +493,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             AstroEnemy *enemy=object;
             if(enemy->renderLayer!=layer||enemy->visualDeleted)continue;
             double x=enemy->visual.x-camera,y=enemy->visual.y;
-            if(x+enemy->visual.width<0||x>640||y+enemy->visual.height<0||y>380)continue;
             [self sprite:enemy->visual.sprite x:x y:y width:enemy->visual.width height:enemy->visual.height];
         }
         if(layer==4&&departureTrail)[self sprite:116 x:trailRect.x-camera y:trailRect.y width:trailRect.width height:trailRect.height];
@@ -533,8 +546,14 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     deferPresent=YES;simulationRender=YES;[self display];simulationRender=NO;deferPresent=NO;
 }
 - (void)presentFrame {
+    if(visualDebug){
+        // The original rate is assigned from the signed16 frame counter.
+        NSString *text=[NSString stringWithFormat:@"% .0f fps % d sprites drawn",visualRate,visualSprites];
+        glColor3d(1,1,1);[ui drawText:text x:6 baseline:22 size:12 texture:^GLuint(NSInteger n){return [self texture:n];}];
+    }
     visualFrames=(int16_t)((uint16_t)visualFrames+1u);
     if(campaignTestPath)glFlush();else [[self openGLContext] flushBuffer];
+    glLoadIdentity();
 }
 - (void)presentSpecialFrame {
     [[self openGLContext] makeCurrentContext];[self drawSpecialOverlays];

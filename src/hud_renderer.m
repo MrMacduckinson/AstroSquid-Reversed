@@ -15,6 +15,7 @@
         if(c.kind==ASTRO_HUD_BOX){
             glDisable(GL_TEXTURE_2D);glBegin(GL_QUADS);glVertex2d(c.x,c.y);glVertex2d(c.x+c.width,c.y);glVertex2d(c.x+c.width,c.y+c.height);glVertex2d(c.x,c.y+c.height);glEnd();
         }else if(c.kind==ASTRO_HUD_SPRITE){
+            if(self.didDrawSprite)self.didDrawSprite(c.sprite,c.x,c.y,c.width,c.height);
             NSDictionary *s=_game[@"sprites"][[NSString stringWithFormat:@"%d",c.sprite]];if(!s)continue;
             NSInteger identifier=[s[@"texture"] integerValue];NSDictionary *a=_game[@"textures"][[NSString stringWithFormat:@"%ld",(long)identifier]];
             double aw=[a[@"width"] doubleValue],ah=[a[@"height"] doubleValue];
