@@ -1,6 +1,7 @@
 #define main astrosquid_application_main
 #include "../src/preview.m"
 #undef main
+static int captureCode=-1;
 static unsigned saves;static NSString *savedAnchor;static double savedSound,savedMusic;static int savedKey;static BOOL terminated;
 @interface AstroUIRenderer (SettingsTestGeometry)
 - (NSDictionary *)object:(NSString *)name;
@@ -10,7 +11,7 @@ static unsigned saves;static NSString *savedAnchor;static double savedSound,save
 @end
 @implementation SettingsSaveView
 - (uint32_t)currentGameTick {static uint32_t tick=100;return tick++;}
-- (void)copyKeyMap:(unsigned char *)map {memset(map,0,16);}
+- (void)copyKeyMap:(unsigned char *)map {memset(map,0,16);if(captureCode>=0)map[captureCode>>3]=1u<<(captureCode&7);}
 - (void)display {}
 - (void)saveSettings {saves++;savedAnchor=[ui.anchor copy];savedSound=ui.soundVolume;savedMusic=ui.musicVolume;savedKey=controlKeys[0];}
 - (void)terminateApplication {terminated=YES;}
@@ -26,8 +27,8 @@ static unsigned saves;static NSString *savedAnchor;static double savedSound,save
 - (void)checkSettingsSaves {
  [timer invalidate];timer=nil;[audio stop];splashVisible=NO;selftestPath=campaignTestPath=nil;
  [self performMenuAction:@"SetSVolume"];[self performMenuAction:@"SetMVolume"];[self performMenuAction:@"SetSmooth"];assert(!saves);
- [self performMenuAction:@"SetKeyFire"];[self keyDown:[self testEvent:NSKeyDown code:7]];assert(controlKeys[0]==7&&!saves);
- [self performMenuAction:@"SetKeyFire"];[self testModifier:58 flags:NSEventModifierFlagOption|NX_DEVICELALTKEYMASK];[self testModifier:58 flags:0];assert(controlKeys[0]==58&&!saves);
+ captureCode=7;[self performMenuAction:@"SetKeyFire"];captureCode=-1;assert(controlKeys[0]==7&&!saves);
+ captureCode=58;[self performMenuAction:@"SetKeyFire"];captureCode=-1;[self testModifier:58 flags:NSEventModifierFlagOption|NX_DEVICELALTKEYMASK];[self testModifier:58 flags:0];assert(controlKeys[0]==58&&!saves);
  [ui show:@"Keys Menu"];[ui animateTicks:120];[self clickSettingsNavigation:@"Back6"];assert([ui.anchor isEqual:@"Settings Menu"]&&!saves);
  [ui animateTicks:120];[self clickSettingsNavigation:@"Back"];
  assert(saves==1&&[savedAnchor isEqual:@"Settings Menu"]&&[ui.anchor isEqual:@"Main Menu"]&&savedSound==ui.soundVolume&&savedMusic==ui.musicVolume&&savedKey==58);

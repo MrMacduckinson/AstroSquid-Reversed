@@ -230,3 +230,13 @@ writes `AstroSquid-Intel.zip` and `AstroSquid-Source.zip` into
 `~/Downloads/AstroSquid-Release`. It checks that the executable contains x86_64.
 The source archive includes runtime assets and the Git source revision, but no
 private analysis files, access credentials or original executable.
+
+`bash tests/wait_key_host.sh` compares 8,762 ordered records from 134 original
+`WAITFORKEY` schedules, including all 128 key bits, simultaneous and held keys,
+delayed input, interval gates, strict timeout and clock wrap.
+`bash tests/key_binding_host.sh` additionally compares 13,972 records from 18
+actual named `DOMOUSE` transactions across all six bindings, including pressed
+button state, unchanged labels while waiting, key selection, button reset and latch.
+The host polls complete key state instead of committing the first key event.
+Frame calls in these fixtures are observers; numeric waiting-frame state and
+physical OS event delivery remain separate checks.

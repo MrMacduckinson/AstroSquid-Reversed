@@ -146,7 +146,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     AstroHUDRenderer *hud;
     BOOL menuVisible,splashVisible;
     uint64_t renderClock,playerRenderBirth;
-    double keyCaptureDeadline;
+    NSData *keyCaptureTestMap;
     int controlKeys[6],editingKey;
     AstroSpriteInfo spriteInfo[1001];
     NSMutableArray *visualEffects;
@@ -1662,7 +1662,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if([stage isEqual:@"write"]) {
         assert(controlKeys[0]==55&&fabs(ui.soundVolume-.6)<.001&&ui.musicVolume==1&&ui.smooth&&ui.unlockedLevel==1);
         assert(highscores[0].score==0&&preferenceFPS==60&&ui.frameInterval==1);splashVisible=NO;
-        [self performMenuAction:@"SetKeyFire"];[self keyDown:[self testEvent:NSKeyDown code:14]];
+        [self testCaptureKey:14];
         [self performMenuAction:@"SetSmooth"];[self performMenuAction:@"SetSVolume"];[self performMenuAction:@"SetMVolume"];
         assert(astro_scores_insert(highscores,650,"Persistence Probe")==1);[self saveScores];
         campaign=(AstroCampaign){4,1,0,0};[self unlockStage];
@@ -1745,6 +1745,38 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         menuScroll.x=astro_random(&randomSeed,8)-4;menuScroll.y=astro_random(&randomSeed,8)-4;
     }];
 }
+- (void)pollKeyCaptureEvents {
+    // EventAvail(0): update input availability without consuming queued events.
+    (void)[NSApp nextEventMatchingMask:0 untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO];
+}
+- (void)stepKeyCaptureMenu {
+    astro_stars_move(stars,ui.cameraX,ui.cameraY,-ui.cameraX,-ui.cameraY,640-ui.cameraX,480-ui.cameraY,
+        menuScroll.x,menuScroll.y,0,0,ui.frameInterval,&randomSeed,NULL,0,1);
+    BOOL previous=deferPresent,previousMenuFrame=menuFrameActive;deferPresent=YES;menuFrameActive=NO;
+    @try {[self display];[ui animateMenuObjects];if(!previous)[self presentFrame];}
+    @finally {deferPresent=previous;menuFrameActive=previousMenuFrame;}
+    [audio serviceMusic];
+}
+- (int)waitForMenuKey {
+    uint32_t start=[self currentGameTick];
+    for(;;){
+        [self pollKeyCaptureEvents];unsigned char snapshot[16];
+        if(keyCaptureTestMap){
+            assert(selftestPath||[NSBundle.mainBundle.bundleIdentifier hasPrefix:@"local.astrosquid.persistence-probe."]);
+            assert(keyCaptureTestMap.length==16);memcpy(snapshot,keyCaptureTestMap.bytes,16);
+        }else [self copyKeyMap:snapshot];
+        int code=-1;for(unsigned bit=0;bit<128;bit++)if(snapshot[bit>>3]&(0x80u>>(bit&7)))code=(int)bit^7;
+        uint32_t comparison=[self currentGameTick];
+        if((int32_t)(comparison-observedWallTick)>=ui.frameInterval){observedWallTick=[self currentGameTick];[self stepKeyCaptureMenu];}
+        uint32_t end=[self currentGameTick];
+        if(code>=0||(int32_t)(end-start)>600)return code;
+    }
+}
+- (void)testCaptureKey:(unsigned)code {
+    assert(code<128&&(selftestPath||[NSBundle.mainBundle.bundleIdentifier hasPrefix:@"local.astrosquid.persistence-probe."]));
+    unsigned char map[16]={0};map[code>>3]=1u<<(code&7);keyCaptureTestMap=[NSData dataWithBytes:map length:16];
+    @try {[self performMenuAction:@"SetKeyFire"];}@finally {keyCaptureTestMap=nil;}
+}
 - (void)pollMenuMouse {
     NSPoint p=[self currentMenuMousePoint];[ui pollMouseX:p.x y:p.y];
     if(![self menuMouseButtonPressed]){menuMouseLatched=NO;[ui mouseUpX:p.x y:p.y];}
@@ -1816,7 +1848,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self advanceFlowWithKey:anyKey];
 }
 - (void)tickWallClock {
-    if(pauseLoopRunning)return;
+    if(pauseLoopRunning||editingKey>=0)return;
     wallClockPoll=YES;@try {
         if(gameEndRequested){[self pollGame];return;}
         if(!menuVisible&&!paused&&!gameOver&&flow.phase==ASTRO_FLOW_PLAY){
@@ -1833,7 +1865,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if(!menuVisible)observedWallTick=stamp;simulationTick=stamp;
         if(gameOverPending){gameOverPending=NO;[self beginGameOver];observedWallTick=[self currentGameTick];return;}
         BOOL idle=menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY;
-        if(editingKey>=0&&NSProcessInfo.processInfo.systemUptime>=keyCaptureDeadline){editingKey=-1;[self refreshKeyLabels];}
         if(menuVisible)[self pollMenu];
         if(gameEndRequested){[self pollGame];return;}
         if(idle&&!menuVisible)[self setNeedsDisplay:YES];
@@ -1844,7 +1875,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
 }
 - (void)tick:(NSTimer *)sender {
-    if(pauseLoopRunning)return;
+    if(pauseLoopRunning||editingKey>=0)return;
     if(campaignTestPath){[self driveCampaignTest];return;}
     if(!selftestPath){[self tickWallClock];return;}
     double now=[NSDate timeIntervalSinceReferenceDate];
@@ -1853,7 +1884,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(!menuVisible&&flow.phase!=ASTRO_FLOW_PLAY) {
         BOOL anyKey=NO;for(int i=0;i<128;i++)anyKey|=keys[i];[self advanceFlowWithKey:anyKey];
     }
-    if(editingKey>=0&&NSProcessInfo.processInfo.systemUptime>=keyCaptureDeadline){editingKey=-1;[self refreshKeyLabels];}
     if(menuVisible) [self pollMenu];
     if(paused||gameOver||menuVisible||flow.phase!=ASTRO_FLOW_PLAY) tickRemainder=0;
     while(tickRemainder>=1.0/60.0&&flow.phase==ASTRO_FLOW_PLAY&&!menuVisible&&!paused) {
@@ -2072,9 +2102,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     assert(fabs(ui.soundVolume-volume)<.001);
     BOOL smooth=ui.smooth;[self performMenuAction:@"SetSmooth"];assert(ui.smooth!=smooth);
     [self performMenuAction:@"SetSmooth"];assert(ui.smooth==smooth);
-    int fire=controlKeys[0];[self performMenuAction:@"SetKeyFire"];
-    [self keyDown:[self testEvent:NSKeyDown code:7]];assert(controlKeys[0]==7&&editingKey==-1);
-    [self performMenuAction:@"SetKeyFire"];[self testModifier:58 flags:NSEventModifierFlagOption|NX_DEVICELALTKEYMASK];
+    int fire=controlKeys[0];[self testCaptureKey:7];assert(controlKeys[0]==7&&editingKey==-1);
+    [self testModifier:58 flags:NSEventModifierFlagOption|NX_DEVICELALTKEYMASK];assert(keys[58]);[self testCaptureKey:58];
     assert(controlKeys[0]==58&&editingKey==-1);[self testModifier:58 flags:0];controlKeys[0]=fire;
     AstroScore saved[10];memcpy(saved,highscores,sizeof(saved));astro_scores_clear(highscores);
     int oldScore=score;score=12345;[self beginGameOver];assert(ui.editingHighscore>0);assert((int)ui.scoreField.origin.y==183);
@@ -2170,7 +2199,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(menuVisible&&paused)return;
     if(event.isARepeat) return;
     if(editingKey>=0&&key<128) {
-        controlKeys[editingKey]=key;editingKey=-1;[self refreshKeyLabels];return;
+        return;
     }
     if(!selftestPath)return;
     if(key==45||key==35) {
@@ -2210,7 +2239,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(splashVisible){splashVisible=NO;return;}
     if(menuVisible&&paused)return;
     if(menuVisible&&gameOver&&ui.editingHighscore<=0)return;
-    if(editingKey>=0){controlKeys[editingKey]=code;editingKey=-1;[self refreshKeyLabels];}
 }
 - (void)refreshScores {
     NSMutableArray *rows=[NSMutableArray array];
@@ -2354,7 +2382,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
     if(menuMouseLatched)return;
     NSString *name=[ui mouseDownX:p.x y:p.y];
-    if(astro_ui_command(name.UTF8String).action!=ASTRO_UI_NAVIGATE)menuMouseLatched=YES;
+    AstroUIAction action=astro_ui_command(name.UTF8String).action;
+    if(action!=ASTRO_UI_NAVIGATE&&action!=ASTRO_UI_KEY)menuMouseLatched=YES;
     [self performMenuAction:name];
 }
 - (void)pollHeldMenuMouse {
@@ -2390,7 +2419,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [ui setButton:name pressed:YES];[self display];[self delayGameTicks:3];
         astro_scores_clear(highscores);ui.editingHighscore=0;[self saveScores];[ui setButton:name pressed:NO];
     }
-    if(command.action==ASTRO_UI_KEY) {editingKey=command.key;keyCaptureDeadline=NSProcessInfo.processInfo.systemUptime+10;NSMutableArray *labels=[ui.keyLabels mutableCopy];labels[editingKey]=@"Press a key";ui.keyLabels=labels;}
+    if(command.action==ASTRO_UI_KEY) {
+        editingKey=command.key;[ui setButton:name pressed:YES];
+        @try {int code=[self waitForMenuKey];if(code>=0)controlKeys[editingKey]=code;}
+        @finally {[ui setButton:name pressed:NO];editingKey=-1;[self refreshKeyLabels];menuMouseLatched=YES;}
+    }
     if(command.action==ASTRO_UI_SMOOTH) {
         [[self openGLContext] makeCurrentContext];[self setMenuCursor:4];[ui setButton:name pressed:YES];ui.smooth=!ui.smooth;
         for(int identifier=0;identifier<107;identifier++){[self killSpriteMap:identifier];[self texture:identifier];}
