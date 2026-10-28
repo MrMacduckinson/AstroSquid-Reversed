@@ -4,12 +4,16 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <unistd.h>
-static BOOL rejectExitDraw;
+static BOOL rejectExitDraw,requireFirstFullscreen,firstLoadingSeen;
 static unsigned char startup[16];static BOOL terminated,checkMusicShutdown;
 @interface FullscreenView:AstroView
 @end
 @implementation FullscreenView
 - (void)copyKeyMap:(unsigned char *)bytes {memcpy(bytes,startup,16);}
+- (GLuint)texture:(NSInteger)identifier {
+ if(requireFirstFullscreen&&identifier==40&&!spriteMapsPreloaded){assert(self.inFullScreenMode);NSDictionary *mode=(__bridge NSDictionary *)CGDisplayCurrentMode(CGMainDisplayID());assert([mode[(__bridge NSString *)kCGDisplayWidth]intValue]==640&&[mode[(__bridge NSString *)kCGDisplayHeight]intValue]==480);firstLoadingSeen=YES;}
+ return [super texture:identifier];
+}
 - (uint32_t)screenshotSeconds {return 123;}
 - (void)destroyGameWorld {if(checkMusicShutdown)assert(audio.music&&audio.music.isPlaying);[super destroyGameWorld];}
 - (void)drawRect:(NSRect)rect {assert(!rejectExitDraw);[super drawRect:rect];}
@@ -57,15 +61,15 @@ int main(int argc,const char **argv){@autoreleasepool{
  NSString *assets=[NSString stringWithUTF8String:argv[1]];
  FullscreenView *view=[[FullscreenView alloc] initWithFrame:NSMakeRect(0,0,640,480) assets:assets];assert(view);[view stopProbeTimer];[view checkRequest:YES];
  AstroDelegate *delegate=[AstroDelegate new];delegate.view=view;
- NSWindow *window=[[NSWindow alloc] initWithContentRect:NSMakeRect(0,0,640,480) styleMask:NSWindowStyleMaskTitled backing:NSBackingStoreBuffered defer:NO];window.releasedWhenClosed=NO;window.contentView=view;delegate.window=window;[window makeKeyAndOrderFront:nil];[NSApp activateIgnoringOtherApps:YES];
- assert([view startFullscreen]&&view.inFullScreenMode&&modeSize(640,480));[view display];
+ NSWindow *window=[[NSWindow alloc] initWithContentRect:NSMakeRect(0,0,640,480) styleMask:NSWindowStyleMaskTitled backing:NSBackingStoreBuffered defer:NO];window.releasedWhenClosed=NO;window.contentView=view;delegate.window=window;requireFirstFullscreen=YES;[delegate presentGameWindow];
+ assert(firstLoadingSeen&&view.inFullScreenMode&&modeSize(640,480)&&!window.visible);requireFirstFullscreen=NO;[view display];
  [[view openGLContext] makeCurrentContext];GLfloat clear[4];glGetFloatv(GL_COLOR_CLEAR_VALUE,clear);assert(!clear[0]&&!clear[1]&&!clear[2]&&!clear[3]);unsigned char *rgb=malloc(640*480*4);assert(rgb);glReadBuffer(GL_FRONT);glReadPixels(0,0,640,480,GL_RGBA,GL_UNSIGNED_BYTE,rgb);unsigned lit=0;for(unsigned i=0;i<640*480;i++)if(rgb[i*4]||rgb[i*4+1]||rgb[i*4+2])lit++;assert(glGetError()==GL_NO_ERROR&&lit>1000);[view checkFullscreenPicture:rgb];free(rgb);
  if(!strcmp(argv[2],"--exit-child")){puts("direct_exit_requested_after_actual_fullscreen_render");rejectExitDraw=YES;exit(0);}
  NSArray *names=[view textureNames];assert(names.count);NSOpenGLContext *oldContext=view.openGLContext;
  assert([delegate applicationShouldTerminate:NSApp]==NSTerminateCancel);[view startShutdownMusic];checkMusicShutdown=YES;[view closeDown];checkMusicShutdown=NO;[view checkGraphicsReleased];[view drawRect:view.bounds];[view checkGraphicsReleased];
  [oldContext makeCurrentContext];for(NSNumber *name in names)assert(!glIsTexture(name.unsignedIntValue));[NSOpenGLContext clearCurrentContext];assert(terminated&&!view.inFullScreenMode&&[delegate applicationShouldTerminate:NSApp]==NSTerminateNow);
- startup[58>>3]=1u<<(58&7);FullscreenView *option=[[FullscreenView alloc] initWithFrame:NSMakeRect(0,0,640,480) assets:assets];assert(option);[option stopProbeTimer];[option checkRequest:NO];assert(![option startFullscreen]);
+ startup[58>>3]=1u<<(58&7);FullscreenView *option=[[FullscreenView alloc] initWithFrame:NSMakeRect(0,0,640,480) assets:assets];assert(option);[option stopProbeTimer];[option checkRequest:NO];delegate.view=option;window.contentView=option;[delegate presentGameWindow];assert(window.visible&&!option.inFullScreenMode);[option releaseGraphics];[window orderOut:nil];
  memset(startup,0,16);startup[61>>3]=1u<<(61&7);FullscreenView *right=[[FullscreenView alloc] initWithFrame:NSMakeRect(0,0,640,480) assets:assets];assert(right);[right stopProbeTimer];[right checkRequest:YES];
- UnavailableFullscreenView *unavailable=[[UnavailableFullscreenView alloc] initWithFrame:NSMakeRect(0,0,640,480) assets:assets];assert(unavailable);[unavailable stopProbeTimer];assert(![unavailable startFullscreen]&&!unavailable.inFullScreenMode);
- [window close];printf("PASS actual fullscreen game rendering lit%u, default/leftOption/rightOption, delegate quit after view move, closeDown restoration\n",lit);return 0;
+ UnavailableFullscreenView *unavailable=[[UnavailableFullscreenView alloc] initWithFrame:NSMakeRect(0,0,640,480) assets:assets];assert(unavailable);[unavailable stopProbeTimer];delegate.view=unavailable;window.contentView=unavailable;[delegate presentGameWindow];assert(window.visible&&!unavailable.inFullScreenMode);[unavailable releaseGraphics];
+ [window close];printf("PASS actual fullscreen game rendering lit%u, mode-before-loading/default/leftOption/rightOption/backend fallback, delegate quit after view move, closeDown restoration\n",lit);return 0;
 }}

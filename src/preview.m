@@ -2282,6 +2282,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 @property(strong) AstroView *view;
 @end
 @implementation AstroDelegate
+- (void)presentGameWindow {
+    [self.window center];[NSApp activateIgnoringOtherApps:YES];
+    if(![self.view startFullscreen])[self.window makeKeyAndOrderFront:nil];
+}
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     NSString *path=[[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"assets"];
     NSArray *arguments=[[NSProcessInfo processInfo] arguments];
@@ -2302,10 +2306,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(!view) { NSLog(@"Missing or invalid extracted game assets at %@",path); [NSApp terminate:nil]; return; }
     [view initializeDebugJournal];
     self.view=view;self.window.contentView=view;
-    [self.window center];
-    [self.window makeKeyAndOrderFront:nil];
-    [NSApp activateIgnoringOtherApps:YES];
-    [view startFullscreen];
+    [self presentGameWindow];
     if(preferenceProbe)[view probePreferences:preferenceProbe];
     if(testPath) [view beginSelfTest:testPath];
     if(campaignPath) [view beginCampaignTest:campaignPath];
