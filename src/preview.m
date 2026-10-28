@@ -8,7 +8,7 @@
 #include "picture.h"
 static __weak NSView *fullscreenView;
 static void restoreFullscreen(void){
-    @autoreleasepool {NSView *view=fullscreenView;if(view.inFullScreenMode)[view exitFullScreenModeWithOptions:nil];fullscreenView=nil;}
+    @autoreleasepool {NSView *view=fullscreenView;if(view.inFullScreenMode){[view setHidden:YES];[view exitFullScreenModeWithOptions:nil];}fullscreenView=nil;}
 }
 #include "ppc_math.h"
 #include "script.h"
@@ -1504,7 +1504,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [self performMenuAction:@"SetSmooth"];[self performMenuAction:@"SetSVolume"];[self performMenuAction:@"SetMVolume"];
         assert(astro_scores_insert(highscores,650,"Persistence Probe")==1);[self saveScores];
         campaign=(AstroCampaign){4,1,0,0};[self unlockStage];
-        preferenceFPS=20;[self saveSettings];assert(ui.frameInterval==1);
+        assert(ui.unlockedLevel==7&&[preferences integerForKey:@"AstroSquidUnlockedLevel"]==0);
+        preferenceFPS=20;[self saveSettings];assert(ui.frameInterval==1&&[preferences integerForKey:@"AstroSquidUnlockedLevel"]==7);
         assert([preferences synchronize]);puts("PASS isolated preference write through actual UI handlers");
     } else if([stage isEqual:@"read"]) {
         assert(controlKeys[0]==14&&fabs(ui.soundVolume-.7)<.001&&ui.musicVolume==0&&!ui.smooth&&ui.unlockedLevel==7);
@@ -2108,7 +2109,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)unlockStage {
     ui.unlockedLevel=MAX(ui.unlockedLevel,MIN(16,(campaign.level-1)*2+campaign.half));
-    if(!selftestPath&&!campaignTestPath)[[NSUserDefaults standardUserDefaults] setInteger:ui.unlockedLevel forKey:@"AstroSquidUnlockedLevel"];
 }
 - (void)refreshKeyLabels {
     NSMutableArray *labels=[NSMutableArray array];
@@ -2117,6 +2117,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)saveSettings {
     if(selftestPath||campaignTestPath)return;
+    [[NSUserDefaults standardUserDefaults] setInteger:ui.unlockedLevel forKey:@"AstroSquidUnlockedLevel"];
     NSMutableArray *codes=[NSMutableArray array];for(int i=0;i<6;i++)[codes addObject:@(controlKeys[i])];
     [[NSUserDefaults standardUserDefaults] setObject:@{@"smooth":@(ui.smooth),@"sound":@(ui.soundVolume),
         @"music":@(ui.musicVolume),@"keys":codes,@"fps":@(preferenceFPS)} forKey:@"AstroSquidSettings"];
