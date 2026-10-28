@@ -5,6 +5,7 @@
 #import <OpenGL/gl.h>
 #import <AVFoundation/AVFoundation.h>
 #include "physics.h"
+#include "picture.h"
 #include "ppc_math.h"
 #include "script.h"
 #include "weapons.h"
@@ -92,6 +93,8 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     int16_t visualFrames;
     double visualRate;
     BOOL visualDebug,wallClockPoll,nestedWorldRender;
+    BOOL engineDebug;
+    NSString *screenshotBase;
     uint32_t simulationTick,lastSpawnTick;
     NSUInteger scriptSteps;
     uint32_t actorVisits;
@@ -260,6 +263,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     NSOpenGLPixelFormat *format = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
     self = [super initWithFrame:frame pixelFormat:format];
     if (!self) return nil;
+    unsigned char startupKeys[16];[self copyKeyMap:startupKeys];engineDebug=(startupKeys[55>>3]>>(55&7))&1;
+    screenshotBase=[[[NSBundle mainBundle] bundlePath] stringByDeletingLastPathComponent];
     clockOrigin=NSProcessInfo.processInfo.systemUptime;visualRateTick=[self currentGameTick];
     assetPath = [path copy];
     NSData *data = [NSData dataWithContentsOfFile:[path stringByAppendingPathComponent:@"game.json"]];
@@ -800,12 +805,34 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)copyKeyMap:(unsigned char *)bytes {
     KeyMap snapshot;GetKeys(snapshot);memcpy(bytes,snapshot,sizeof(snapshot));
 }
+- (uint32_t)screenshotSeconds {
+    CFAbsoluteTime now=CFAbsoluteTimeGetCurrent();CFTimeZoneRef zone=CFTimeZoneCopySystem();
+    double local=now+kCFAbsoluteTimeIntervalSince1904+CFTimeZoneGetSecondsFromGMT(zone,now);CFRelease(zone);
+    return (uint32_t)(uint64_t)floor(local);
+}
+- (BOOL)saveScreenshot {
+    /* shortcut: verified window backing only; extend after fullscreen port reference. */
+    size_t pixels=640u*480u*3u;unsigned char *rgb=malloc(pixels),*picture=NULL;size_t size=0;
+    if(!rgb)return NO;memset(rgb,255,pixels);
+    int encoded=astro_picture_window_encode(rgb,640*3,640,480,&picture,&size);free(rgb);if(!encoded)return NO;
+    NSString *folder=[screenshotBase stringByAppendingPathComponent:@"Screenshots"];
+    NSFileManager *manager=NSFileManager.defaultManager;BOOL directory=NO;
+    BOOL exists=[manager fileExistsAtPath:folder isDirectory:&directory];
+    if((exists&&!directory)||(!exists&&![manager createDirectoryAtPath:folder withIntermediateDirectories:NO attributes:nil error:NULL])){free(picture);return NO;}
+    char filename[64];if(!astro_picture_filename([self screenshotSeconds],filename,sizeof(filename))){free(picture);return NO;}
+    NSString *path=[folder stringByAppendingPathComponent:[NSString stringWithUTF8String:filename]];
+    FILE *file=fopen(path.fileSystemRepresentation,"wb");if(!file){free(picture);return NO;}
+    [manager setAttributes:@{NSFileHFSTypeCode:@(ASTRO_PICTURE_TYPE),NSFileHFSCreatorCode:@(ASTRO_PICTURE_CREATOR)} ofItemAtPath:path error:NULL];
+    unsigned char prefix[512]={0};BOOL success=fwrite(prefix,1,sizeof(prefix),file)==sizeof(prefix)&&fwrite(picture,1,size,file)==size;
+    if(fclose(file))success=NO;free(picture);return success;
+}
 - (void)readKeyMap {
     if(!selftestPath&&!campaignTestPath){
         unsigned char snapshot[16];[self copyKeyMap:snapshot];
         for(unsigned i=0;i<128;i++)keys[i]=(snapshot[i>>3]>>(i&7))&1;
     }
     if(keys[55]&&keys[12])[self requestQuit];
+    if(engineDebug&&keys[67]&&![self saveScreenshot])NSLog(@"*** Error while taking screenshot");
 }
 - (void)readGameKeys {
     [self readKeyMap];[self handleMiscKeys];

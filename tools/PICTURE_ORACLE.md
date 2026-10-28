@@ -289,3 +289,31 @@ or SAVEPREFS; no settings are intentionally written. No original files/live
 original process are patched. Fullscreen capture, in-game later port changes,
 Finder launch and full gameplay equivalence remain unproved. Primary/Intel
 app runtime is unchanged; this is original G5 evidence only.
+
+## Production windowed screenshot integration
+
+preview.m now samples startup leftCommand55 once into a separate engineDebug
+flag. Each readKeyMap poll with physical67 held invokes saveScreenshot, after
+the existing quit latch. It uses the verified white window backing and window
+encoder,512zero prefix, PICT/???? Finder attributes, local Macseconds modulo
+86400 and direct same-name truncation. The base is frozen from app-bundle parent
+at initialization, an explicit Cocoa mapping of the observed CFM executable
+parent. No PNG/readback/redraw or dialog is substituted. Failures return safely
+instead of reproducing the original undefined null-fileblock dereference.
+
+GetDateTime is unavailable in the modern64-bit SDK; portable equivalent is
+floor(CFAbsoluteTime + kCFAbsoluteTimeIntervalSince1904 + systemGMTOffset),
+then UInt32 wrap. Native tools/carbon_clock_probe.c confirms original
+GetDateTime delta equals systemoffset7200 on G5 and10800 on Intel i386, within
+one second tolerance. No timezone/clock was changed.
+
+tests/picture_host.sh runs on Intel only. Actual AstroView subclass initialization
+checks rightCommand/noCommand disabled and leftCommand enabled; raw polling
+checks held67 repeats,68 exclusion, disabled gate and simultaneous CmdQ. Real
+save checks full native fixture+prefix, Finder metadata, repeat-name truncation,
+readonly preservation and blocked-folder failure. All PASS. Existing128keymap
+and quit lifecycle native/host projections PASS. Primary and Intel app build
+PASS; shellsyntax/diff checks PASS. App-wide rendered selftest/full native suite
+not rerun this milestone. build.sh and both coupled host build scripts link
+picture.c. Fullscreen startup/capture, later in-game QuickDraw port changes and
+other engineDebug effects/logging still need separate evidence/integration.
