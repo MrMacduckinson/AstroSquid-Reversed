@@ -30,7 +30,6 @@
 @class AstroView;
 typedef struct { __unsafe_unretained AstroView *view; __unsafe_unretained NSArray *objects; AstroTarget *targets; int soundCue,soundX,soundPlayed; } BeamContext;
 typedef struct { __unsafe_unretained AstroView *view; __unsafe_unretained id enemy; } EnemyContext;
-typedef struct { AstroBeam beam; uint32_t expires; } LiveBeam;
 typedef struct {AstroVisual visual;int layer;uint64_t birth;} LiveEffect;
 typedef struct {AstroVisual *visual;uint64_t birth;__unsafe_unretained id owner;int kind;} VisualUpdate;
 static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpdate *)a)->birth,y=((const VisualUpdate *)b)->birth;return (x>y)-(x<y);}
@@ -85,7 +84,6 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     uint32_t respawnStartTick,respawnBlinkTick;
     double respawnBlinkWidth;
     BOOL paused,gameOver,gameOverPending;
-    NSMutableArray *liveBeams;
     NSArray *presentedBeams;
     uint32_t presentedBeamSeed;
     BOOL simulationRender,deferPresent;
@@ -152,6 +150,9 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
 - (instancetype)initWithFrame:(NSRect)frame assets:(NSString *)path;
 - (void)beginSelfTest:(NSString *)path;
 - (void)applyBeam:(const AstroBeam *)beam context:(BeamContext *)context;
+- (AstroEnemy *)createBeam:(const AstroBeam *)beam;
+- (void)applyBeam:(const AstroBeam *)beam context:(BeamContext *)context actor:(AstroEnemy *)actor;
+- (void)renderBeams:(const AstroSceneSink *)sink;
 - (void)hitPlayerWithEnemy:(AstroEnemy *)enemy;
 - (void *)emitDeathEffect:(const AstroDeathEffect *)effect;
 - (void)finishDeathEffect:(const AstroDeathEffect *)effect object:(void *)object baseTick:(uint32_t)tick;
@@ -166,6 +167,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
 - (void)playSound:(int)index x:(double)x;
 - (void)playBeamSound:(int)index x:(int)x;
 - (void)drawSceneSprite:(const AstroSceneSprite *)sprite;
+- (void)createSceneSprite:(const AstroSceneSprite *)sprite;
 - (void)fireWeapon:(int)weapon x:(int)x y:(int)y heading:(int)heading source:(int)kind;
 - (void)moveChildren:(AstroEnemy *)parent heading:(int)heading amount:(double)amount;
 - (void)renderSpecialWorld;
@@ -204,7 +206,7 @@ static void enemyHit(void *context) {
 static void beamHit(void *context,const AstroBeam *beam) {
     BeamContext *world=context;
     if(world->soundCue&&!world->soundPlayed){[world->view playBeamSound:world->soundCue x:world->soundX];world->soundPlayed=1;}
-    [world->view applyBeam:beam context:world];
+    [world->view applyBeam:beam context:world actor:[world->view createBeam:beam]];
 }
 
 typedef struct {__unsafe_unretained AstroView *view;uint32_t tick;} DeathContext;
@@ -363,14 +365,21 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     glTexCoord2d(u,v2); glVertex2d(x,y+h);
     glEnd();
 }
-- (void)drawSceneSprite:(const AstroSceneSprite *)scene {
+- (void)createSceneSprite:(const AstroSceneSprite *)scene {
+    uint64_t birth=0;uint32_t tick=0;
+    if(simulationRender){birth=++renderClock;tick=[self playerClockTick];}
     if(scene->persistent) {
         if(!simulationRender)return;
         AstroVisual v={scene->sprite,scene->xy[0]+camera,scene->xy[1],
             scene->xy[2]-scene->xy[0],scene->xy[5]-scene->xy[1],
-            simulationTick+(uint32_t)spriteInfo[scene->sprite].delay};
-        [self addVisualEffect:v layer:7];return;
+            tick+(uint32_t)spriteInfo[scene->sprite].delay};
+        LiveEffect effect={v,7,birth};
+        [visualEffects addObject:[NSMutableData dataWithBytes:&effect length:sizeof(effect)]];return;
     }
+}
+- (void)drawSceneSprite:(const AstroSceneSprite *)scene {
+    [self createSceneSprite:scene];
+    if(scene->persistent)return;
     NSDictionary *sprite=game[@"sprites"][[NSString stringWithFormat:@"%d",scene->sprite]];
     int atlas=[sprite[@"texture"] intValue];NSDictionary *definition=game[@"textures"][[NSString stringWithFormat:@"%d",atlas]];
     GLuint texture=[self texture:atlas];if(!texture) return;
@@ -459,13 +468,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         }
         if(layer==4&&departureTrail)[self sprite:116 x:trailRect.x-camera y:trailRect.y width:trailRect.width height:trailRect.height];
     }
-    if(simulationRender){presentedBeams=[liveBeams copy];presentedBeamSeed=randomSeed;[liveBeams removeAllObjects];}
-    uint32_t beamSeed=presentedBeamSeed;
-    for(NSData *data in presentedBeams) {
-        const LiveBeam *live=data.bytes;
-        astro_beam_render(&live->beam,-camera,0,camera,0,camera+640,380,&beamSeed,&sink);
-    }
-    if(simulationRender)randomSeed=beamSeed;
+    [self renderBeams:&sink];
     NSMutableArray *effectsToDraw=[visualEffects mutableCopy];
     if(engineGlow) {
         AstroTransitionRect glow=departureTrail?departureGlow:engineGlowRect;
@@ -571,7 +574,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     NSString *stage=levels[selectedLevel];
     campaign=(AstroCampaign){[[stage substringFromIndex:5] intValue],[stage hasSuffix:@"A"]?1:2,0,0};
     campaignAction=ASTRO_CAMPAIGN_NONE;respawnTick=invulnerableUntil=0;respawnPending=NO;gameOver=NO;gameOverPending=NO;engineGlow=departureTrail=NO;playerVisualDeleted=NO;
-    liveBeams=[NSMutableArray array];presentedBeams=@[];
+    presentedBeams=@[];
     NSDictionary *level=game[@"levels"][levels[selectedLevel]];
     if(!starsInitialized) {astro_stars_init(stars,1,&randomSeed);starsInitialized=YES;}
     astro_stars_init(stars,0,&randomSeed);
@@ -625,19 +628,53 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [self prependEnemy:enemy];[mapPlacements removeObjectIdenticalTo:placement];
     }
 }
+- (AstroEnemy *)createBeam:(const AstroBeam *)beam {
+    AstroEnemy *actor=[AstroEnemy new];
+    actor->placement=@{@"attribute":@30,@"tag":@0};
+    actor->definition=game[@"attributes"][@"30"];actor->program=[NSData data];
+    actor->kind=2;actor->subtype=10;actor->state.state=1;
+    [self prependEnemy:actor];
+    actor->state.update_tick=[self playerClockTick];
+    actor->state.animation_tick=[self playerClockTick];
+    actor->state.action_tick=[self playerClockTick];
+    actor->state.frame=1;actor->state.tilt=1;
+    actor->state.x=beam->x;actor->state.y=beam->y;
+    actor->renderBirth=++renderClock;
+    (void)[self playerClockTick]; // NEWSPRITE creates then NEWBEAM destroys its temporary image.
+    actor->visualDeleted=YES;
+    actor->kind=999;actor->subtype=beam->weapon;actor->layer=1;actor->hitPoints=(int16_t)beam->damage;
+    actor->bounds=(AstroRect){(int16_t)beam->x,(int16_t)beam->y,(int16_t)beam->end_x,(int16_t)beam->end_y};
+    actor->state.velocity=(AstroVelocity){beam->end_x,(int16_t)beam->end_y};
+    return actor;
+}
+- (void)renderBeams:(const AstroSceneSink *)sink {
+    if(simulationRender){
+        NSMutableArray *images=[NSMutableArray array];presentedBeamSeed=randomSeed;
+        for(id object in [world copy]){
+            if(object==[NSNull null])continue;
+            AstroEnemy *actor=object;if(actor->kind!=999)continue;
+            AstroBeam beam={actor->subtype,actor->hitPoints,(int)actor->state.x,(int)actor->state.y,
+                (int)actor->state.velocity.x,(int)actor->state.velocity.y,-1};
+            [images addObject:[NSData dataWithBytes:&beam length:sizeof(beam)]];
+            astro_beam_render(&beam,-camera,0,camera,0,camera+640,380,&randomSeed,sink);
+            actor->state.remove=1;
+        }
+        presentedBeams=images;
+    }else{
+        uint32_t seed=presentedBeamSeed;
+        for(NSData *data in presentedBeams)
+            astro_beam_render(data.bytes,-camera,0,camera,0,camera+640,380,&seed,sink);
+    }
+}
 - (void)fireWeapon:(int)identifier x:(int)x y:(int)y heading:(int)heading source:(int)kind {
     if(identifier>=40&&identifier<=53) {
         NSArray *objects=[world copy];size_t count=objects.count;
         NSMutableData *targetData=[self targetsForObjects:objects];AstroTarget *targets=targetData.mutableBytes;
         AstroBeam beams[2];BeamContext context={.view=self,.objects=objects,.targets=targets,
-            .soundCue=identifier>=50?295:296,.soundX=x};
+            .soundCue=identifier>=50?295:296,.soundX=identifier>=50?x-10:x+2};
         int emitted=astro_beam_shots(identifier,x,y,heading,ui.frameInterval,kind,-1,targets,count,
             camera,0,camera+640,380,&randomSeed,beams,beamHit,&context);
         if(emitted<0) {NSLog(@"Invalid beam request");exit(1);}
-        for(int i=0;i<emitted;i++) {
-            LiveBeam live={beams[i],simulationTick+1};
-            [liveBeams insertObject:[NSData dataWithBytes:&live length:sizeof(live)] atIndex:0];
-        }
         emittedBeams+=emitted;return;
     }
     if(identifier>=10&&identifier<=13) [audio playStringCue:297 position:(x-camera)/640];
@@ -713,9 +750,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
 }
 - (void)addSpecialBeam:(const AstroBeam *)beam temporary:(int)temporary context:(BeamContext *)context {
-    [self applyBeam:beam context:context];
-    if(!temporary) {LiveBeam live={*beam,simulationTick+1};
-        [liveBeams insertObject:[NSData dataWithBytes:&live length:sizeof(live)] atIndex:0];emittedBeams++;}
+    AstroEnemy *actor=temporary?nil:[self createBeam:beam];
+    [self applyBeam:beam context:context actor:actor];
+    if(!temporary)emittedBeams++;
 }
 - (void)addSpecialSprite:(int)sprite x:(double)x y:(double)y width:(double)width height:(double)height {
     AstroVisual v={sprite,x,y,width,height,simulationTick};
@@ -817,8 +854,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self applyCombat:attacker to:enemy];
 }
 - (void)applyBeam:(const AstroBeam *)beam context:(BeamContext *)context {
+    [self applyBeam:beam context:context actor:nil];
+}
+- (void)applyBeam:(const AstroBeam *)beam context:(BeamContext *)context actor:(AstroEnemy *)actor {
     if(beam->target<0) return;
-    AstroCombatState b={.kind=999,.layer=1,.hit_points=beam->damage};
+    AstroCombatState b=actor?[self combatFor:actor]:(AstroCombatState){.kind=999,.layer=1,.hit_points=beam->damage};
     if(context->objects[beam->target]==[NSNull null]) {
         if(playerCombat.kind==1) [self hitPlayerWithCombat:&b];
         context->targets[beam->target].remove=playerCombat.remove;
@@ -837,6 +877,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             context->targets[beam->target].remove=target.remove;
         }
     }
+    if(actor)[self applyCombat:b to:actor];
 }
 - (void *)emitDeathEffect:(const AstroDeathEffect *)effect {
     if(effect->type==ASTRO_EFFECT_SOUND) {
@@ -886,6 +927,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [visualEffects addObject:[NSMutableData dataWithBytes:&effect length:sizeof(effect)]];
 }
 - (void)addDeathEffects:(AstroEnemy *)enemy {
+    if(enemy->kind==999&&enemy->visualDeleted){
+        astro_random(&randomSeed,1);astro_random(&randomSeed,1);return;
+    }
     int sprite=enemy->visual.sprite;
     int explosion=[enemy->definition[@"death_effect"] intValue];
     int debris=[enemy->definition[@"debris_sprite"] intValue];
@@ -1110,6 +1154,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     actorVisits++;
     if(object==[NSNull null]){[self stepPlayer];return;}
     AstroEnemy *enemy=object;
+    if(enemy->kind==999)return;
     AstroScriptState *state=&enemy->state;
     enemy->visual.x+=state->velocity.x;enemy->visual.y+=state->velocity.y;
     if([enemy->definition[@"animated"] boolValue]&&enemy->kind!=2&&enemy->kind!=4&&enemy->kind!=20&&enemy->kind!=40)
@@ -1204,7 +1249,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if(oldHalf==1&&next.half==2){
             initialReadyCard=NO;readyLoadPending=YES;campaign=next;
             [enemies removeAllObjects];[world removeAllObjects];[mapPlacements removeAllObjects];playerNextActor=nil;
-            [visualEffects removeAllObjects];[liveBeams removeAllObjects];presentedBeams=@[];
+            [visualEffects removeAllObjects];presentedBeams=@[];
             [specialPolygons removeAllObjects];[specialFlashes removeAllObjects];playerHitVisual.active=NO;engineGlow=departureTrail=NO;
         } else [self loadCampaignStage:next];
         astro_flow_stage_end(&flow,oldStage,oldHalf,next.level,next.half,next.complete);
@@ -1289,11 +1334,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     astro_stars_move(stars,-camera,0,camera,0,camera+640,380,tickedScroll,0,0,0,ui.frameInterval,&randomSeed,
         parallaxData.mutableBytes,backgrounds.count,0);
     [specialPolygons removeAllObjects];[specialFlashes removeAllObjects];
-    NSIndexSet *expired=[liveBeams indexesOfObjectsPassingTest:
-        ^BOOL(NSData *data,NSUInteger index,BOOL *stop) {
-            const LiveBeam *live=data.bytes;return live->expires<simulationTick;
-        }];
-    [liveBeams removeObjectsAtIndexes:expired];
     [self syncActorLinks];actorTraversalDepth++;
     id actor=world.firstObject;
     while(actor){

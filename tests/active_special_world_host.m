@@ -37,7 +37,7 @@ static FILE *clockTrace;
     camera=-0.0;tickedScroll=0;randomSeed=0x12345678;renderClock=1;
     world=[NSMutableArray arrayWithObject:[NSNull null]];enemies=[NSMutableArray array];mapPlacements=[NSMutableArray array];
     backgrounds=@[];parallaxData=[NSMutableData data];memset(stars,0,sizeof stars);
-    visualEffects=[NSMutableArray array];liveBeams=[NSMutableArray array];presentedBeams=@[];
+    visualEffects=[NSMutableArray array];presentedBeams=@[];
     playerVisual=(AstroVisual){1,100,180,71,20,100};playerRenderBirth=1;
     playerEntityX=playerX=100;playerEntityY=playerY=180;playerVelocity=(AstroVelocity){0};
     playerBounds=(AstroRect){100,180,171,200};previousPlayerBounds=(AstroRect){0};

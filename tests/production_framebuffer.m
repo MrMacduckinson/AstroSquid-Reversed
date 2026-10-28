@@ -37,7 +37,7 @@ static BOOL referenceWrongHUDOrder;
     backgrounds=@[@{@"sprite":@44,@"width":@350,@"height":@300}];
     AstroParallax background={40.25,30.5+cy,0};parallaxData=[NSMutableData dataWithBytes:&background length:sizeof(background)];
     enemies=[NSMutableArray array];world=[NSMutableArray array];
-    visualEffects=[NSMutableArray array];liveBeams=[NSMutableArray array];presentedBeams=nil;
+    visualEffects=[NSMutableArray array];presentedBeams=nil;
     specialPolygons=[NSMutableArray array];specialFlashes=[NSMutableArray array];
     playerHitVisual=(AstroPlayerHitVisual){0};
     int ids[]={240,200,47},kinds[]={5,20,2};

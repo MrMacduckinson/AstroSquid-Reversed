@@ -28,7 +28,7 @@ static int scenario;
     selftestPath=@"world-lifetime";campaignTestPath=selftestPath;
     changingStage=NO;camera=tickedScroll=0;simulationTick=100;
     backgrounds=@[];parallaxData=[NSMutableData data];memset(stars,0,sizeof stars);
-    liveBeams=[NSMutableArray array];specialPolygons=[NSMutableArray array];specialFlashes=[NSMutableArray array];
+    specialPolygons=[NSMutableArray array];specialFlashes=[NSMutableArray array];
     playerCombat=(AstroCombatState){.kind=1,.hit_points=200};ui.frameInterval=1;
     int failures=0;
     for(scenario=1;scenario<=4;scenario++){

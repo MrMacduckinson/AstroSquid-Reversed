@@ -44,7 +44,7 @@ static unsigned entityID(id object){return object==[NSNull null]?playerTraceID:[
     entityIDs=[NSMapTable strongToStrongObjectsMapTable];nextEntityID=1;
     simulationTick=0;renderClock=1;randomSeed=0x12345678;camera=0;tickedScroll=1;
     enemies=[NSMutableArray array];world=[NSMutableArray arrayWithObject:[NSNull null]];
-    visualEffects=[NSMutableArray array];liveBeams=[NSMutableArray array];
+    visualEffects=[NSMutableArray array];
     playerVisual=(AstroVisual){1,100,180,71,20,0};playerRenderBirth=1;
     playerEntityX=100;playerEntityY=180;playerX=100;playerY=180;
     playerBounds=(AstroRect){100,180,171,200};previousPlayerBounds=(AstroRect){0};
@@ -99,7 +99,7 @@ static unsigned entityID(id object){return object==[NSNull null]?playerTraceID:[
         be64(bytes+72,st.velocity.x);be64(bytes+80,st.velocity.y);
         be16(bytes+88,player?playerCombat.hit_points:e->hitPoints);be16(bytes+90,player?playerCombat.layer:e->layer);
         be16(bytes+96,player?0:[e->placement[@"tag"] intValue]);
-        printf("E\t%u\t%s\t%u\t%u\t%u\t%u\t%u\t",simulationTick,phase.UTF8String,eid,player?(unsigned)playerRenderBirth:(unsigned)e->renderBirth,player||!e->parent?0:entityID(e->parent),before,after);
+        printf("E\t%u\t%s\t%u\t%u\t%u\t%u\t%u\t",simulationTick,phase.UTF8String,eid,player?(unsigned)playerRenderBirth:e->visualDeleted?0:(unsigned)e->renderBirth,player||!e->parent?0:entityID(e->parent),before,after);
         dump(bytes,62);dump(bytes+66,26);dump(bytes+96,2);putchar('\n');
     }
     NSMutableDictionary *renders=[NSMutableDictionary dictionary];

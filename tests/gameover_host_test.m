@@ -31,7 +31,7 @@ static BOOL observing;
     [timer invalidate];timer=nil;[audio stop];audio.soundVolume=audio.musicVolume=0;
     selftestPath=@"controlled-gameover";campaignTestPath=selftestPath;
     world=[NSMutableArray array];enemies=[NSMutableArray array];visualEffects=[NSMutableArray array];
-    liveBeams=[NSMutableArray array];specialPolygons=[NSMutableArray array];specialFlashes=[NSMutableArray array];
+    specialPolygons=[NSMutableArray array];specialFlashes=[NSMutableArray array];
     backgrounds=@[];parallaxData=[NSMutableData data];memset(stars,0,sizeof(stars));
     special=(AstroSpecial){0};specialLoopRunning=NO;changingStage=NO;camera=0;tickedScroll=1;
     randomSeed=42;score=12345;astro_scores_clear(highscores);flow.phase=ASTRO_FLOW_PLAY;

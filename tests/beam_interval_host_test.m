@@ -11,12 +11,12 @@
     world=[NSMutableArray array];enemies=[NSMutableArray array];camera=0;simulationTick=100;
     const int intervals[]={-32768,-3,-2,-1,0,1,2,3,32767};
     for(unsigned i=0;i<sizeof(intervals)/sizeof(*intervals);i++)for(int weapon=40;weapon<=43;weapon++) {
-        ui.frameInterval=intervals[i];[liveBeams removeAllObjects];
+        ui.frameInterval=intervals[i];[world removeAllObjects];[enemies removeAllObjects];
         [self fireWeapon:weapon x:100 y:180 heading:0 source:1];
-        assert(liveBeams.count==(weapon>=42?2:1));
-        for(NSData *data in liveBeams) {
-            const LiveBeam *live=data.bytes;
-            assert(live->beam.damage==(int)((weapon==40?1.5:weapon==41?3:4.5)*intervals[i]));
+        assert(enemies.count==(weapon>=42?2:1));
+        for(AstroEnemy *actor in enemies) {
+            assert(actor->kind==999);
+            assert(actor->hitPoints==(int16_t)(int)((weapon==40?1.5:weapon==41?3:4.5)*intervals[i]));
         }
     }
     puts("PASS actual host36 signed interval laser requests, including zero/negative damage");

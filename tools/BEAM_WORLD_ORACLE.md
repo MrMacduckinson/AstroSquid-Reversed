@@ -48,11 +48,14 @@ and payload lengths pass `world_trace.py` validation.
 
 ## Limits / next comparison
 
-These are independent native reference captures, **not host equality proof**.
-The current host LiveBeam cache still lacks the native world entity lifetime.
-Next: use these fixtures to verify the connected host constructor, hit mutation,
-render side effects and cleanup together. Four scenarios do not establish all
-weapons, edge coordinates, chained kills, nested specials or allocator reuse.
+The production host now uses real kind999 world entities and matches all four
+captured scenarios byte-for-byte: 121 canonical state records and 23 clock
+observations. Run `bash tests/beam_world_host.sh` on the Intel reference Mac.
+The driver uses production creation, hit, rendering lifecycle and cleanup;
+only drawing/audio output is observed. It additionally asserts that an AppKit
+redraw does not mutate RNG, constructor clocks, births or persistent effects.
+Four scenarios do not establish all weapons, edge coordinates, chained kills,
+nested specials or allocator reuse; this is not whole-game equality proof.
 
 GPU imports and LMDRAWSPRITE are observers/no-ops; texture 0 is represented as
 already loaded. Audio is a semantic cue/pan observer. These traces prove no

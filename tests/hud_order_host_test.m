@@ -36,7 +36,7 @@ static NSMutableString *events;
     [timer invalidate];timer=nil;[audio stop];hud=[[AstroObservedHUD alloc] initWithGame:game ui:ui];
     menuVisible=paused=gameOver=changingStage=NO;flow.phase=ASTRO_FLOW_PLAY;campaign.level=4;automatic=NO;
     backgrounds=@[];parallaxData=[NSMutableData data];memset(stars,0,sizeof(stars));
-    liveBeams=[NSMutableArray array];visualEffects=[NSMutableArray array];
+    visualEffects=[NSMutableArray array];
     specialPolygons=[NSMutableArray array];specialFlashes=[NSMutableArray array];
     playerHitVisual.active=0;engineGlow=departureTrail=NO;playerVisualDeleted=YES;
     AstroEnemy *e=[AstroEnemy new];e->kind=20;e->renderLayer=4;e->renderBirth=1;e->visual=(AstroVisual){60,10,20,16,17,1000};
