@@ -1777,6 +1777,17 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     unsigned char map[16]={0};map[code>>3]=1u<<(code&7);keyCaptureTestMap=[NSData dataWithBytes:map length:16];
     @try {[self performMenuAction:@"SetKeyFire"];}@finally {keyCaptureTestMap=nil;}
 }
+- (void)acceptSplash {
+    if(!splashVisible)return;
+    splashVisible=NO;menuMouseLatched=YES;
+    [ui show:@"Main Menu"];observedWallTick=[self currentGameTick];
+}
+- (void)pollSplash {
+    [audio serviceMusic];[self readKeyMap];
+    BOOL any=NO;for(unsigned i=0;i<128;i++)if(keys[i]){any=YES;break;}
+    BOOL button=[self menuMouseButtonPressed];
+    if(any||button)[self acceptSplash];
+}
 - (void)pollMenuMouse {
     NSPoint p=[self currentMenuMousePoint];[ui pollMouseX:p.x y:p.y];
     if(![self menuMouseButtonPressed]){menuMouseLatched=NO;[ui mouseUpX:p.x y:p.y];}
@@ -1803,7 +1814,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [ui setButton:navigationButton pressed:NO];navigationButton=nil;menuMouseLatched=YES;
 }
 - (void)pollMenu {
-    if(splashVisible){[audio serviceMusic];return;}
+    if(splashVisible){[self pollSplash];return;}
     BOOL gameOverPanel=[ui.anchor isEqual:@"GameOver"];
     if(gameOverPanel)[self readKeyMap];
     uint32_t comparison=[self currentGameTick];
@@ -1931,6 +1942,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)beginSelfTest:(NSString *)path {
     selftestPath=[path copy];
     assert(splashVisible);[self keyDown:[self testEvent:NSKeyDown code:36]];assert(!splashVisible);
+    while(ui.transitioning)[self pollMenu];[self keyUp:[self testEvent:NSKeyUp code:36]];
     assert(menuVisible&&[ui.anchor isEqual:@"Main Menu"]);
     [self mouseDown:[self testMouse:NSLeftMouseDown x:369 y:175]];
     [self mouseUp:[self testMouse:NSLeftMouseUp x:369 y:175]];
@@ -2182,7 +2194,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)keyDown:(NSEvent *)event {
     unsigned key=event.keyCode;
-    if(splashVisible){splashVisible=NO;memset(keys,0,sizeof(keys));return;}
+    if(splashVisible){if(key<128){keys[key]=YES;[self acceptSplash];}return;}
     if(key<128) keys[key]=YES;
     if(menuVisible&&[ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0) {
         unsigned ch=key==51?8:key==117?127:key==123?28:key==124?29:
@@ -2236,7 +2248,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         code==59?NX_DEVICELCTLKEYMASK:NX_DEVICERCTLKEYMASK;
     keys[code]=(event.modifierFlags&device)!=0;
     if(!keys[code])return;
-    if(splashVisible){splashVisible=NO;return;}
+    if(splashVisible){[self acceptSplash];return;}
     if(menuVisible&&paused)return;
     if(menuVisible&&gameOver&&ui.editingHighscore<=0)return;
 }
@@ -2391,7 +2403,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self handleMenuMouseAtPoint:[self currentMenuMousePoint]];
 }
 - (void)mouseDown:(NSEvent *)event {
-    if(!menuVisible||splashVisible||editingKey>=0||ui.transitioning)return;
+    if(!menuVisible||editingKey>=0)return;
+    if(splashVisible){[self acceptSplash];return;}
+    if(ui.transitioning)return;
     [self handleMenuMouseAtPoint:[self menuPoint:event]];
 }
 - (void)mouseMoved:(NSEvent *)event {[self mouseDragged:event];}
@@ -2401,7 +2415,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)mouseUp:(NSEvent *)event {
     if(!menuVisible||editingKey>=0)return;
-    if(splashVisible){splashVisible=NO;return;}
+    if(splashVisible)return;
     NSPoint p=[self menuPoint:event];
     [ui mouseUpX:p.x y:p.y];
 }

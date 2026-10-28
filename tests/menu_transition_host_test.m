@@ -7,7 +7,7 @@
 #import <OpenGL/glext.h>
 extern void astro_stars_draw(const AstroStar *,int,int,double,const AstroSceneSink *);
 static unsigned profile,route,reads,frame,actualClockCalls;static BOOL recording;
-static BOOL dispatchMode,routesMode,heldButton;static NSPoint heldPoint;
+static BOOL dispatchMode,routesMode,startupMode,startupInput,heldButton;static NSPoint heldPoint;
 static NSString *const routeButtons[]={@"Play",@"Continue",@"Back7",@"Back2",@"Highscores",@"Back4",@"Settings",@"SetKeys",@"Back6",@"Back",@"Register",@"Back3"};
 static FILE *star_dump;static AstroUIRenderer *observedUI;static AstroView *observedView;
 static uint64_t word(double x){uint64_t b;memcpy(&b,&x,8);return b;}
@@ -34,7 +34,7 @@ void transition_stars_draw(const AstroStar *stars,int menu,int stage,double sx,c
 @end
 @implementation TransitionView
 - (uint32_t)currentGameTick {actualClockCalls++;if(!recording)return 1000;assert(reads<10000);uint32_t t=1000+reads++;printf("T,%u,%u,%u",profile,route,t);if(dispatchMode)printf(",%d",menuMouseLatched);putchar('\n');return t;}
-- (void)copyKeyMap:(unsigned char *)map {memset(map,0,16);if(recording)printf("K,%u,%u,%u\n",profile,route,frame);}
+- (void)copyKeyMap:(unsigned char *)map {memset(map,0,16);if(startupInput&&profile<3)map[4]=0x10;if(recording)printf("K,%u,%u,%u\n",profile,route,frame);}
 - (NSPoint)currentMenuMousePoint {return profile>=6?heldPoint:NSMakePoint(-30000,-30000);}
 - (BOOL)menuMouseButtonPressed {return heldButton;}
 - (void)saveSettings {if(recording){assert(dispatchMode&&route==(routesMode?9u:1u)&&[ui.anchor isEqual:@"Settings Menu"]);AstroUIMotion *s=[[[ui valueForKey:@"orbStates"]objectForKey:@"Back"]mutableBytes];uint32_t deadline=[[[ui valueForKey:@"hoverDeadlines"]objectForKey:@"Back"]unsignedIntValue];printf("I,%u,%u,%d,%u,%016llx,%016llx\n",profile,route,s->sprite,deadline,word(ui.cameraX),word(ui.cameraY));}}
@@ -48,23 +48,33 @@ void transition_stars_draw(const AstroStar *stars,int menu,int stage,double sx,c
   for(NSDictionary *object in [ui valueForKey:@"objects"])[[ui valueForKey:@"hoverDeadlines"]setObject:@1000 forKey:object[@"name"]];
   __weak TransitionView *weakSelf=self;ui.readTick=^{return [weakSelf currentGameTick];};randomSeed=0x12345678;menuScroll=(AstroVelocity){2,-1};visualFrames=0;visualRateTick=1000;visualDebug=NO;reads=0;menuMouseLatched=NO;assert(!navigationButton);
   for(unsigned i=1;i<=3000;i++)stars[i-1]=(AstroStar){80,(i*17)%640,(i*29)%480,i%5+1};
+  if(startupMode){[ui setValue:@0 forKey:@"cameraX"];[ui setValue:@0 forKey:@"cameraY"];[ui show:@"Main Menu"];while(ui.transitioning)[ui advanceMenuCamera];splashVisible=YES;}
   recording=YES;
-  for(route=0;route<(routesMode?12u:2u);route++){
+  for(route=0;route<(startupMode?1u:routesMode?12u:2u);route++){
    frame=0;NSString *button=routesMode?routeButtons[route]:route?@"Back":@"Settings";
-   if(dispatchMode){
+   if(startupMode){heldButton=profile>=3;heldPoint=NSMakePoint(369,175);startupInput=YES;[self pollMenu];startupInput=NO;assert(!splashVisible);for(unsigned poll=0;ui.transitioning;poll++){assert(poll<10000);[self pollMenu];}}
+   else if(dispatchMode){
     heldButton=profile>=3;assert(!menuMouseLatched);AstroUIMotion *s=[[[ui valueForKey:@"orbStates"]objectForKey:button]mutableBytes];NSPoint p=NSMakePoint((int)(ui.cameraX+s->x+s->width/2),(int)(ui.cameraY+s->y+s->height/2));heldPoint=p;[self handleMenuMouseAtPoint:p];assert(navigationButton);
     for(unsigned poll=0;navigationButton;poll++){assert(poll<10000);[self pollMenu];}
    }else{
     [ui setButton:button pressed:YES];[ui show:route?@"Main Menu":@"Settings Menu"];observedWallTick=[self currentGameTick];for(unsigned poll=0;ui.transitioning;poll++){assert(poll<10000);[self pollMenu];}[ui setButton:button pressed:NO];
    }
-   snapshot(999);printf("Z,%u,%u,%u,%u,%016llx,%016llx",profile,route,frame,reads,word(ui.cameraX),word(ui.cameraY));if(dispatchMode){assert(menuMouseLatched);printf(",%d",menuMouseLatched);}putchar('\n');
+   snapshot(999);printf("Z,%u,%u,%u,%u,%016llx,%016llx",profile,route,frame,reads,word(ui.cameraX),word(ui.cameraY));if(dispatchMode){assert(menuMouseLatched==(startupMode?(profile>=3):YES));printf(",%d",menuMouseLatched);}putchar('\n');
    if(dispatchMode&&route<(routesMode?11u:1u)){if(heldButton){unsigned before=frame;printf("H,%u,%u\n",profile,route);[self pollMenu];printf("F,%u,%u,%d\n",profile,route,menuMouseLatched);assert(frame==before+1&&menuMouseLatched);heldButton=NO;}unsigned before=frame;printf("B,%u,%u\n",profile,route);[self pollMenu];printf("E,%u,%u,%d\n",profile,route,menuMouseLatched);assert(frame==before+1&&!menuMouseLatched);}
 
   }recording=NO;
+ }
+ if(startupMode){
+  splashVisible=YES;[self mouseUp:[self testMouse:NSLeftMouseUp x:0 y:0]];assert(splashVisible);
+  [self keyDown:[self testEvent:NSKeyDown code:255]];assert(splashVisible);
+  [self keyDown:[self testEvent:NSKeyDown code:36]];assert(!splashVisible&&ui.transitioning&&menuMouseLatched&&keys[36]);[ui animateTicks:120];[self keyUp:[self testEvent:NSKeyUp code:36]];
+  splashVisible=YES;[self mouseDown:[self testMouse:NSLeftMouseDown x:0 y:0]];assert(!splashVisible&&ui.transitioning&&menuMouseLatched);[ui animateTicks:120];
+  splashVisible=YES;[self testModifier:58 flags:0];assert(splashVisible);[self testModifier:58 flags:NSEventModifierFlagOption|NX_DEVICELALTKEYMASK];assert(!splashVisible&&ui.transitioning&&menuMouseLatched);[self testModifier:58 flags:0];
+  fputs("PASS startup direct key/modifier/mousedown paths; release and unsupported key do not accept\n",stderr);
  }
  glBindFramebufferEXT(GL_FRAMEBUFFER_EXT,0);glDeleteFramebuffersEXT(1,&fbo);glDeleteTextures(1,&color);
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
- assert(argc==3||argc==4);dispatchMode=argc==4;routesMode=dispatchMode&&!strcmp(argv[3],"routes");assert(!dispatchMode||routesMode||!strcmp(argv[3],"dispatch"));star_dump=fopen(argv[2],"wb");assert(star_dump);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];[[NSUserDefaults standardUserDefaults]setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}}forName:NSArgumentDomain];TransitionView *v=[[TransitionView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(v);[v checkTransitions];assert(!fclose(star_dump));
+ assert(argc==3||argc==4);dispatchMode=argc==4;routesMode=dispatchMode&&!strcmp(argv[3],"routes");startupMode=dispatchMode&&!strcmp(argv[3],"startup");assert(!dispatchMode||routesMode||startupMode||!strcmp(argv[3],"dispatch"));star_dump=fopen(argv[2],"wb");assert(star_dump);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];[[NSUserDefaults standardUserDefaults]setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}}forName:NSArgumentDomain];TransitionView *v=[[TransitionView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(v);[v checkTransitions];assert(!fclose(star_dump));
 }}

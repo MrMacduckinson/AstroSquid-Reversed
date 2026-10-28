@@ -29,6 +29,7 @@ static BOOL animatingTicks;
 - (void)pollMapSpawns {[events appendString:@"M"];if(finishBlink)invulnerableUntil=0;}
 - (void)readGameKeys {[events appendString:@"K"];}
 - (void)readKeyMap {[events appendString:@"K"];}
+- (BOOL)menuMouseButtonPressed {return NO;}
 - (void)completeGameLoopIfRequested {[events appendString:@"Q"];}
 - (void)pollNestedWorld {[events appendString:@"W"];}
 - (void)pollRespawnWait {[events appendString:@"R"];}
@@ -54,12 +55,12 @@ static void expect(NSString *value){if(![events isEqual:value]){fprintf(stderr,"
     [self pollRespawnWaitFrame];expect(@"WSR");
     respawnBlinkTick=respawnStartTick=100;invulnerableUntil=1;[self pollRespawnBlink];expect(@"TNSKT");invulnerableUntil=0;
     invulnerableUntil=1;finishBlink=YES;[self pollGame];expect(@"WMSKQ");finishBlink=NO;
-    menuVisible=YES;ui.frameInterval=1;splashVisible=YES;[self pollMenu];expect(@"S");splashVisible=NO;
-    [ui show:@"Main"];observedWallTick=99;[self pollMenu];expect(@"CCDAPSK");
+    menuVisible=YES;ui.frameInterval=1;splashVisible=YES;[self pollMenu];expect(@"SK");splashVisible=NO;
+    [ui show:@"Main"];visualRateTick=100;observedWallTick=99;[self pollMenu];expect(@"CCDTTAPSK");
     observedWallTick=100;[self pollMenu];expect(@"C");
-    [ui show:@"Pause"];paused=YES;observedWallTick=99;[self pollMenu];expect(@"CDSAPCK");
+    [ui show:@"Pause"];paused=YES;observedWallTick=99;[self pollMenu];expect(@"CCCCCDSAPCK");
     [self display];expect(@"DP"); // A redraw outside the original poll does not service music.
-    [ui show:@"GameOver"];ui.editingHighscore=1;observedWallTick=99;[self pollMenu];expect(@"KCDCCAPSC");
+    [ui show:@"GameOver"];ui.editingHighscore=1;observedWallTick=99;[self pollMenu];expect(@"CCCKCDCCAPSC");
     menuVisible=paused=NO;flow.phase=ASTRO_FLOW_READY;cardClockStarted=NO;[self pollFlowCard];expect(@"");
     cardClockStarted=YES;cardDelayStartTick=41;[self pollFlowCard];expect(@"");
     cardDelayStartTick=40;[self pollFlowCard];expect(@"KSF");
