@@ -68,8 +68,8 @@ static unsigned char *world_globals;static const char *phase;
 static Allocation *allocation(void *p){for(unsigned i=0;i<allocation_count;i++)if(allocations[i].p==p)return &allocations[i];return NULL;}
 static unsigned identity(void *p){Allocation*a=allocation(p);if(!p)return 0;if(!a){fputs("Unregistered pointer in canonical state\n",stderr);exit(2);}return a->id;}
 static void *world_alloc(long bytes){if(bytes<0||allocation_count==65536)exit(2);unsigned char*p=calloc(1,bytes?bytes:1);if(!p)exit(2);unsigned id=bytes==106?++entity_birth:bytes==308?++render_birth:allocation_count+1;allocations[allocation_count++]=(Allocation){p,(size_t)bytes,id,1};return p;}
-static unsigned disposed;
-static void world_dispose(void *p){(void)p;disposed++;fputs("Unexpected disposal in no-deletion active-special fixture\n",stderr);exit(2);}
+static unsigned disposed;static int storm;static uint32_t *storm_toc;
+static void world_dispose(void *p){disposed++;if(storm){Allocation *a=allocation(p);if(!a||!a->alive)exit(2);a->alive=0;return;}fputs("Unexpected disposal in no-deletion active-special fixture\n",stderr);exit(2);}
 void world_sound(unsigned char *name,double *pan){printf("S\t%u\t%s\t",tick,phase);for(unsigned i=1;i<=name[0];i++)printf("%02x",name[i]);printf("\t%016llx\n",(unsigned long long)ieee_word(*pan));}
 extern void world_sound_fb(void);
 __asm__(".text\n.align 2\n.globl _world_sound_fb\n_world_sound_fb:\n"
@@ -108,29 +108,36 @@ static uint32_t active_tick(void){
 static void active_keys(void *keys){memset(keys,0,16);((unsigned char *)keys)[7]=0x20;}
 static void noop_gl(void){}
 static void active_snapshot(const char *label){phase=label;printf("Q\t%u\t%s\t%u\t%u\t%u\t%u\t%u\t%u\n",tick,label,serial,*(uint32_t *)(world_globals+0xa4a),*(uint32_t *)(world_globals+0xa4e),*(uint32_t *)(world_globals+0xa90),(unsigned)*(uint16_t *)(world_globals+0xec6),*(uint32_t *)(world_globals+0xec8));snapshot();}
-void active_render(void){renders++;active_snapshot("render");}
+void active_render(void){
+ renders++;
+ if(storm)for(unsigned char *e=*(void **)(world_globals+0xa76);e;e=*(void **)(e+102))
+  if(*(int16_t *)e==999)invoke_fb(active_code+0x559e8,world_globals,storm_toc,e,NULL,NULL);
+ active_snapshot("render");
+}
 void active_hud(void){huds++;printf("V\t%u\t%u\n",tick,huds);}
 void active_flash(int sprite,double *x,double *y,double *w,double *h){flashes++;printf("F\t%u\t%d\t%016llx\t%016llx\t%016llx\t%016llx\n",tick,sprite,(unsigned long long)ieee_word(*x),(unsigned long long)ieee_word(*y),(unsigned long long)ieee_word(*w),(unsigned long long)ieee_word(*h));}
 static int active_swap(void *context){(void)context;swaps++;active_snapshot("swap");return 1;}
 #define OBSERVER(name) extern void name##_fb(void); __asm__(".text\n.align 2\n.globl _" #name "_fb\n_" #name "_fb:\n" "mflr r0\nstw r0,8(r1)\nstwu r1,-64(r1)\nstw r2,20(r1)\nbl _" #name "\nlwz r2,20(r1)\naddi r1,r1,64\nlwz r0,8(r1)\nmtlr r0\nblr\n");
 OBSERVER(active_render) OBSERVER(active_hud) OBSERVER(active_flash)
 int main(int argc,char **argv){
- if(argc!=7&&argc!=8)return 2;int tail=argc==8&&!strcmp(argv[7],"tail");
+ if(argc!=7&&argc!=8)return 2;int tail=argc==8&&!strcmp(argv[7],"tail");storm=argc==8&&!strcmp(argv[7],"storm");if(argc==8&&!tail&&!storm)return 2;
  if(!freopen(argv[5],"w",stdout))return 2;clock_trace=fopen(argv[6],"w");if(!clock_trace)return 2;
  unsigned char *pef=read_file(argv[1]),*code=pef+128,*literals=read_file(argv[2]),*g=calloc(1,0x1300),*heap=calloc(1,0x100000);world_globals=g;active_code=code;
  uint32_t toc[489]={0};for(int i=0;i<484;i++){void *f=dlsym(RTLD_DEFAULT,import_names[i]);
- if(!strcmp(import_names[i],"TickCount"))f=active_tick;if(!strcmp(import_names[i],"NewPtrClear"))f=world_alloc;if(!strcmp(import_names[i],"DisposePtr"))f=world_dispose;if(!strcmp(import_names[i],"GetKeys"))f=active_keys;if(!strcmp(import_names[i],"aglSwapBuffers"))f=active_swap;if(!strcmp(import_names[i],"glLoadIdentity"))f=noop_gl;
- descriptors[i][0]=(uint32_t)(uintptr_t)(f?f:missing_import);toc[i]=(uint32_t)(uintptr_t)descriptors[i];}toc[0]=(uint32_t)(uintptr_t)g;
+ if(!strcmp(import_names[i],"TickCount"))f=active_tick;if(!strcmp(import_names[i],"NewPtrClear"))f=world_alloc;if(!strcmp(import_names[i],"DisposePtr"))f=world_dispose;if(!strcmp(import_names[i],"GetKeys"))f=active_keys;if(!strcmp(import_names[i],"aglSwapBuffers"))f=active_swap;if(!strcmp(import_names[i],"glLoadIdentity")||(storm&&!strncmp(import_names[i],"gl",2)))f=noop_gl;
+ descriptors[i][0]=(uint32_t)(uintptr_t)(f?f:missing_import);toc[i]=(uint32_t)(uintptr_t)descriptors[i];}toc[0]=(uint32_t)(uintptr_t)g;storm_toc=toc;
  char path[2048];snprintf(path,sizeof path,"%s/Attr.bin",argv[4]);set_pointer(g,0xa94,read_file(path));snprintf(path,sizeof path,"%s/sprt.bin",argv[4]);set_pointer(g,0xe82,read_file(path));snprintf(path,sizeof path,"%s/Wpns.bin",argv[4]);set_pointer(g,0xa98,read_file(path));
  set_pointer(g,0x21c,literals);set_double(g,0x368,3.14159265358979323846);set_double(g,0x378,4503601774854144.0);*(uint32_t*)(g+0x380)=0x43300000;set_pointer(g,0x388,heap);set_pointer(g,0x38c,heap);
  set_short(g,0xed6,640);set_short(g,0xed8,480);set_pointer(g,0xa54,calloc(3001*4,sizeof(double)));set_double(g,0xa26,640);set_double(g,0xa36,380);set_short(g,0xa52,1);*(uint32_t*)(g+0x244)=0x12345678;
  set_short(g,0xa8a,50);set_short(g,0xa8e,1);set_short(g,0xab4,-1);*(uint32_t *)(g+0xa4a)=*(uint32_t *)(g+0xa4e)=100;
  set_short(g,0xcc2,55);set_short(g,0xcc4,58);set_short(g,0xcc6,126);set_short(g,0xcc8,125);set_short(g,0xcca,124);set_short(g,0xccc,123);
- jump_to(code+0x3ce84,world_sound_fb);jump_to(code+0x57afc,active_render_fb);jump_to(code+0x43134,active_hud_fb);jump_to(code+0x55878,active_flash_fb);MakeDataExecutable(code,433284);
+ jump_to(code+0x3ce84,world_sound_fb);jump_to(code+0x57afc,active_render_fb);jump_to(code+0x43134,active_hud_fb);if(!storm)jump_to(code+0x55878,active_flash_fb);else{jump_to(code+0x3a278,noop_gl);set_pointer(g,0xcd6,calloc(1,8));set_pointer(g,0x1004,calloc(7,0x108));}MakeDataExecutable(code,433284);
  FSRef ref;ResFileRefNum rf;HFSUniStr255 fork;OSStatus err=FSPathMakeRef((const UInt8*)argv[3],&ref,NULL);if(!err)err=FSGetResourceForkName(&fork);if(!err)err=FSOpenResourceFile(&ref,fork.length,fork.unicode,fsRdPerm,&rf);if(err)return 2;UseResFile(rf);
- phase="setup";tick=100;if(tail)spawn(code,toc,4,1,500,300);
+ if(storm){snprintf(path,sizeof(path),"%s.strings",argv[1]);unsigned char *expected=read_file(path);Handle actual=GetResource('STR#',25000);if(!actual||GetHandleSize(actual)!=6884||memcmp(*actual,expected,6884)){fputs("Reference STR#25000 differs from download3\n",stderr);return 2;}}
+ phase="setup";tick=100;if(storm){unsigned char *target=spawn(code,toc,20,4,300,180);set_short(target,88,30000);}
+ if(tail)spawn(code,toc,4,1,500,300);
  unsigned char *player=spawn(code,toc,1,1,100,180);set_pointer(g,0xa7a,player);set_short(player,24,12);set_short(player,26,3);set_short(player,88,200);*(uint32_t *)(player+8)=99;*(uint32_t *)(player+12)=100;*(uint32_t *)(player+16)=0;
- active_snapshot("initial");clock_enabled=1;invoke_fb(code+0x54c64,g,toc,NULL,NULL,NULL);active_snapshot("return");
- fclose(clock_trace);fflush(stdout);if(disposed||entity_birth!=(tail?2:1)||render_birth!=(tail?2:1)||*(int16_t *)(g+0xa8e)!=0||*(int16_t *)player!=1||!serial)return 1;
+ active_snapshot("initial");clock_enabled=1;phase="calc";invoke_fb(code+0x54c64,g,toc,NULL,NULL,NULL);active_snapshot("return");
+ fclose(clock_trace);fflush(stdout);if((!storm&&(disposed||entity_birth!=(tail?2:1)||render_birth!=(tail?2:1)))||(storm&&(!disposed||entity_birth<3||render_birth<3))||*(int16_t *)(g+0xa8e)!=0||*(int16_t *)player!=1||!serial)return 1;
  fprintf(stderr,"PASS active coupled original special50 tail%d clockreads%u renders%u swaps%u huds%u flashes%u entities%u rendersprites%u disposals%u\n",tail,serial,renders,swaps,huds,flashes,entity_birth,render_birth,disposed);return 0;
 }

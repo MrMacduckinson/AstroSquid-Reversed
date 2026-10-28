@@ -1,0 +1,25 @@
+#!/bin/bash
+# Run only on the authorized Intel reference Mac, never the primary Mac.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+clang -fobjc-arc -O2 -ffp-contract=off -Wno-deprecated-declarations \
+  -mmacosx-version-min=10.13 tests/active_special_world_host.m \
+  src/physics.c src/ppc_math.c src/script.c src/weapons.c src/combat.c \
+  src/beams.c src/player.c src/campaign.c src/flow.c src/transition.c \
+  src/scores.c src/visual.c src/hit_visual.c src/effects.c src/special.c \
+  src/debris.c src/scene.c src/audio.m src/ui_model.c src/ui_renderer.m \
+  src/hud.c src/hud_renderer.m -framework Cocoa -framework OpenGL \
+  -framework AVFoundation -framework Carbon -o build/active_special_world_host
+scratch=$(mktemp -d /tmp/astrosquid-active-world.XXXXXX)
+trap 'rm -r "$scratch"' EXIT
+for variant in base tail storm; do
+  set -- assets "$scratch/clocks.csv"
+  suffix=""
+  if [ "$variant" != base ]; then set -- "$@" "$variant"; suffix="_$variant"; fi
+  build/active_special_world_host "$@" > "$scratch/host.tsv"
+  awk '$1 != "V"' "tests/active_special_world${suffix}_native.tsv" > "$scratch/native.tsv"
+  cmp "$scratch/native.tsv" "$scratch/host.tsv"
+  gzip -cd "tests/active_special_world${suffix}_clocks.csv.gz" | awk -F, '{print $1 "," $3}' > "$scratch/native-clocks.csv"
+  cmp "$scratch/native-clocks.csv" "$scratch/clocks.csv"
+done
+echo 'PASS original nested special worlds: base, resumed tail and real storm allocations/rendering'

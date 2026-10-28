@@ -755,7 +755,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(!temporary)emittedBeams++;
 }
 - (void)addSpecialSprite:(int)sprite x:(double)x y:(double)y width:(double)width height:(double)height {
-    AstroVisual v={sprite,x,y,width,height,simulationTick};
+    ++renderClock; // FORCEDRAWSPRITENOW creates and kills an LM image even for one-frame flashes.
+    uint32_t deadline=[self playerClockTick]+(uint32_t)spriteInfo[sprite].delay;
+    AstroVisual v={sprite,x,y,width,height,deadline};
     [specialFlashes addObject:[NSData dataWithBytes:&v length:sizeof(v)]];
 }
 - (void)addSpecialPolygon:(const AstroSpecialVertex *)vertices count:(size_t)count {
