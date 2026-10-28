@@ -7,8 +7,9 @@
 #import <OpenGL/glext.h>
 extern void astro_stars_draw(const AstroStar *,int,int,double,const AstroSceneSink *);
 static unsigned profile,route,reads,frame,actualClockCalls;static BOOL recording;
-static BOOL dispatchMode,routesMode,startupMode,startupInput,heldButton;static NSPoint heldPoint;
+static BOOL dispatchMode,routesMode,returnsMode,startupMode,startupInput,heldButton;static NSPoint heldPoint;
 static NSString *const routeButtons[]={@"Play",@"Continue",@"Back7",@"Back2",@"Highscores",@"Back4",@"Settings",@"SetKeys",@"Back6",@"Back",@"Register",@"Back3"};
+static NSString *const returnButtons[]={@"Yeah",@"Back5"};
 static FILE *star_dump;static AstroUIRenderer *observedUI;static AstroView *observedView;
 static uint64_t word(double x){uint64_t b;memcpy(&b,&x,8);return b;}
 static void snapshot(unsigned f){unsigned i=0;for(NSDictionary *object in [observedUI valueForKey:@"objects"]){NSString *name=object[@"name"];AstroUIMotion *s=[[[observedUI valueForKey:@"orbStates"]objectForKey:name]mutableBytes];uint32_t deadline=[[[observedUI valueForKey:@"hoverDeadlines"]objectForKey:name]unsignedIntValue];printf("N,%u,%u,%u,%u,%d,%d,%u",profile,route,f,i++,s->sprite,s->counter,deadline);double v[]={s->x,s->y,s->width,s->height};for(unsigned a=0;a<4;a++)printf(",%016llx",word(v[a]));putchar('\n');}assert(i==52);}
@@ -51,7 +52,8 @@ void transition_stars_draw(const AstroStar *stars,int menu,int stage,double sx,c
   if(startupMode){[ui setValue:@0 forKey:@"cameraX"];[ui setValue:@0 forKey:@"cameraY"];[ui show:@"Main Menu"];while(ui.transitioning)[ui advanceMenuCamera];splashVisible=YES;}
   recording=YES;
   for(route=0;route<(startupMode?1u:routesMode?12u:2u);route++){
-   frame=0;NSString *button=routesMode?routeButtons[route]:route?@"Back":@"Settings";
+   frame=0;NSString *button=returnsMode?returnButtons[route]:routesMode?routeButtons[route]:route?@"Back":@"Settings";
+   if(returnsMode){recording=NO;[ui show:route?@"Reg Thanks":@"CreditsMenu"];while(ui.transitioning)[ui advanceMenuCamera];recording=YES;}
    if(startupMode){heldButton=profile>=3;heldPoint=NSMakePoint(369,175);startupInput=YES;[self pollMenu];startupInput=NO;assert(!splashVisible);for(unsigned poll=0;ui.transitioning;poll++){assert(poll<10000);[self pollMenu];}}
    else if(dispatchMode){
     heldButton=profile>=3;assert(!menuMouseLatched);AstroUIMotion *s=[[[ui valueForKey:@"orbStates"]objectForKey:button]mutableBytes];NSPoint p=NSMakePoint((int)(ui.cameraX+s->x+s->width/2),(int)(ui.cameraY+s->y+s->height/2));heldPoint=p;[self handleMenuMouseAtPoint:p];assert(navigationButton);
@@ -76,5 +78,5 @@ void transition_stars_draw(const AstroStar *stars,int menu,int stage,double sx,c
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
- assert(argc==3||argc==4);dispatchMode=argc==4;routesMode=dispatchMode&&!strcmp(argv[3],"routes");startupMode=dispatchMode&&!strcmp(argv[3],"startup");assert(!dispatchMode||routesMode||startupMode||!strcmp(argv[3],"dispatch"));star_dump=fopen(argv[2],"wb");assert(star_dump);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];[[NSUserDefaults standardUserDefaults]setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}}forName:NSArgumentDomain];TransitionView *v=[[TransitionView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(v);[v checkTransitions];assert(!fclose(star_dump));
+ assert(argc==3||argc==4);dispatchMode=argc==4;routesMode=dispatchMode&&!strcmp(argv[3],"routes");returnsMode=dispatchMode&&!strcmp(argv[3],"returns");startupMode=dispatchMode&&!strcmp(argv[3],"startup");assert(!dispatchMode||routesMode||returnsMode||startupMode||!strcmp(argv[3],"dispatch"));star_dump=fopen(argv[2],"wb");assert(star_dump);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];[[NSUserDefaults standardUserDefaults]setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}}forName:NSArgumentDomain];TransitionView *v=[[TransitionView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(v);[v checkTransitions];assert(!fclose(star_dump));
 }}
