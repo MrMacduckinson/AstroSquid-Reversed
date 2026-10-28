@@ -4,7 +4,7 @@
 #undef main
 #include <unistd.h>
 static Handle strings;
-static unsigned step,context_value,dsp_value,failures;
+static unsigned step,context_value,dsp_value,failures,messageCount,stageProbe;
 static void expect_step(unsigned expected){if(step++!=expected)exit(3);}
 static int current(void *context){if(context)exit(3);expect_step(108);return !failures;}
 static int drawable(void *context,void *port){if((uintptr_t)context!=context_value||port)exit(3);expect_step(109);return !failures;}
@@ -15,7 +15,15 @@ static void dsp_shutdown(void){expect_step(113);}
 void kill_map(int index){if(index<0||index>=107)exit(3);expect_step(index);}
 void kill_list(void){expect_step(107);}
 static Handle resource(ResType type,short id){if(type!='STR#'||id!=25000)exit(3);return strings;}
-void policy_message(void *message){(void)message;}
+void policy_message(unsigned char *message){
+ if(stageProbe){if(message[0]!=1||message[1]!='0')exit(3);puts("PASS original LOADLEVEL first debug message is literal0; probe stops before level IO");exit(0);}
+ const char *common[]={" ","---------- Shutdown  -----------"," ","Disposing Spritemaps","    Disposed 53 SpriteMaps","Disposing SpriteList","Deactivating OpenGL context"};
+ const char *expected;unsigned at;
+ if(messageCount<7){expected=common[messageCount];at=messageCount<4?0:messageCount<6?107:108;}
+ else if(dsp_value&&(messageCount==7||messageCount==8)){expected=messageCount==7?"Disposing DrawSprocket context":"    Disposing DSP context.";at=111;}
+ else {unsigned tail=messageCount-7-(dsp_value?2:0);if(tail>2)exit(3);expected=tail==1?"---------- End of Shutdown  -----------":" ";at=dsp_value?114:111;}
+ if(step!=at||message[0]!=strlen(expected)||memcmp(message+1,expected,message[0]))exit(3);messageCount++;
+}
 extern void policy_message_fb(void);
 __asm__(".text\n.align 2\n.globl _policy_message_fb\n_policy_message_fb:\nmflr r0\nstw r0,8(r1)\nstwu r1,-64(r1)\nstw r2,20(r1)\nbl _policy_message\nlwz r2,20(r1)\naddi r1,r1,64\nlwz r0,8(r1)\nmtlr r0\nblr\n");
 extern void kill_map_fb(void),kill_list_fb(void);
@@ -27,12 +35,12 @@ int main(int argc,char **argv){
  strings=NewHandle(6884);if(!strings)return 2;memcpy(*strings,input(argv[3],6884),6884);*(void **)(g+0x21c)=input(argv[2],11812);*(void **)(g+0x388)=heap;
  uint32_t toc[489]={0};for(int i=0;i<484;i++){void *f=dlsym(RTLD_DEFAULT,import_names[i]);if(!strcmp(import_names[i],"GetResource"))f=resource;if(!strcmp(import_names[i],"aglSetCurrentContext"))f=current;if(!strcmp(import_names[i],"aglSetDrawable"))f=drawable;if(!strcmp(import_names[i],"aglDestroyContext"))f=destroy_context;if(!strcmp(import_names[i],"DSpContext_SetState"))f=dsp_state;if(!strcmp(import_names[i],"DSpContext_Release"))f=dsp_release;if(!strcmp(import_names[i],"DSpShutdown"))f=dsp_shutdown;descriptors[i][0]=(uint32_t)(uintptr_t)(f?f:missing);toc[i]=(uint32_t)(uintptr_t)descriptors[i];}toc[0]=(uint32_t)(uintptr_t)g;jump_to(code+0x3366c,policy_message_fb);jump_to(code+0x34178,kill_map_fb);jump_to(code+0x34edc,kill_list_fb);MakeDataExecutable(code,433284);
  for(unsigned c=0;c<8;c++){
-  context_value=c&1?0x5678:0;dsp_value=c&2?0x9abc:0;failures=c&4?1:0;step=0;
+  context_value=c&1?0x5678:0;dsp_value=c&2?0x9abc:0;failures=c&4?1:0;step=messageCount=0;
   *(uint32_t *)(g+0xe8a)=context_value;*(uint32_t *)(g+0xe8e)=dsp_value;*(void **)(g+0x38c)=heap;
   for(unsigned i=0;i<107;i++){uint32_t value=i&1?i+1:0;memcpy(g+0xcd6+4*i,&value,4);}
   invoke_fb(code+0x38ecc,g,toc,NULL,NULL,NULL);
-  if(step!=(dsp_value?114u:111u)||*(uint32_t *)(g+0xe8a)!=context_value||*(uint32_t *)(g+0xe8e)!=dsp_value)return 3;
+  if(messageCount!=(dsp_value?12u:10u)||step!=(dsp_value?114u:111u)||*(uint32_t *)(g+0xe8a)!=context_value||*(uint32_t *)(g+0xe8e)!=dsp_value)return 3;
   printf("case%u,context%04x,dsp%04x,import_failures%u,events%u\n",c,context_value,dsp_value,failures,step);
  }
- puts("PASS original LMEXIT order:107 map calls,list,currentNULL,detach,destroy,optionalDSp2/release/shutdown; import failures ignored; globals retained");return 0;
+ puts("PASS original LMEXIT order:107 map calls,list,currentNULL,detach,destroy,optionalDSp2/release/shutdown; import failures ignored; globals retained; exact journal messages at disposal boundaries");stageProbe=1;invoke_fb(code+0x510c8,g,toc,NULL,NULL,NULL);return 3;
 }

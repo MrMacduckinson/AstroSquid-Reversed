@@ -633,6 +633,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self createPlayerAtX:30 y:190];
 }
 - (void)resetLevelWorld {
+    [self appendDebugMessage:@"0"];
     renderClock=0;enemies=[NSMutableArray array];world=[NSMutableArray array];mapPlacements=[NSMutableArray array];
     playerNextActor=nil;
     playerCombat=(AstroCombatState){.kind=1,.hit_points=100};playerHitVisual=(AstroPlayerHitVisual){0};
@@ -2161,11 +2162,20 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)terminateApplication {[NSApp terminate:nil];}
 - (void)releaseGraphics {
     if(graphicsReleased)return;graphicsReleased=YES;
+    [self appendDebugMessage:@" "];[self appendDebugMessage:@"---------- Shutdown  -----------"];[self appendDebugMessage:@" "];
+    [self appendDebugMessage:@"Disposing Spritemaps"];NSUInteger disposed=textures.count;
     NSOpenGLContext *context=[self openGLContext];[context makeCurrentContext];
     for(NSNumber *identifier in [textures.allKeys sortedArrayUsingSelector:@selector(compare:)]){GLuint texture=[textures[identifier] unsignedIntValue];glDeleteTextures(1,&texture);}
-    [textures removeAllObjects];presentedBeams=@[];
+    [textures removeAllObjects];
+    [self appendDebugMessage:[NSString stringWithFormat:@"    Disposed %lu SpriteMaps",(unsigned long)disposed]];
+    [self appendDebugMessage:@"Disposing SpriteList"];
+    [visualEffects removeAllObjects];[specialPolygons removeAllObjects];[specialFlashes removeAllObjects];
+    for(AstroEnemy *enemy in enemies)enemy->visualDeleted=YES;
+    presentedBeams=@[];playerVisualDeleted=YES;playerHitVisual.active=NO;engineGlow=departureTrail=NO;
+    [self appendDebugMessage:@"Deactivating OpenGL context"];
     [NSOpenGLContext clearCurrentContext];[context clearDrawable];restoreFullscreen();
     [NSOpenGLContext clearCurrentContext];[self setOpenGLContext:nil];
+    [self appendDebugMessage:@" "];[self appendDebugMessage:@"---------- End of Shutdown  -----------"];[self appendDebugMessage:@" "];
 }
 - (void)closeDown {
     if(terminationAllowed)return;
