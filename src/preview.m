@@ -1185,7 +1185,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)readVisualKeys {unsigned char map[16];[self copyKeyMap:map];visualDebug=(map[122>>3]>>(122&7))&1;}
 - (void)handleVisualEffects {
-    simulationTick=[self playerClockTick];[self updateVisualEffects];[self readVisualKeys];
+    simulationTick=[self playerClockTick];[self updateVisualEffects];[self handleSpriteDiagnostics];
+}
+- (void)handleMenuSprites {
+    [ui handleSpritesAtTick:[self playerClockTick]];[self handleSpriteDiagnostics];
+}
+- (void)handleSpriteDiagnostics {
+    [self readVisualKeys];
     uint32_t diagnostic=[self playerClockTick];
     if((int32_t)(visualRateTick+60u)<=(int32_t)diagnostic){
         visualRate=visualFrames;visualFrames=0;visualRateTick=[self playerClockTick];
@@ -1744,6 +1750,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         astro_stars_move(stars,ui.cameraX,ui.cameraY,-ui.cameraX,-ui.cameraY,640-ui.cameraX,480-ui.cameraY,
             menuScroll.x,menuScroll.y,ui.cameraStepX,ui.cameraStepY,ui.frameInterval,&randomSeed,NULL,0,1);
     }
+    if(!overlay)[self handleMenuSprites];
     [self pollMenuMouse];
     BOOL previous=deferPresent;deferPresent=YES;
     @try {

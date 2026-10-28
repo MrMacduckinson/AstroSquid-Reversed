@@ -166,6 +166,14 @@
     _cameraX+=_cameraStepX;_cameraY+=_cameraStepY;
     if(fabs(_cameraStepX)<1&&fabs(_cameraStepY)<1){_targetX=_cameraX;_targetY=_cameraY;_transitioning=NO;_pressed=nil;}
 }
+- (void)handleSpritesAtTick:(uint32_t)tick {
+    // Of the UI sprites, only902 has a nonzero next frame (900).
+    for(NSDictionary *object in _objects){
+        AstroUIMotion *state=[_orbStates[object[@"name"]] mutableBytes];
+        if(state->sprite==902&&(int32_t)[_hoverDeadlines[object[@"name"]] unsignedIntValue]<(int32_t)tick)
+            [self changeSprite:900 object:object];
+    }
+}
 - (void)animateMenuObjects {
     for(NSDictionary *object in _objects)astro_ui_animate([_orbStates[object[@"name"]] mutableBytes],_frameInterval);
 }
