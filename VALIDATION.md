@@ -16,6 +16,15 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- `tests/outer_loop_host.sh` compares the actual original GAMELOOP entry and
+  first ordinary iteration with production beginGameLoop/pollGame/renderTick:
+  10 schedules,150 semantic events,76 clock reads. It covers closed/open CPU,
+  frame and21-tick map gates, fresh stores, signed wrap and clocks consumed
+  inside world/factory callbacks. Those callbacks, graphics, audio and input
+  are observers; terminal, transition and respawn branches are excluded. HUD
+  commands are suppressed in this fixture. The original HUD countdown still
+  needs to replace the port's unconditional normal-frame HUD redraw.
+
 - The first active frame after tag-2 final-arena loading matches94 original
   cleanup/CALC records, including camera1,211 independent clock reads, RNG,
   all active actors and image links. `tests/loaded_world_composite_host.sh`
