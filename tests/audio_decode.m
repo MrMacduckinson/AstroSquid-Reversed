@@ -14,7 +14,7 @@ int main(int argc,char **argv) { @autoreleasepool {
         assert(![audio playCueIfNotPlaying:name position:0.75]);cues++;
     }
     for (int i=1;i<=3;i++) {
-        assert([audio playMusic:i]);audio.musicVolume=0;
+        assert([audio playMusic:i]);audio.musicVolume=0;audio.music.volume=0;
         [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.15]];
         assert(audio.music.playing && audio.music.currentTime>0);
     }

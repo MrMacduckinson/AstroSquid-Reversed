@@ -1373,7 +1373,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         int action=changingStage?ASTRO_CAMPAIGN_NONE:astro_campaign_event(&campaign,tag,1);
         if(action!=ASTRO_CAMPAIGN_NONE)campaignAction=action;
         tickedScroll=0;
-        if(tag!=-1){state->remove=1;[audio playMusic:3];}
+        if(tag!=-1){state->remove=1;[audio stopMusic];if(ui.musicVolume>0)[audio playMusic:3];}
     }
 }
 - (void)loadCampaignStage:(AstroCampaign)next {

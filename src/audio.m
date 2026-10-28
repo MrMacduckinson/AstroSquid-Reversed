@@ -1,6 +1,8 @@
 #import "audio.h"
 #include <math.h>
 
+static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
+
 @implementation AstroAudio {
     NSDictionary *manifest;
     NSMutableDictionary *samples;
@@ -22,7 +24,7 @@
     if (![manifest isKindOfClass:[NSDictionary class]]) return nil;
     samples=[NSMutableDictionary dictionary]; voices=[NSMutableArray array];
     cueNames=[NSMapTable weakToStrongObjectsMapTable];
-    _soundVolume=1; _musicVolume=0.5; _stereo=YES;
+    _soundVolume=1; _musicVolume=1; _stereo=YES;
     for (NSString *name in manifest[@"sounds"]) {
         NSString *file=manifest[@"sounds"][name][@"file"];
         NSData *sample=[NSData dataWithContentsOfFile:[path stringByAppendingPathComponent:file] options:0 error:error];
@@ -38,7 +40,7 @@
         NSString *file=manifest[@"music"][[NSString stringWithFormat:@"%d",i]][@"file"];
         AVAudioPlayer *player=[[AVAudioPlayer alloc] initWithContentsOfURL:[NSURL fileURLWithPath:[path stringByAppendingPathComponent:file]] error:error];
         if (!player || player.duration<=0) return nil;
-        player.numberOfLoops=-1;player.volume=_musicVolume;
+        player.numberOfLoops=-1;player.volume=i<=2?musicGain(_musicVolume):126/256.0f;
         [player prepareToPlay];[musicTracks addObject:player];
     }
     tracks=[musicTracks copy];return self;
@@ -46,7 +48,8 @@
 - (void)setSoundVolume:(float)value { _soundVolume=fmaxf(0,fminf(1,value)); }
 - (void)setMusicVolume:(float)value {
     _musicVolume=fmaxf(0,fminf(1,value));
-    for (AVAudioPlayer *player in tracks) player.volume=_musicVolume;
+    // Original settings update Music1/2; Music3 retains MIDWorld default volume.
+    for(NSUInteger i=0;i<MIN((NSUInteger)2,tracks.count);i++)[(AVAudioPlayer *)tracks[i] setVolume:musicGain(_musicVolume)];
 }
 - (BOOL)playCue:(NSString *)name { return [self playCue:name position:NAN]; }
 - (BOOL)playCue:(NSString *)name position:(double)position {
