@@ -14,6 +14,7 @@
 - (BOOL)playCueIfNotPlaying:(NSString *)name position:(double)position;
 - (BOOL)playStringCue:(int)index position:(double)position;
 - (BOOL)playMusic:(int)track;
+- (void)serviceMusic;
 - (void)setPaused:(BOOL)paused;
 - (void)stopMusic;
 - (void)stopEffects;

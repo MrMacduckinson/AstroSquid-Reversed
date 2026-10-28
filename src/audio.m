@@ -11,6 +11,7 @@ static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
     NSMapTable *cueNames;
     AVAudioPlayer *_music;
     BOOL paused;
+    BOOL musicStarted;
 }
 @synthesize music = _music;
 - (instancetype)initWithAssets:(NSString *)path error:(NSError **)error {
@@ -40,7 +41,7 @@ static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
         NSString *file=manifest[@"music"][[NSString stringWithFormat:@"%d",i]][@"file"];
         AVAudioPlayer *player=[[AVAudioPlayer alloc] initWithContentsOfURL:[NSURL fileURLWithPath:[path stringByAppendingPathComponent:file]] error:error];
         if (!player || player.duration<=0) return nil;
-        player.numberOfLoops=-1;player.volume=i<=2?musicGain(_musicVolume):126/256.0f;
+        player.numberOfLoops=0;player.volume=i<=2?musicGain(_musicVolume):126/256.0f;
         [player prepareToPlay];[musicTracks addObject:player];
     }
     tracks=[musicTracks copy];return self;
@@ -90,18 +91,24 @@ static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
     if (track<1 || track>(int)tracks.count) return NO;
     AVAudioPlayer *next=tracks[track-1];
     if (_music==next) return YES;
-    [_music stop]; _music=next;_music.currentTime=0;
-    return paused || [_music play];
+    [_music stop]; _music=next;musicStarted=NO;_music.currentTime=0;
+    if(paused)return YES;
+    musicStarted=[_music play];return musicStarted;
+}
+- (void)serviceMusic {
+    if(!musicStarted||paused||_music.isPlaying)return;
+    // Original infinite repeat rewinds only when SERVICEMUSIC observes completion.
+    [_music stop];_music.currentTime=0;musicStarted=[_music play];
 }
 - (void)setPaused:(BOOL)value {
     if (paused==value) return;paused=value;
     for (NSArray *pair in voices) for (AVAudioPlayer *player in pair) {
         if (value) [player pause]; else [player play];
     }
-    if (value) [_music pause]; else [_music play];
+    if (value) [_music pause]; else musicStarted=[_music play];
 }
 - (void)stopMusic {
-    [_music stop];_music=nil;
+    [_music stop];_music=nil;musicStarted=NO;
 }
 - (void)stopEffects {
     for (NSArray *pair in voices) for (AVAudioPlayer *player in pair) [player stop];

@@ -129,7 +129,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     int16_t visualFrames;
     int32_t visualSprites;
     double visualRate;
-    BOOL visualDebug,wallClockPoll,nestedWorldRender;
+    BOOL visualDebug,wallClockPoll,nestedWorldRender,servicePauseMusic;
     BOOL engineDebug,fullscreenRequested,graphicsReleased,spriteMapsPreloaded;
     NSString *screenshotBase;
     uint32_t simulationTick,lastSpawnTick;
@@ -579,6 +579,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [ui drawSprites:^(NSInteger n,double x,double y,double w,double h){[self sprite:n x:x y:y width:w height:h];}
             texture:^GLuint(NSInteger n){return [self texture:n];}];
     }
+    if(servicePauseMusic)[audio serviceMusic];
     if(!deferPresent){[self presentFrame];}
 }
 - (void)drawSpecialOverlays {
@@ -1455,6 +1456,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)pollRespawnWaitFrame {
     [self pollNestedWorld];
+    [audio serviceMusic];
     [self pollRespawnWait];
 }
 - (void)pollNestedWorld {
@@ -1484,6 +1486,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         respawnBlinkTick=[self playerClockTick];
     }
     [self makeNewSprites];
+    [audio serviceMusic];
     [self readGameKeys];
     if((int32_t)([self playerClockTick]-respawnStartTick)>180||gameEndRequested){
         invulnerableUntil=0;playerVisual.width=spriteInfo[playerVisual.sprite].width;playerCombat.kind=1;
@@ -1547,8 +1550,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)pollGame {
     if(respawnTick){[self pollRespawnWaitFrame];return;}
-    if(invulnerableUntil){[self pollNestedWorld];[self pollMapSpawns];if(!invulnerableUntil){[self readGameKeys];[self completeGameLoopIfRequested];}specialReturnPending=NO;return;}
-    if(gameEndRequested){[self pollMapSpawns];[self readGameKeys];[self completeGameLoopIfRequested];return;}
+    if(invulnerableUntil){[self pollNestedWorld];[self pollMapSpawns];if(!invulnerableUntil){[audio serviceMusic];[self readGameKeys];[self completeGameLoopIfRequested];}specialReturnPending=NO;return;}
+    if(gameEndRequested){[audio serviceMusic];[self pollMapSpawns];[self readGameKeys];[self completeGameLoopIfRequested];return;}
     uint32_t comparison=[self playerClockTick];
     if((int32_t)(comparison-observedWallTick)>0){
         observedWallTick=[self playerClockTick];simulationTick=observedWallTick;
@@ -1557,7 +1560,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         }
         [self advanceWorldForWait:NO];
     }
-    [self pollMapSpawns];if(flow.phase==ASTRO_FLOW_PLAY){[self readGameKeys];[self completeGameLoopIfRequested];}specialReturnPending=NO;
+    [audio serviceMusic];[self pollMapSpawns];if(flow.phase==ASTRO_FLOW_PLAY){[self readGameKeys];[self completeGameLoopIfRequested];}specialReturnPending=NO;
 }
 - (void)advanceWorldForWait:(BOOL)waiting {
     double old=camera;
@@ -1664,7 +1667,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             else if(!changingStage&&automatic&&!campaign.arena&&campaignAction==ASTRO_CAMPAIGN_NONE)camera=astro_camera_advance(camera,1);
             tickedScroll=camera-previous;[self stepEnemies];
         }
-        if(!waitDriven){[self renderTick];[self pollMapSpawns];specialReturnPending=NO;}
+        if(!waitDriven){[self renderTick];[audio serviceMusic];[self pollMapSpawns];specialReturnPending=NO;}
         int bossHP=0;
         for(AstroEnemy *enemy in enemies)if([enemy->placement[@"tag"] intValue]<0&&enemy->kind!=39)bossHP+=MAX(0,enemy->hitPoints);
         if(camera>campaignLastCamera+1||bossHP<campaignLastBossHP){campaignLastChange=campaignTestTicks;campaignLastCamera=camera;campaignLastBossHP=bossHP;}
@@ -1689,14 +1692,16 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self display];[ui animateMenuObjects];
 }
 - (void)pollMenu {
-    if(splashVisible)return;
+    if(splashVisible){[audio serviceMusic];return;}
     BOOL gameOverPanel=[ui.anchor isEqual:@"GameOver"];
     if(gameOverPanel)[self readKeyMap];
     uint32_t comparison=[self currentGameTick];
     if((int32_t)(comparison-observedWallTick)<ui.frameInterval)return;
     BOOL overlay=[ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"];
     if(!overlay)observedWallTick=[self currentGameTick];
-    [self stepMenu];
+    servicePauseMusic=[ui.anchor isEqual:@"Pause"];
+    @try {[self stepMenu];} @finally {servicePauseMusic=NO;}
+    if(![ui.anchor isEqual:@"Pause"])[audio serviceMusic];
     if(overlay)observedWallTick=[self currentGameTick];
     if([ui.anchor isEqual:@"Pause"]&&paused)[self readPauseKeys];
     else if(!gameOverPanel)[self readKeyMap];
@@ -1714,7 +1719,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if((uint32_t)([self cardDelayClockTick]-cardDelayStartTick)<60)return;
         flow.ticks=59;
     }
-    [self readKeyMap];BOOL anyKey=NO;for(int i=0;i<128;i++)anyKey|=keys[i];
+    [self readKeyMap];[audio serviceMusic];BOOL anyKey=NO;for(int i=0;i<128;i++)anyKey|=keys[i];
     [self advanceFlowWithKey:anyKey];
 }
 - (void)tickWallClock {
@@ -1767,7 +1772,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         else if(automatic&&!campaign.arena&&campaignAction==ASTRO_CAMPAIGN_NONE)camera=astro_camera_advance(camera,1);
         if(selftestPath&&keys[6])camera=fmax(0,camera-2);
         tickedScroll=camera-previousCamera;
-        [self stepEnemies];[self renderTick];[self pollMapSpawns];specialReturnPending=NO;
+        [self stepEnemies];[self renderTick];[audio serviceMusic];[self pollMapSpawns];specialReturnPending=NO;
     }
     if(!selftestPath) self.window.title=[NSString stringWithFormat:@"AstroSquid — %@ — HP %d · Lives %d · Score %d%@",
         levels[selectedLevel],playerCombat.hit_points,inventory.lives,score,
