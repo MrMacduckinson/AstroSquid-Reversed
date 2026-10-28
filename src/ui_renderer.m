@@ -110,7 +110,7 @@
 }
 - (NSString *)hitX:(double)x y:(double)y {
     NSString *result=nil;
-    if(_transitioning)return nil;
+
     for(int kind=1;kind<=10;kind++)for(NSDictionary *object in _objects){
         if([object[@"kind"] intValue]!=kind||![self enabled:object])continue;
         NSRect r=[self bounds:object];double pointY=y;
@@ -154,7 +154,7 @@
     _pressed=pressed?name:nil;
 }
 - (NSString *)mouseDownX:(double)x y:(double)y {
-    if(_pressed)return nil;
+    if(_pressed||_transitioning)return nil;
     NSString *result=[_anchor isEqual:@"Credits"]?@"Yeah":[self hitX:x y:y];_pressed=result;_hover=result;
     return result;
 }

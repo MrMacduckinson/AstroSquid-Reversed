@@ -13,4 +13,4 @@ gzip -cd tests/menu_dispatch_stars.bin.gz > "$scratch/native-stars.bin"
 build/menu_dispatch_host_test assets "$scratch/host-stars.bin" dispatch > "$scratch/host.csv"
 cmp "$scratch/native.csv" "$scratch/host.csv"
 cmp "$scratch/native-stars.bin" "$scratch/host-stars.bin"
-echo 'PASS6 original DOMOUSE/host hit-dispatch routes:10888records,167frames,2004000 IEEE star words,save/latch/released poll'
+echo 'PASS18 original DOMOUSE/host navigation routes:33224records,507frames,6084000 IEEE star words,held drag/stationary hover/release/save order'

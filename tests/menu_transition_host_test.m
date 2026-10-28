@@ -7,7 +7,7 @@
 #import <OpenGL/glext.h>
 extern void astro_stars_draw(const AstroStar *,int,int,double,const AstroSceneSink *);
 static unsigned profile,route,reads,frame,actualClockCalls;static BOOL recording;
-static BOOL dispatchMode;
+static BOOL dispatchMode,heldButton;static NSPoint heldPoint;
 static FILE *star_dump;static AstroUIRenderer *observedUI;static AstroView *observedView;
 static uint64_t word(double x){uint64_t b;memcpy(&b,&x,8);return b;}
 static void snapshot(unsigned f){unsigned i=0;for(NSDictionary *object in [observedUI valueForKey:@"objects"]){NSString *name=object[@"name"];AstroUIMotion *s=[[[observedUI valueForKey:@"orbStates"]objectForKey:name]mutableBytes];uint32_t deadline=[[[observedUI valueForKey:@"hoverDeadlines"]objectForKey:name]unsignedIntValue];printf("N,%u,%u,%u,%u,%d,%d,%u",profile,route,f,i++,s->sprite,s->counter,deadline);double v[]={s->x,s->y,s->width,s->height};for(unsigned a=0;a<4;a++)printf(",%016llx",word(v[a]));putchar('\n');}assert(i==52);}
@@ -34,16 +34,16 @@ void transition_stars_draw(const AstroStar *stars,int menu,int stage,double sx,c
 @implementation TransitionView
 - (uint32_t)currentGameTick {actualClockCalls++;if(!recording)return 1000;assert(reads<10000);uint32_t t=1000+reads++;printf("T,%u,%u,%u",profile,route,t);if(dispatchMode)printf(",%d",menuMouseLatched);putchar('\n');return t;}
 - (void)copyKeyMap:(unsigned char *)map {memset(map,0,16);if(recording)printf("K,%u,%u,%u\n",profile,route,frame);}
-- (NSPoint)currentMenuMousePoint {return NSMakePoint(-30000,-30000);}
-- (BOOL)menuMouseButtonPressed {return NO;}
+- (NSPoint)currentMenuMousePoint {return profile>=6?heldPoint:NSMakePoint(-30000,-30000);}
+- (BOOL)menuMouseButtonPressed {return heldButton;}
 - (void)saveSettings {if(recording){assert(dispatchMode&&route==1&&[ui.anchor isEqual:@"Settings Menu"]);AstroUIMotion *s=[[[ui valueForKey:@"orbStates"]objectForKey:@"Back"]mutableBytes];uint32_t deadline=[[[ui valueForKey:@"hoverDeadlines"]objectForKey:@"Back"]unsignedIntValue];printf("I,%u,%u,%d,%u,%016llx,%016llx\n",profile,route,s->sprite,deadline,word(ui.cameraX),word(ui.cameraY));}}
 - (void)display {if(recording){[self drawRect:self.bounds];assert(!menuFrameActive);if(frame==0||!ui.transitioning){unsigned clocks=actualClockCalls;uint32_t seed=randomSeed;recording=NO;[self drawRect:self.bounds];recording=YES;assert(actualClockCalls==clocks&&randomSeed==seed);}}}
 - (void)presentFrame {if(recording){visualFrames=(int16_t)((uint16_t)visualFrames+1u);printf("W,%u,%u,%u\n",profile,route,frame++);assert(frame<1000);}}
 - (void)checkTransitions {
  [timer invalidate];timer=nil;[audio stop];audio=[TransitionAudio new];selftestPath=campaignTestPath=nil;splashVisible=NO;menuVisible=YES;gameEndRequested=YES;gameOver=paused=NO;editingKey=-1;spriteMapsPreloaded=YES;deferPresent=NO;observedView=self;
  [[self openGLContext]makeCurrentContext];GLuint fbo,color;glGenFramebuffersEXT(1,&fbo);glBindFramebufferEXT(GL_FRAMEBUFFER_EXT,fbo);glGenTextures(1,&color);glBindTexture(GL_TEXTURE_2D,color);glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,640,480,0,GL_RGBA,GL_UNSIGNED_BYTE,NULL);glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT,GL_COLOR_ATTACHMENT0_EXT,GL_TEXTURE_2D,color,0);assert(glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT)==GL_FRAMEBUFFER_COMPLETE_EXT);
- for(profile=0;profile<3;profile++){
-  recording=NO;ui=[[TransitionUI alloc]initWithAssets:assetPath error:NULL];assert(ui);observedUI=ui;ui.frameInterval=profile+1;[ui setValue:@(-599.5) forKey:@"cameraX"];[ui setValue:@(-344) forKey:@"cameraY"];
+ for(profile=0;profile<(dispatchMode?9u:3u);profile++){
+  recording=NO;ui=[[TransitionUI alloc]initWithAssets:assetPath error:NULL];assert(ui);observedUI=ui;ui.frameInterval=profile%3+1;[ui setValue:@(-599.5) forKey:@"cameraX"];[ui setValue:@(-344) forKey:@"cameraY"];
   for(NSDictionary *object in [ui valueForKey:@"objects"])[[ui valueForKey:@"hoverDeadlines"]setObject:@1000 forKey:object[@"name"]];
   __weak TransitionView *weakSelf=self;ui.readTick=^{return [weakSelf currentGameTick];};randomSeed=0x12345678;menuScroll=(AstroVelocity){2,-1};visualFrames=0;visualRateTick=1000;visualDebug=NO;reads=0;menuMouseLatched=NO;assert(!navigationButton);
   for(unsigned i=1;i<=3000;i++)stars[i-1]=(AstroStar){80,(i*17)%640,(i*29)%480,i%5+1};
@@ -51,13 +51,13 @@ void transition_stars_draw(const AstroStar *stars,int menu,int stage,double sx,c
   for(route=0;route<2;route++){
    frame=0;NSString *button=route?@"Back":@"Settings";
    if(dispatchMode){
-    assert(!menuMouseLatched);AstroUIMotion *s=[[[ui valueForKey:@"orbStates"]objectForKey:button]mutableBytes];NSPoint p=NSMakePoint((int)(ui.cameraX+s->x+s->width/2),(int)(ui.cameraY+s->y+s->height/2));[self handleMenuMouseAtPoint:p];assert(navigationButton);
+    heldButton=profile>=3;assert(!menuMouseLatched);AstroUIMotion *s=[[[ui valueForKey:@"orbStates"]objectForKey:button]mutableBytes];NSPoint p=NSMakePoint((int)(ui.cameraX+s->x+s->width/2),(int)(ui.cameraY+s->y+s->height/2));heldPoint=p;[self handleMenuMouseAtPoint:p];assert(navigationButton);
     for(unsigned poll=0;navigationButton;poll++){assert(poll<10000);[self pollMenu];}
    }else{
     [ui setButton:button pressed:YES];[ui show:route?@"Main Menu":@"Settings Menu"];observedWallTick=[self currentGameTick];for(unsigned poll=0;ui.transitioning;poll++){assert(poll<10000);[self pollMenu];}[ui setButton:button pressed:NO];
    }
    snapshot(999);printf("Z,%u,%u,%u,%u,%016llx,%016llx",profile,route,frame,reads,word(ui.cameraX),word(ui.cameraY));if(dispatchMode){assert(menuMouseLatched);printf(",%d",menuMouseLatched);}putchar('\n');
-   if(dispatchMode&&route==0){unsigned before=frame;printf("B,%u,%u\n",profile,route);[self pollMenu];printf("E,%u,%u,%d\n",profile,route,menuMouseLatched);assert(frame==before+1&&!menuMouseLatched);}
+   if(dispatchMode&&route==0){if(heldButton){unsigned before=frame;printf("H,%u,%u\n",profile,route);[self pollMenu];printf("F,%u,%u,%d\n",profile,route,menuMouseLatched);assert(frame==before+1&&menuMouseLatched);heldButton=NO;}unsigned before=frame;printf("B,%u,%u\n",profile,route);[self pollMenu];printf("E,%u,%u,%d\n",profile,route,menuMouseLatched);assert(frame==before+1&&!menuMouseLatched);}
 
   }recording=NO;
  }
