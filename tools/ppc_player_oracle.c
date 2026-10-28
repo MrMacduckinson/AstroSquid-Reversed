@@ -15,6 +15,7 @@ __asm__(
 "lmw r13,32(r1)\naddi r1,r1,256\nlwz r0,8(r1)\nmtlr r0\nblr\n");
 int main(int argc,char **argv) {
     if(argc!=5) return 2;
+    int loaded=getenv("ASTRO_PLAYER_LOADED")!=NULL;
     unsigned char *pef=read_file(argv[1]),*code=pef+128,*literals=read_file(argv[2]);
     unsigned char *globals=calloc(1,0x1300),*heap=calloc(1,0x10000);
     uint32_t toc[489];memset(toc,0,sizeof(toc));
@@ -48,22 +49,22 @@ int main(int argc,char **argv) {
         set_pointer(entity,62,render);set_double(render,16,71);set_double(render,24,20);
         AstroPlayer p={{0,0},12,3,1,0,0};
         set_double(globals,0xa1e,0);set_double(globals,0xa26,640);
-        set_double(globals,0xa2e,0);set_double(globals,0xa36,380);
+        set_double(globals,0xa2e,loaded?70:0);set_double(globals,0xa36,loaded?450:380);
         for(tick=1;tick<=200;tick++) {
             unsigned controls=(variant+tick/25)%16;
-            int x=tick%4==0?-20:tick%4==1?620:60,y=tick%4==2?-20:tick%4==3?375:180;
-            AstroRect bounds={x,y,x+71,y+20};AstroViewport viewport={0,0,640,380};
+            int x=tick%4==0?-20:tick%4==1?620:60,y=tick%4==2?(loaded?50:-20):tick%4==3?(loaded?445:375):180;
+            AstroRect bounds={x,y,x+71,y+20};AstroViewport viewport={0,loaded?70:0,640,loaded?450:380};
             set_short(entity,36,y);set_short(entity,38,x);set_short(entity,40,y+20);set_short(entity,42,x+71);
             set_short(globals,0xaac,controls&1?-1:0);set_short(globals,0xaae,controls&2?-1:0);
             set_short(globals,0xaa8,controls&4?-1:0);set_short(globals,0xaaa,controls&8?-1:0);
             invoke5(code+0x5ed70,globals,toc,entity,NULL,NULL,NULL,NULL);
             astro_player_step(&p,tick,controls,1,bounds,71,20,viewport,0);
-            if(fabs(p.velocity.x-*(double *)(entity+72))>1e-10||fabs(p.velocity.y-*(double *)(entity+80))>1e-10||
+            if(ieee_word(p.velocity.x)!=ieee_word(*(double *)(entity+72))||ieee_word(p.velocity.y)!=ieee_word(*(double *)(entity+80))||
                p.frame!=*(int16_t *)(entity+24)||p.tilt!=*(int16_t *)(entity+26)||p.state!=*(int16_t *)(entity+4)||
                p.animation_tick!=*(uint32_t *)(entity+12)||p.update_tick!=*(uint32_t *)(entity+8)) {
                 printf("FAIL player variant%d tick%u\n",variant,tick);return 1;
             }
-            if(fixture&&variant<4) fprintf(fixture,"%d,%u,%.17g,%.17g,%d,%d,%d,%u,%u\n",variant,tick,
+            if(fixture&&(loaded||variant<4)) fprintf(fixture,"%d,%u,%.17g,%.17g,%d,%d,%d,%u,%u\n",variant,tick,
                 *(double *)(entity+72),*(double *)(entity+80),*(int16_t *)(entity+24),*(int16_t *)(entity+26),
                 *(int16_t *)(entity+4),*(uint32_t *)(entity+12),*(uint32_t *)(entity+8));
             cases++;

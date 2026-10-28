@@ -164,7 +164,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     NSMutableArray *specialPolygons,*specialFlashes;
     BOOL keys[128];
     NSInteger selectedLevel;
-    double camera;
+    double camera,worldTop,worldBottom;
     double playerX,playerY,playerEntityX,playerEntityY;
     double previousTime,clockOrigin;
     uint32_t observedWallTick;
@@ -325,7 +325,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     enemies=[NSMutableArray array];world=[NSMutableArray array];mapPlacements=[NSMutableArray array];
     visualEffects=[NSMutableArray array];specialPolygons=[NSMutableArray array];specialFlashes=[NSMutableArray array];
     backgrounds=@[];parallaxData=[NSMutableData data];
-    playerX = 30; playerY = 190;automatic=YES;
+    playerX = 30; playerY = 190;automatic=YES;worldBottom=380;
     previousTime = [NSDate timeIntervalSinceReferenceDate];
     timer = [NSTimer scheduledTimerWithTimeInterval:1.0/60.0 target:self
                                            selector:@selector(tick:) userInfo:nil repeats:YES];
@@ -667,6 +667,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self loadLevelMap];
 }
 - (void)loadLevelMap {
+    worldTop=70;worldBottom=450;
     NSDictionary *level=game[@"levels"][levels[selectedLevel]];
     if(!starsInitialized) {astro_stars_init(stars,1,&randomSeed);starsInitialized=YES;}
     NSMutableArray *scene=[NSMutableArray array];
@@ -755,14 +756,14 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             AstroBeam beam={actor->subtype,actor->hitPoints,(int)actor->state.x,(int)actor->state.y,
                 (int)actor->state.velocity.x,(int)actor->state.velocity.y,-1};
             [images addObject:[NSData dataWithBytes:&beam length:sizeof(beam)]];
-            astro_beam_render(&beam,-camera,0,camera,0,camera+640,380,&randomSeed,sink);
+            astro_beam_render(&beam,-camera,0,camera,worldTop,camera+640,worldBottom,&randomSeed,sink);
             actor->state.remove=1;
         }
         presentedBeams=images;
     }else{
         uint32_t seed=presentedBeamSeed;
         for(NSData *data in presentedBeams)
-            astro_beam_render(data.bytes,-camera,0,camera,0,camera+640,380,&seed,sink);
+            astro_beam_render(data.bytes,-camera,0,camera,worldTop,camera+640,worldBottom,&seed,sink);
     }
 }
 - (void)fireWeapon:(int)identifier x:(int)x y:(int)y heading:(int)heading source:(int)kind {
@@ -772,7 +773,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         AstroBeam beams[2];BeamContext context={.view=self,.objects=objects,.targets=targets,
             .soundCue=identifier>=50?295:296,.soundX=identifier>=50?x-10:x+2};
         int emitted=astro_beam_shots(identifier,x,y,heading,ui.frameInterval,kind,-1,targets,count,
-            camera,0,camera+640,380,&randomSeed,beams,beamHit,&context);
+            camera,worldTop,camera+640,worldBottom,&randomSeed,beams,beamHit,&context);
         if(emitted<0) {NSLog(@"Invalid beam request");exit(1);}
         emittedBeams+=emitted;return;
     }
@@ -985,7 +986,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     BeamContext beamWorld={.view=self,.objects=objects,.targets=data.mutableBytes};
     AstroSpecialContext context={.context=&beamWorld,.seed=&randomSeed,.targets=data.mutableBytes,
         .target_count=objects.count,.source_parent=-1,.gun_x=bounds.left+74,.gun_y=bounds.top+12,
-        .frame_interval=ui.frameInterval,.left=camera,.top=0,.right=camera+640,.bottom=380,
+        .frame_interval=ui.frameInterval,.left=camera,.top=worldTop,.right=camera+640,.bottom=worldBottom,
         .render_tick=&worldRenderTick,.action_tick=actor?&actor->state.action_tick:&lastPlayerShot,.render_world=specialRenderWorld,.present=specialPresent,
         .spawn=specialSpawn,.bullet=specialBullet,.beam=specialBeam,.sprite=specialSprite,
         .polygon=specialPolygon,.sound=specialSound,.create_spawn=specialCreate,.finish_spawn=specialFinish};
@@ -1265,7 +1266,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if((int32_t)(comparison-actor->update_tick)<=0)return NO;
     actor->velocity=*velocity;
     astro_player_move(actor,controls,1,bounds,width,height,
-        (AstroViewport){camera,0,camera+640,380},changingStage);
+        (AstroViewport){camera,worldTop,camera+640,worldBottom},changingStage);
     *velocity=actor->velocity;return YES;
 }
 - (void)firePlayerWeapons {
@@ -1430,7 +1431,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)stepStageTransition {
     astro_transition_step(&transition,simulationTick+1,playerBounds,playerVisual.width,playerVisual.height,
-        (AstroRect){(int)camera,0,(int)(camera+640),380},-camera,0);
+        (AstroRect){(int)camera,(int)worldTop,(int)(camera+640),(int)worldBottom},-camera,0);
     if(transition.events&ASTRO_TRANSITION_BLOW) {
         for(int pass=0;pass<2;pass++) {
             for(AstroEnemy *enemy in enemies)enemy->state.remove=-1;
@@ -1539,8 +1540,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)calculateActors {
     actorVisits=0;
-    astro_stars_move(stars,-camera,0,camera,0,camera+640,380,tickedScroll,0,0,0,ui.frameInterval,&randomSeed,
+    astro_stars_move(stars,-camera,0,camera,worldTop,camera+640,worldBottom,tickedScroll,0,0,0,ui.frameInterval,&randomSeed,
         parallaxData.mutableBytes,backgrounds.count,0);
+    worldTop=-0.0;worldBottom=380;
     [specialPolygons removeAllObjects];[specialFlashes removeAllObjects];
     [self syncActorLinks];actorTraversalDepth++;
     id actor=world.firstObject;
@@ -1560,7 +1562,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         BOOL trail=changingStage&&transition.phase==ASTRO_TRANSITION_TRAIL;
         if(trail){
             astro_transition_render_trail(&transition);tickedScroll=transition.scroll_x;
-            astro_stars_move(stars,-camera,0,camera,0,camera+640,380,tickedScroll,0,0,0,ui.frameInterval,&randomSeed,
+            astro_stars_move(stars,-camera,0,camera,worldTop,camera+640,worldBottom,tickedScroll,0,0,0,ui.frameInterval,&randomSeed,
                 parallaxData.mutableBytes,backgrounds.count,0);
         }
         simulationRender=YES;[self display];simulationRender=NO;

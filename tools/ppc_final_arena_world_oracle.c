@@ -38,7 +38,7 @@ void arena_play(unsigned handle){assert(handle==0x1234);puts("A\tplay2");}
 WRAP(arena_system) WRAP(arena_folder) WRAP(arena_open) WRAP(arena_read) WRAP(arena_readfile)
 WRAP(arena_eof) WRAP(arena_length) WRAP(arena_close) WRAP(arena_stop) WRAP(arena_play)
 int main(int argc,char **argv){
-    if(argc!=6&&argc!=7)return 2;alarm(30);data_directory=argv[5];advancing=argc==7;if(advancing)assert(!strcmp(argv[6],"advancing"));
+    if(argc<6||argc>8)return 2;alarm(30);data_directory=argv[5];advancing=argc>=7;if(advancing)assert(!strcmp(argv[6],"advancing"));
     unsigned char *code=read_file(argv[1])+128,*g=calloc(1,0x1300),*heap=calloc(1,0x100000);assert(g&&heap);world_globals=g;
     uint32_t toc[489]={0};for(int i=0;i<484;i++){
         void *fn=dlsym(RTLD_DEFAULT,import_names[i]);
@@ -62,9 +62,19 @@ int main(int argc,char **argv){
     tick=100;phase="before";unsigned char *player=spawn(code,toc,1,1,1400,180);set_pointer(g,0xa7a,player);set_short(player,88,73);
     unsigned char *boss=spawn(code,toc,7,3,1500,180);set_short(boss,96,-2);set_short(boss,70,-1);
     unsigned char *survivor=spawn(code,toc,7,3,1600,100);set_short(survivor,88,71);
-    set_double(g,0xea2,-1234.25);set_double(g,0xaa0,.3);snapshot();clock_reads=0;
+    set_double(g,0xea2,-1234.25);set_double(g,0xa1e,1234.25);set_double(g,0xa26,1874.25);set_double(g,0xa2e,-0.0);set_double(g,0xa36,380);
+    set_double(g,0xaa0,.3);snapshot();clock_reads=0;
     phase="cleanup";invoke_fb(code+0x539b8,g,toc,NULL,NULL,NULL);snapshot();
     assert(opens==2&&map_records==247&&scene_records&&records==map_records+scene_records&&!input_file);
     assert(*(short *)(player+88)==73&&*(short *)(survivor+88)==71&&*(short *)(g+0xa82)==8&&*(short *)(g+0xa84)==2&&*(double *)(g+0xaa0)==-.2);
-    fprintf(stderr,"PASS native finalarena composite:247 map records,%u scene records,%u clocks, RNG%08x entities%u images%u\n",scene_records,clock_reads,*(unsigned *)(g+0x244),entity_birth,render_birth);return 0;
+    fprintf(stderr,"PASS native finalarena composite:247 map records,%u scene records,%u clocks, RNG%08x entities%u images%u\n",scene_records,clock_reads,*(unsigned *)(g+0x244),entity_birth,render_birth);
+    if(argc==8){
+        set_pointer(g,0xa76,NULL);set_pointer(g,0xa7a,NULL);phase="stars";
+        invoke_fb(code+0x54c64,g,toc,NULL,NULL,NULL);
+        assert(ieee_word(*(double *)(g+0xa2e))==0x8000000000000000ULL&&*(double *)(g+0xa36)==380);
+        FILE *out=fopen(argv[7],"wb");assert(out);assert(fwrite(*(unsigned char **)(g+0xa54)+32,1,3000*32,out)==3000*32);
+        unsigned backgrounds=0;for(unsigned char *r=*(void **)(g+0xe86);r;r=*(void **)(r+300))if(*(short *)(r+32)==2){assert(fwrite(r,1,16,out)==16&&fwrite(r+296,1,4,out)==4);backgrounds++;}
+        assert(backgrounds==3&&!fclose(out));
+        fprintf(stderr,"PASS native first CALC star phase: load70..450 consumed before reset-0..380 RNG%08x\n",*(unsigned *)(g+0x244));
+    }return 0;
 }

@@ -14,7 +14,7 @@ static unsigned compositeClocks;static BOOL advancing;
 - (uint32_t)playerClockTick {unsigned index=compositeClocks++;return 100+(advancing&&tracePhase&&!strcmp(tracePhase,"cleanup")?index:0);}
 @end
 @implementation AstroView(CompositeArena)
-- (void)runCompositeArena {
+- (void)runCompositeArena:(const char *)phaseOutput {
     [timer invalidate];timer=nil;[audio stop];audio=[[CompositeArenaAudio alloc]initWithAssets:assetPath error:NULL];assert(audio);
     entityIDs=[NSMapTable strongToStrongObjectsMapTable];nextEntityID=1;playerTraceID=1;
     world=[NSMutableArray array];enemies=[NSMutableArray array];visualEffects=[NSMutableArray array];mapPlacements=[NSMutableArray array];
@@ -30,10 +30,17 @@ static unsigned compositeClocks;static BOOL advancing;
     camera=1234.25;ui.musicVolume=1;traceTick=100;tracePhase="before";[self dumpWorldTrace:@"before"];
     compositeClocks=0;tracePhase="cleanup";[self cleanupWorld];[self dumpWorldTrace:@"cleanup"];
     fprintf(stderr,"HOST finalarena composite clocks%u RNG%08x entities%u images%llu backgrounds%lu\n",compositeClocks,randomSeed,nextEntityID,(unsigned long long)renderClock,(unsigned long)backgrounds.count);
+    if(phaseOutput){
+        [world removeAllObjects];[enemies removeAllObjects];camera=astro_camera_advance(camera,tickedScroll);[self calculateActors];
+        assert(worldTop==0&&signbit(worldTop)&&worldBottom==380);FILE *out=fopen(phaseOutput,"wb");assert(out);
+        unsigned char bytes[32];for(unsigned i=0;i<3000;i++){be64(bytes,stars[i].brightness);be64(bytes+8,stars[i].x);be64(bytes+16,stars[i].y);be64(bytes+24,stars[i].speed);assert(fwrite(bytes,1,32,out)==32);}
+        const AstroParallax *p=parallaxData.bytes;for(unsigned i=0;i<backgrounds.count;i++){be64(bytes,p[i].x);be64(bytes+8,p[i].y);be32(bytes+16,p[i].depth);assert(fwrite(bytes,1,20,out)==20);}
+        assert(!fclose(out));fprintf(stderr,"HOST first CALC star phase RNG%08x\n",randomSeed);
+    }
 }
 @end
 int main(int argc,char **argv){@autoreleasepool{
-    assert(argc==2||argc==3);advancing=argc==3;if(advancing)assert(!strcmp(argv[2],"advancing"));[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
+    assert(argc>=2&&argc<=4);advancing=argc>=3;if(advancing)assert(!strcmp(argv[2],"advancing"));[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
     [[NSUserDefaults standardUserDefaults]setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}} forName:NSArgumentDomain];
-    CompositeArenaView *view=[[CompositeArenaView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(view);[view runCompositeArena];
+    CompositeArenaView *view=[[CompositeArenaView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(view);[view runCompositeArena:argc==4?argv[3]:NULL];
 }}
