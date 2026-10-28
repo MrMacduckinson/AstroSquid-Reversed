@@ -30,4 +30,14 @@ for weapon in 40 41 42 43 51 52 53; do
   gzip -cd "tests/active_special_levels/$clocks.csv.gz" | awk -F, '{print $1 "," $3}' > "$scratch/native-clocks.csv"
   cmp "$scratch/native-clocks.csv" "$scratch/clocks.csv"
 done
-echo 'PASS original nested special worlds: base, resumed tail and all eight timed weapon levels'
+for weapon in 51 52 53; do
+  for mode in pair kill; do
+    name="$weapon-$mode"
+    build/active_special_world_host assets "$scratch/clocks.csv" storm "$weapon" "$mode" > "$scratch/host.tsv"
+    awk '$1 != "V"' "tests/active_special_pairs/$name.tsv" > "$scratch/native.tsv"
+    cmp "$scratch/native.tsv" "$scratch/host.tsv"
+    gzip -cd "tests/active_special_pairs/$name-clocks.csv.gz" | awk -F, '{print $1 "," $3}' > "$scratch/native-clocks.csv"
+    cmp "$scratch/native-clocks.csv" "$scratch/clocks.csv"
+  done
+done
+echo 'PASS original nested special worlds: base, tail, eight weapon levels, two-target chains and destruction'

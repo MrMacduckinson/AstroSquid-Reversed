@@ -47,7 +47,7 @@ static unsigned clockReads,created,finished;
     const int bounds[]={10,10,10,10,10,10,10,360,40,3,10,8};
     for(unsigned i=0;i<12;i++){astro_random(&expected,bounds[i]);if(i==3)expectedSeeds[0]=expected;if(i==6)expectedSeeds[1]=expected;if(i==11)expectedSeeds[2]=expected;}
     int debrisSprite=[game[@"attributes"][@"42"][@"sprite"] intValue];
-    AstroDeathSource source={.kind=2,.tag=1,.left=20,.top=30,.right=30,.bottom=40,.width=10,.height=10,.original_height=10,
+    AstroDeathSource source={.kind=2,.tag=1,.left=20,.render_x=20,.top=30,.right=30,.bottom=40,.width=10,.height=10,.original_height=10,
         .explosion_sprite=83,.explosion_width=spriteInfo[83].width,.explosion_height=spriteInfo[83].height,.explosion_delay=spriteInfo[83].delay,
         .debris_attribute=42,.debris_sprite=debrisSprite,.debris_width=spriteInfo[debrisSprite].width,.debris_height=spriteInfo[debrisSprite].height,.debris_count=1};
     observing=YES;DeathContext context={self,100};

@@ -120,7 +120,8 @@ static int active_swap(void *context){(void)context;swaps++;active_snapshot("swa
 #define OBSERVER(name) extern void name##_fb(void); __asm__(".text\n.align 2\n.globl _" #name "_fb\n_" #name "_fb:\n" "mflr r0\nstw r0,8(r1)\nstwu r1,-64(r1)\nstw r2,20(r1)\nbl _" #name "\nlwz r2,20(r1)\naddi r1,r1,64\nlwz r0,8(r1)\nmtlr r0\nblr\n");
 OBSERVER(active_render) OBSERVER(active_hud) OBSERVER(active_flash)
 int main(int argc,char **argv){
- if(argc<7||argc>9)return 2;int tail=argc>=8&&!strcmp(argv[7],"tail");storm=argc>=8&&!strcmp(argv[7],"storm");if(argc>=8&&!tail&&!storm)return 2;int weapon=argc==9?atoi(argv[8]):50;if(argc==9&&(!storm||!((weapon>=40&&weapon<=43)||(weapon>=50&&weapon<=53))))return 2;
+ if(argc<7||argc>10)return 2;int tail=argc>=8&&!strcmp(argv[7],"tail");storm=argc>=8&&!strcmp(argv[7],"storm");if(argc>=8&&!tail&&!storm)return 2;int weapon=argc>=9?atoi(argv[8]):50;if(argc>=9&&(!storm||!((weapon>=40&&weapon<=43)||(weapon>=50&&weapon<=53))))return 2;
+ int pair=argc==10&&!strcmp(argv[9],"pair"),kill=argc==10&&!strcmp(argv[9],"kill");if(argc==10&&(!storm||weapon<51||weapon>53||(!pair&&!kill)))return 2;
  if(!freopen(argv[5],"w",stdout))return 2;clock_trace=fopen(argv[6],"w");if(!clock_trace)return 2;
  unsigned char *pef=read_file(argv[1]),*code=pef+128,*literals=read_file(argv[2]),*g=calloc(1,0x1300),*heap=calloc(1,0x100000);world_globals=g;active_code=code;
  uint32_t toc[489]={0};for(int i=0;i<484;i++){void *f=dlsym(RTLD_DEFAULT,import_names[i]);
@@ -134,7 +135,7 @@ int main(int argc,char **argv){
  jump_to(code+0x3ce84,world_sound_fb);jump_to(code+0x57afc,active_render_fb);jump_to(code+0x43134,active_hud_fb);if(!storm)jump_to(code+0x55878,active_flash_fb);else{jump_to(code+0x3a278,noop_gl);set_pointer(g,0xcd6,calloc(1,8));set_pointer(g,0x1004,calloc(7,0x108));}MakeDataExecutable(code,433284);
  FSRef ref;ResFileRefNum rf;HFSUniStr255 fork;OSStatus err=FSPathMakeRef((const UInt8*)argv[3],&ref,NULL);if(!err)err=FSGetResourceForkName(&fork);if(!err)err=FSOpenResourceFile(&ref,fork.length,fork.unicode,fsRdPerm,&rf);if(err)return 2;UseResFile(rf);
  if(storm){snprintf(path,sizeof(path),"%s.strings",argv[1]);unsigned char *expected=read_file(path);Handle actual=GetResource('STR#',25000);if(!actual||GetHandleSize(actual)!=6884||memcmp(*actual,expected,6884)){fputs("Reference STR#25000 differs from download3\n",stderr);return 2;}}
- phase="setup";tick=100;if(storm){unsigned char *target=spawn(code,toc,20,4,300,180);set_short(target,88,30000);}
+ phase="setup";tick=100;if(storm){unsigned char *target=spawn(code,toc,20,4,300,180);set_short(target,88,kill?1:30000);if(pair||kill){unsigned char *second=spawn(code,toc,20,4,350,190);set_short(second,88,30000);}}
  if(tail)spawn(code,toc,4,1,500,300);
  unsigned char *player=spawn(code,toc,1,1,100,180);set_pointer(g,0xa7a,player);set_short(player,24,12);set_short(player,26,3);set_short(player,88,200);*(uint32_t *)(player+8)=99;*(uint32_t *)(player+12)=100;*(uint32_t *)(player+16)=0;
  active_snapshot("initial");clock_enabled=1;phase="calc";invoke_fb(code+0x54c64,g,toc,NULL,NULL,NULL);active_snapshot("return");

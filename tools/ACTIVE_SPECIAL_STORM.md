@@ -79,3 +79,29 @@ continue to match the native captures.
 
 The target survives these cases. Multi-target special chains, destructive
 cached-tail cases, allocator reuse and full rendering/campaign proof remain open.
+
+## Two-target chains and destruction
+
+For levels51..53, append `pair` or `kill` after the weapon number in both drivers.
+The two rocks are20/4 at300,180 and350,190; both HP30000 for pair, older rock HP1
+for kill. Native creation order is rock1→rock2→player3, so rock2 is the cached
+outer tail and survives in both modes. This verifies resuming that tail after
+older-target deletion; it does not prove behavior with a freed cached tail.
+
+All six added traces repeat natively and match the production host:24910 complete
+state/event records and762900 clock values. Lower-level chain beam entities
+occur in every case. Kill cases remove rock1, generate fragments, hit/kill some
+fragments and accrue a positive score. These paths include original cleanup,
+effect construction/scale/deadlines and late RNG. The native HUD observer records
+(2..9 per case) remain explicitly outside the presentation boundary. Golden state
+and callsite clocks are in tests/active_special_pairs. The full gate now checks
+16 scenarios, including all older base/tail/single-target cases. Allocation total
+assertions cover each pair/death scenario as well as the single-target cases.
+
+This exposed fractional death-sound positioning. ADDSPRITEDEATHEFFECTS reads
+render_sprite.x, whereas the generator previously emitted bounds.left as sound
+x. AstroDeathSource now carries render_x separately, supplied from the actual
+visual; all test/oracle constructors initialize it explicitly. Geometric bounds
+remain integers for collision/effect placement. Three native destruction cases
+prove the resulting sound pan IEEE words alongside the rest of the world trace.
+No API for sound output or GPU rendering was replaced in the production app.

@@ -4,7 +4,7 @@
 #include <stdint.h>
 typedef struct {
     int kind,tag,left,top,right,bottom;
-    double width,height,original_height;
+    double width,height,original_height,render_x;
     AstroVelocity velocity;
     int explosion_sprite,explosion_width,explosion_height,explosion_delay;
     int debris_attribute,debris_sprite,debris_width,debris_height,debris_count;

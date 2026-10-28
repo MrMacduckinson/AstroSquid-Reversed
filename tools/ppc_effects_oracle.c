@@ -121,7 +121,7 @@ int main(int argc,char **argv) {
             int w=20+variant*35,h=15+variant*25;
             int explosion=*(int16_t *)(a+24),debris=*(int16_t *)(a+6);
             int debris_sprite=*(int16_t *)(attributes+debris*30+22);
-            AstroDeathSource source={.kind=kind,.tag=variant==2?1:0,.left=700,.top=180,.right=700+w,.bottom=180+h,
+            AstroDeathSource source={.kind=kind,.tag=variant==2?1:0,.left=700,.render_x=700,.top=180,.right=700+w,.bottom=180+h,
                 .width=w,.height=h,.original_height=height,.velocity={1.5,-2.5},
                 .explosion_sprite=explosion,.explosion_width=*(int16_t *)(sprites+explosion*14+6),
                 .explosion_height=*(int16_t *)(sprites+explosion*14+8),.explosion_delay=*(int16_t *)(sprites+explosion*14+12),.debris_attribute=debris,

@@ -19,7 +19,7 @@ int main(int argc,char **argv) {
     char line[2048];unsigned cases=0;
     while(fgets(line,sizeof(line),f)) {
         assert(line[0]=='C');double v[32];assert(values(line,v)==25);
-        AstroDeathSource s={.kind=v[0],.tag=v[1],.left=v[2],.top=v[3],.right=v[4],.bottom=v[5],
+        AstroDeathSource s={.kind=v[0],.tag=v[1],.left=v[2],.render_x=v[2],.top=v[3],.right=v[4],.bottom=v[5],
             .width=v[6],.height=v[7],.original_height=v[8],.velocity={v[9],v[10]},
             .explosion_sprite=v[11],.explosion_width=v[12],.explosion_height=v[13],.explosion_delay=v[14],
             .debris_attribute=v[15],.debris_sprite=v[16],.debris_width=v[17],.debris_height=v[18],.debris_count=v[19]};

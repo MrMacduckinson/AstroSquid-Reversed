@@ -942,7 +942,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     int debrisSprite=[debrisDefinition[@"sprite"] intValue];
     AstroDeathSource source={.kind=enemy->kind,.tag=[enemy->placement[@"tag"] intValue],
         .left=enemy->bounds.left,.top=enemy->bounds.top,.right=enemy->bounds.right,.bottom=enemy->bounds.bottom,
-        .width=enemy->visual.width,.height=enemy->visual.height,.original_height=spriteInfo[sprite].height,
+        .width=enemy->visual.width,.height=enemy->visual.height,.original_height=spriteInfo[sprite].height,.render_x=enemy->visual.x,
         .velocity=enemy->state.velocity,.explosion_sprite=explosion,.explosion_width=spriteInfo[explosion].width,
         .explosion_height=spriteInfo[explosion].height,.explosion_delay=spriteInfo[explosion].delay,
         .debris_attribute=debris,.debris_sprite=debrisSprite,.debris_width=spriteInfo[debrisSprite].width,

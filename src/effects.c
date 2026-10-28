@@ -6,7 +6,7 @@
 int astro_death_effects_phased(const AstroDeathSource *s,uint32_t tick,uint32_t *seed,
                                void *(*create)(void *,const AstroDeathEffect *),
                                void (*finish)(void *,void *,const AstroDeathEffect *),void *context) {
-    if(!s||!seed||!create||!finish||!isfinite(s->width)||!isfinite(s->height)||
+    if(!s||!seed||!create||!finish||!isfinite(s->width)||!isfinite(s->height)||!isfinite(s->render_x)||
        s->width<0||s->height<0||s->width>32767||s->height>32767||
        s->original_height<=0||s->debris_count<0) return 0;
     int width=(int)s->width,height=(int)s->height;
@@ -19,7 +19,7 @@ int astro_death_effects_phased(const AstroDeathSource *s,uint32_t tick,uint32_t 
         int choice=astro_random(seed,width<60?3:2);
         const int small[]={0x122,0x123,0x124},large[]={0x11a,0x125};
         AstroDeathEffect sound={.type=ASTRO_EFFECT_SOUND,
-            .sound_string=width<60?small[choice-1]:large[choice-1],.x=s->left};
+            .sound_string=width<60?small[choice-1]:large[choice-1],.x=s->render_x};
         void *object=create(context,&sound);finish(context,object,&sound);
     }
     int count=(int)((int)(2+s->height*s->width/100)*scale);

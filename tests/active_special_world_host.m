@@ -3,6 +3,7 @@
 #include "world_trace_host.m"
 static BOOL activeClock,activeTail,activeStorm;
 static int activeWeapon=50;
+static BOOL activePair,activeKill;
 static unsigned activeReads,activeFrames,activeLM;
 static uint32_t activeNow;
 static FILE *clockTrace;
@@ -61,7 +62,12 @@ static FILE *clockTrace;
         renderClock=0;nextEntityID=0;playerTraceID=2;
         NSDictionary *a=game[@"attributes"][@"204"];int sprite=[a[@"sprite"] intValue];
         AstroEnemy *target=[self entityForPlacement:@{@"attribute":@204,@"x":@300,@"y":@180,@"width":@(spriteInfo[sprite].width),@"height":@(spriteInfo[sprite].height)}];
-        target->active=YES;target->hitPoints=30000;[enemies addObject:target];[world addObject:target];playerRenderBirth=++renderClock;nextEntityID=2;
+        target->active=YES;target->hitPoints=activeKill?1:30000;[enemies addObject:target];[world addObject:target];
+        if(activePair||activeKill){
+            AstroEnemy *second=[self entityForPlacement:@{@"attribute":@204,@"x":@350,@"y":@190,@"width":@(spriteInfo[sprite].width),@"height":@(spriteInfo[sprite].height)}];
+            second->active=YES;second->hitPoints=30000;[enemies insertObject:second atIndex:0];[world insertObject:second atIndex:1];
+        }
+        playerRenderBirth=++renderClock;playerTraceID=++nextEntityID;
     }
     if(activeTail){
         renderClock=0;nextEntityID=0;playerTraceID=2;
@@ -72,16 +78,22 @@ static FILE *clockTrace;
     [self dumpWorldTrace:@"initial"];activeClock=YES;tracePhase="calc";[self calculateActors];tracePhase=NULL;activeClock=NO;
     simulationTick=activeNow;[self dumpWorldTrace:@"return"];
     assert(!special.active&&!specialLoopRunning&&inventory.specials==0&&(activeStorm?world.count>=2:world.count==(activeTail?2:1)));
-    if(activeStorm){
+    if(activeStorm&&!activePair&&!activeKill){
         unsigned expectedEntities=activeWeapon<50?33:activeWeapon==50?374:366;
         unsigned expectedImages=activeWeapon<50?188:activeWeapon==50?2420:2368;
         assert(renderClock==expectedImages&&nextEntityID==expectedEntities);
+    }
+    if(activePair||activeKill){
+        const unsigned entities[][2]={{531,380},{567,386},{540,407}};
+        const unsigned images[][2]={{3347,2118},{3575,2142},{3404,2287}};
+        assert(nextEntityID==entities[activeWeapon-51][activeKill]);
+        assert(renderClock==images[activeWeapon-51][activeKill]);
     }
     fprintf(stderr,"HOST coupled active-special reads%u frames%u LM%u return%u update%u action%u RNG%08x entities%u images%u\n",activeReads,activeFrames,activeLM,activeNow,playerState.update_tick,lastPlayerShot,randomSeed,nextEntityID,(unsigned)renderClock);
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
-    assert(argc>=3&&argc<=5);activeTail=argc>=4&&!strcmp(argv[3],"tail");activeStorm=argc>=4&&!strcmp(argv[3],"storm");assert(argc==3||activeTail||activeStorm);if(argc==5){activeWeapon=atoi(argv[4]);assert(activeStorm&&((activeWeapon>=40&&activeWeapon<=43)||(activeWeapon>=50&&activeWeapon<=53)));}clockTrace=fopen(argv[2],"w");assert(clockTrace);
+    assert(argc>=3&&argc<=6);activeTail=argc>=4&&!strcmp(argv[3],"tail");activeStorm=argc>=4&&!strcmp(argv[3],"storm");assert(argc==3||activeTail||activeStorm);if(argc>=5){activeWeapon=atoi(argv[4]);assert(activeStorm&&((activeWeapon>=40&&activeWeapon<=43)||(activeWeapon>=50&&activeWeapon<=53)));}if(argc==6){activePair=!strcmp(argv[5],"pair");activeKill=!strcmp(argv[5],"kill");assert(activeStorm&&activeWeapon>=51&&activeWeapon<=53&&(activePair||activeKill));}clockTrace=fopen(argv[2],"w");assert(clockTrace);
     [NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
     [[NSUserDefaults standardUserDefaults] setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}} forName:NSArgumentDomain];
     AstroView *view=[[AstroActiveTraceView alloc] initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(view);[view traceActiveWorld];fclose(clockTrace);
