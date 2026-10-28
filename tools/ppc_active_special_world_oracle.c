@@ -1,4 +1,4 @@
-/* Coupled original active-special50 world oracle. Original CALC/DOPLAYER/
+/* Coupled original active timed-special world oracle. Original CALC/DOPLAYER/
    FIREWEAPONSPECIAL/nested cleanup/CALC/LMHANDLE preserved; semantic render,
    sound and GPU import observers only. Run solely on reference G5. */
 #include <Carbon/Carbon.h>
@@ -120,7 +120,7 @@ static int active_swap(void *context){(void)context;swaps++;active_snapshot("swa
 #define OBSERVER(name) extern void name##_fb(void); __asm__(".text\n.align 2\n.globl _" #name "_fb\n_" #name "_fb:\n" "mflr r0\nstw r0,8(r1)\nstwu r1,-64(r1)\nstw r2,20(r1)\nbl _" #name "\nlwz r2,20(r1)\naddi r1,r1,64\nlwz r0,8(r1)\nmtlr r0\nblr\n");
 OBSERVER(active_render) OBSERVER(active_hud) OBSERVER(active_flash)
 int main(int argc,char **argv){
- if(argc!=7&&argc!=8)return 2;int tail=argc==8&&!strcmp(argv[7],"tail");storm=argc==8&&!strcmp(argv[7],"storm");if(argc==8&&!tail&&!storm)return 2;
+ if(argc<7||argc>9)return 2;int tail=argc>=8&&!strcmp(argv[7],"tail");storm=argc>=8&&!strcmp(argv[7],"storm");if(argc>=8&&!tail&&!storm)return 2;int weapon=argc==9?atoi(argv[8]):50;if(argc==9&&(!storm||!((weapon>=40&&weapon<=43)||(weapon>=50&&weapon<=53))))return 2;
  if(!freopen(argv[5],"w",stdout))return 2;clock_trace=fopen(argv[6],"w");if(!clock_trace)return 2;
  unsigned char *pef=read_file(argv[1]),*code=pef+128,*literals=read_file(argv[2]),*g=calloc(1,0x1300),*heap=calloc(1,0x100000);world_globals=g;active_code=code;
  uint32_t toc[489]={0};for(int i=0;i<484;i++){void *f=dlsym(RTLD_DEFAULT,import_names[i]);
@@ -129,7 +129,7 @@ int main(int argc,char **argv){
  char path[2048];snprintf(path,sizeof path,"%s/Attr.bin",argv[4]);set_pointer(g,0xa94,read_file(path));snprintf(path,sizeof path,"%s/sprt.bin",argv[4]);set_pointer(g,0xe82,read_file(path));snprintf(path,sizeof path,"%s/Wpns.bin",argv[4]);set_pointer(g,0xa98,read_file(path));
  set_pointer(g,0x21c,literals);set_double(g,0x368,3.14159265358979323846);set_double(g,0x378,4503601774854144.0);*(uint32_t*)(g+0x380)=0x43300000;set_pointer(g,0x388,heap);set_pointer(g,0x38c,heap);
  set_short(g,0xed6,640);set_short(g,0xed8,480);set_pointer(g,0xa54,calloc(3001*4,sizeof(double)));set_double(g,0xa26,640);set_double(g,0xa36,380);set_short(g,0xa52,1);*(uint32_t*)(g+0x244)=0x12345678;
- set_short(g,0xa8a,50);set_short(g,0xa8e,1);set_short(g,0xab4,-1);*(uint32_t *)(g+0xa4a)=*(uint32_t *)(g+0xa4e)=100;
+ set_short(g,0xa8a,weapon);set_short(g,0xa8e,1);set_short(g,0xab4,-1);*(uint32_t *)(g+0xa4a)=*(uint32_t *)(g+0xa4e)=100;
  set_short(g,0xcc2,55);set_short(g,0xcc4,58);set_short(g,0xcc6,126);set_short(g,0xcc8,125);set_short(g,0xcca,124);set_short(g,0xccc,123);
  jump_to(code+0x3ce84,world_sound_fb);jump_to(code+0x57afc,active_render_fb);jump_to(code+0x43134,active_hud_fb);if(!storm)jump_to(code+0x55878,active_flash_fb);else{jump_to(code+0x3a278,noop_gl);set_pointer(g,0xcd6,calloc(1,8));set_pointer(g,0x1004,calloc(7,0x108));}MakeDataExecutable(code,433284);
  FSRef ref;ResFileRefNum rf;HFSUniStr255 fork;OSStatus err=FSPathMakeRef((const UInt8*)argv[3],&ref,NULL);if(!err)err=FSGetResourceForkName(&fork);if(!err)err=FSOpenResourceFile(&ref,fork.length,fork.unicode,fsRdPerm,&rf);if(err)return 2;UseResFile(rf);
@@ -138,6 +138,6 @@ int main(int argc,char **argv){
  if(tail)spawn(code,toc,4,1,500,300);
  unsigned char *player=spawn(code,toc,1,1,100,180);set_pointer(g,0xa7a,player);set_short(player,24,12);set_short(player,26,3);set_short(player,88,200);*(uint32_t *)(player+8)=99;*(uint32_t *)(player+12)=100;*(uint32_t *)(player+16)=0;
  active_snapshot("initial");clock_enabled=1;phase="calc";invoke_fb(code+0x54c64,g,toc,NULL,NULL,NULL);active_snapshot("return");
- fclose(clock_trace);fflush(stdout);if((!storm&&(disposed||entity_birth!=(tail?2:1)||render_birth!=(tail?2:1)))||(storm&&(!disposed||entity_birth<3||render_birth<3))||*(int16_t *)(g+0xa8e)!=0||*(int16_t *)player!=1||!serial)return 1;
- fprintf(stderr,"PASS active coupled original special50 tail%d clockreads%u renders%u swaps%u huds%u flashes%u entities%u rendersprites%u disposals%u\n",tail,serial,renders,swaps,huds,flashes,entity_birth,render_birth,disposed);return 0;
+ fclose(clock_trace);fflush(stdout);if((!storm&&(disposed||entity_birth!=(tail?2:1)||render_birth!=(tail?2:1)))||(storm&&(!disposed||entity_birth<(weapon<50?2:3)||render_birth<3))||*(int16_t *)(g+0xa8e)!=0||*(int16_t *)player!=1||!serial)return 1;
+ fprintf(stderr,"PASS active coupled original special%d tail%d clockreads%u renders%u swaps%u huds%u flashes%u entities%u rendersprites%u disposals%u\n",weapon,tail,serial,renders,swaps,huds,flashes,entity_birth,render_birth,disposed);return 0;
 }

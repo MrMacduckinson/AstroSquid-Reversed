@@ -53,3 +53,29 @@ special attacks; that controlled self-test is not original campaign equality.
 
 Remaining: other special weapon levels/targets and real deletion/reuse cases,
 longer ordinary campaign sequences, complete rendering/HUD/input equivalence.
+
+## Expanded timed levels40..43 and50..53
+
+Pass a final weapon number after `storm` to both native and host drivers.
+All eight timed levels now match6746 state/event records and1016027 clock
+values across the coupled nested attacks; all native traces repeated exactly.
+Golden files for40..43/51..53 are in tests/active_special_levels; level50 reuses
+its existing fixture unchanged. The four plasma native callsite streams are
+byte-identical and share one compressed fixture; state streams retain their
+individual weapon inventories. Host assertions also check native creation totals:
+plasma33entities/188images; level50374/2420; upgrades51..53366/2368.
+The gate now includes these seven added cases as well as base/tail/storm50.
+
+This revealed two additional lifecycle gaps. The plasma callback's `temporary`
+flag means NEWBEAMSPRITE→hit→immediate DELETESPRITE, not stack-only storage.
+Each plasma attack really constructs31short-lived world entities and their
+initial LM images. The host now runs the same constructors and shared unlink
+path, without cleanup death effects on deletion. Separately, BULLETHITSENEMY
+calls ADDSPRITEDEATHEFFECTS when the attacking beam's residual HP remains>=40.
+For a null-render beam this still consumes two RNG draws. The host now honors
+that collision return value and invokes the effect path. These draws happen
+on impact, not on deletion. All retained beam endpoints and live world lists
+continue to match the native captures.
+
+The target survives these cases. Multi-target special chains, destructive
+cached-tail cases, allocator reuse and full rendering/campaign proof remain open.

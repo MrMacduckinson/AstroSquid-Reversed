@@ -22,4 +22,12 @@ for variant in base tail storm; do
   gzip -cd "tests/active_special_world${suffix}_clocks.csv.gz" | awk -F, '{print $1 "," $3}' > "$scratch/native-clocks.csv"
   cmp "$scratch/native-clocks.csv" "$scratch/clocks.csv"
 done
-echo 'PASS original nested special worlds: base, resumed tail and real storm allocations/rendering'
+for weapon in 40 41 42 43 51 52 53; do
+  build/active_special_world_host assets "$scratch/clocks.csv" storm "$weapon" > "$scratch/host.tsv"
+  awk '$1 != "V"' "tests/active_special_levels/$weapon.tsv" > "$scratch/native.tsv"
+  cmp "$scratch/native.tsv" "$scratch/host.tsv"
+  if [ "$weapon" -lt 50 ]; then clocks=plasma-clocks; else clocks="$weapon-clocks"; fi
+  gzip -cd "tests/active_special_levels/$clocks.csv.gz" | awk -F, '{print $1 "," $3}' > "$scratch/native-clocks.csv"
+  cmp "$scratch/native-clocks.csv" "$scratch/clocks.csv"
+done
+echo 'PASS original nested special worlds: base, resumed tail and all eight timed weapon levels'

@@ -2,6 +2,7 @@
 #define ASTRO_WORLD_TRACE_LIBRARY
 #include "world_trace_host.m"
 static BOOL activeClock,activeTail,activeStorm;
+static int activeWeapon=50;
 static unsigned activeReads,activeFrames,activeLM;
 static uint32_t activeNow;
 static FILE *clockTrace;
@@ -51,7 +52,7 @@ static FILE *clockTrace;
     playerBounds=(AstroRect){100,180,171,200};previousPlayerBounds=(AstroRect){0};
     playerCombat=(AstroCombatState){.kind=1,.hit_points=200};
     playerState=(AstroPlayer){.frame=12,.tilt=3,.state=1,.update_tick=99,.animation_tick=100};
-    lastPlayerShot=0;playerWeapon=50;inventory=(AstroInventory){50,0,1,0};campaign=(AstroCampaign){0};score=0;
+    lastPlayerShot=0;playerWeapon=activeWeapon;inventory=(AstroInventory){activeWeapon,0,1,0};campaign=(AstroCampaign){0};score=0;
     visualRateTick=0;visualFrames=0;visualRate=0;
     special=(AstroSpecial){0};specialLoopRunning=specialReturnPending=NO;engineGlow=departureTrail=NO;
     changingStage=NO;respawnTick=invulnerableUntil=0;campaignAction=ASTRO_CAMPAIGN_NONE;flow.phase=ASTRO_FLOW_PLAY;menuVisible=paused=gameOver=gameOverPending=NO;
@@ -71,12 +72,16 @@ static FILE *clockTrace;
     [self dumpWorldTrace:@"initial"];activeClock=YES;tracePhase="calc";[self calculateActors];tracePhase=NULL;activeClock=NO;
     simulationTick=activeNow;[self dumpWorldTrace:@"return"];
     assert(!special.active&&!specialLoopRunning&&inventory.specials==0&&(activeStorm?world.count>=2:world.count==(activeTail?2:1)));
-    if(activeStorm)assert(renderClock==2420&&nextEntityID==374);
-    fprintf(stderr,"HOST coupled active-special reads%u frames%u LM%u return%u update%u action%u RNG%08x\n",activeReads,activeFrames,activeLM,activeNow,playerState.update_tick,lastPlayerShot,randomSeed);
+    if(activeStorm){
+        unsigned expectedEntities=activeWeapon<50?33:activeWeapon==50?374:366;
+        unsigned expectedImages=activeWeapon<50?188:activeWeapon==50?2420:2368;
+        assert(renderClock==expectedImages&&nextEntityID==expectedEntities);
+    }
+    fprintf(stderr,"HOST coupled active-special reads%u frames%u LM%u return%u update%u action%u RNG%08x entities%u images%u\n",activeReads,activeFrames,activeLM,activeNow,playerState.update_tick,lastPlayerShot,randomSeed,nextEntityID,(unsigned)renderClock);
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
-    assert(argc==3||argc==4);activeTail=argc==4&&!strcmp(argv[3],"tail");activeStorm=argc==4&&!strcmp(argv[3],"storm");assert(argc==3||activeTail||activeStorm);clockTrace=fopen(argv[2],"w");assert(clockTrace);
+    assert(argc>=3&&argc<=5);activeTail=argc>=4&&!strcmp(argv[3],"tail");activeStorm=argc>=4&&!strcmp(argv[3],"storm");assert(argc==3||activeTail||activeStorm);if(argc==5){activeWeapon=atoi(argv[4]);assert(activeStorm&&((activeWeapon>=40&&activeWeapon<=43)||(activeWeapon>=50&&activeWeapon<=53)));}clockTrace=fopen(argv[2],"w");assert(clockTrace);
     [NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
     [[NSUserDefaults standardUserDefaults] setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}} forName:NSArgumentDomain];
     AstroView *view=[[AstroActiveTraceView alloc] initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(view);[view traceActiveWorld];fclose(clockTrace);

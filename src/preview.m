@@ -151,6 +151,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
 - (void)beginSelfTest:(NSString *)path;
 - (void)applyBeam:(const AstroBeam *)beam context:(BeamContext *)context;
 - (AstroEnemy *)createBeam:(const AstroBeam *)beam;
+- (void)deleteActor:(id)object;
 - (void)applyBeam:(const AstroBeam *)beam context:(BeamContext *)context actor:(AstroEnemy *)actor;
 - (void)renderBeams:(const AstroSceneSink *)sink;
 - (void)hitPlayerWithEnemy:(AstroEnemy *)enemy;
@@ -750,9 +751,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
 }
 - (void)addSpecialBeam:(const AstroBeam *)beam temporary:(int)temporary context:(BeamContext *)context {
-    AstroEnemy *actor=temporary?nil:[self createBeam:beam];
+    AstroEnemy *actor=[self createBeam:beam];
     [self applyBeam:beam context:context actor:actor];
-    if(!temporary)emittedBeams++;
+    if(temporary)[self deleteActor:actor];else emittedBeams++;
 }
 - (void)addSpecialSprite:(int)sprite x:(double)x y:(double)y width:(double)width height:(double)height {
     ++renderClock; // FORCEDRAWSPRITENOW creates and kills an LM image even for one-frame flashes.
@@ -873,7 +874,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             context->targets[beam->target].remove=target.remove;
         }
         if(enemy->kind==5||(enemy->kind>19&&enemy->kind<30)) {
-            astro_bullet_hits_enemy(&b,&target,[enemy->definition[@"kill_score"] intValue],&score);
+            if(astro_bullet_hits_enemy(&b,&target,[enemy->definition[@"kill_score"] intValue],&score)){
+                assert(actor);[self addDeathEffects:actor];
+            }
             if(target.hit_points!=enemy->hitPoints) damageHits++;
             [self applyCombat:target to:enemy];
             context->targets[beam->target].remove=target.remove;
@@ -1120,6 +1123,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)syncActorLinks {
     for(NSUInteger i=0;i<world.count;i++)[self setNextActor:i+1<world.count?world[i+1]:nil forActor:world[i]];
 }
+- (void)deleteActor:(id)object {
+    NSUInteger index=[world indexOfObjectIdenticalTo:object];
+    if(index!=NSNotFound&&index>0)[self setNextActor:[self nextActor:object] forActor:world[index-1]];
+    [world removeObjectIdenticalTo:object];
+    if(object!=[NSNull null])[enemies removeObjectIdenticalTo:object];
+    else if(!actorTraversalDepth)playerNextActor=nil;
+}
 - (void)cleanupWorld {
     [self syncActorLinks];
     for(id object in [world copy]) {
@@ -1139,10 +1149,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
                 if(action!=ASTRO_CAMPAIGN_NONE)campaignAction=action;
             }
         }
-        NSUInteger index=[world indexOfObjectIdenticalTo:object];
-        if(index!=NSNotFound&&index>0)[self setNextActor:[self nextActor:object] forActor:world[index-1]];
-        [world removeObjectIdenticalTo:object];if(!player)[enemies removeObjectIdenticalTo:enemy];
-        if(player&&!actorTraversalDepth)playerNextActor=nil;
+        [self deleteActor:object];
     }
 }
 - (void)moveChildren:(AstroEnemy *)parent heading:(int)heading amount:(double)amount {
