@@ -40,6 +40,7 @@ static void snapshot(void){
 static void *spawn(unsigned char*code,uint32_t*toc,int kind,int subtype,int x,int y){
  return(void*)(uintptr_t)world_invoke5(code+0x53bf4,world_globals,toc,(void*)(intptr_t)kind,(void*)(intptr_t)subtype,(void*)(intptr_t)x,(void*)(intptr_t)y,NULL);
 }
+#ifndef ASTRO_WORLD_ORACLE_LIBRARY
 int main(int argc,char**argv){
  if(argc!=5&&argc!=6&&argc!=7){fputs("usage: ppc_world_oracle original.pef literals.bin original-app tables-dir [ticks] [parents]\n",stderr);return 2;}
  int parents=argc==7&&!strcmp(argv[6],"parents");
@@ -68,3 +69,4 @@ int main(int argc,char**argv){
  }
  fprintf(stderr,"PASS: original coupled world %u ticks entities-created=%u render-created=%u\n",steps,entity_birth,render_birth);return 0;
 }
+#endif
