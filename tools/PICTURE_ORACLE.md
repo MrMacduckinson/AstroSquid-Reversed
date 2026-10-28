@@ -333,3 +333,18 @@ global e8a is zero unless both succeed. Callers must use e8a for fallback.
 This is policy evidence, not actual display switching/restoration proof.
 LMEXIT38ecc statically kills maps/list then deactivates AGL and disposes DSp
 when present; cleanup execution and native fallback remain next.
+
+## Native graphics shutdown ordering
+
+ppc_fullscreen_exit_oracle.c executes original LMEXIT38ecc plus original
+LMDEACTIVATEAGLCONTEXT36db4 and LMDISPOSEDSP36328. Map/list destruction and
+graphics imports are observers, so no real graphics/display state changes.
+Original resource formatting,107-loop and shutdown branches remain intact.
+Eight G5 cases cross AGL context0/nonzero,DSp0/nonzero and API success/failure.
+All PASS: map callbacks0..106 (including empty entries), list callback,
+aglSetCurrentContext(NULL),aglSetDrawable(context,NULL),aglDestroyContext(context),
+then only when DSp nonzero SetState(dsp,2),Release(dsp),Shutdown. Exact111 or114
+ordered events per case. Graphics API errors are ignored and do not skip later
+cleanup; original e8a/e8e globals retain their supplied values. The observer
+does not prove actual resource destruction, hardware mode restoration or safe
+repeated cleanup. Native fallback and real display lifecycle still need proof.
