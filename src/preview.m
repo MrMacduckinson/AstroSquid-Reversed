@@ -321,8 +321,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             [entry[@"next_frame"] intValue],[entry[@"delay"] intValue]};
     }
     textures = [NSMutableDictionary dictionary];
-    randomSeed=1;
-    [self resetEnemies];
+    enemies=[NSMutableArray array];world=[NSMutableArray array];mapPlacements=[NSMutableArray array];
+    visualEffects=[NSMutableArray array];specialPolygons=[NSMutableArray array];specialFlashes=[NSMutableArray array];
+    backgrounds=@[];parallaxData=[NSMutableData data];
     playerX = 30; playerY = 190;automatic=YES;
     previousTime = [NSDate timeIntervalSinceReferenceDate];
     timer = [NSTimer scheduledTimerWithTimeInterval:1.0/60.0 target:self
