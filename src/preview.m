@@ -384,6 +384,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     for(int identifier=0;identifier<107;identifier++)[self texture:identifier];
     spriteMapsPreloaded=YES;
 }
+- (void)killSpriteMap:(NSInteger)identifier {
+    NSNumber *key=@(identifier);if(!textures[key])return;
+    GLuint texture=[textures[key] unsignedIntValue];glDeleteTextures(1,&texture);[textures removeObjectForKey:key];
+}
+- (void)setMenuCursor:(int)identifier {SetThemeCursor(identifier==4?kThemeWatchCursor:kThemeArrowCursor);}
 - (GLuint)texture:(NSInteger)identifier {
     NSNumber *key = @(identifier);
     if (textures[key]) return [textures[key] unsignedIntValue];
@@ -2282,7 +2287,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self appendDebugMessage:@" "];[self appendDebugMessage:@"---------- Shutdown  -----------"];[self appendDebugMessage:@" "];
     [self appendDebugMessage:@"Disposing Spritemaps"];NSUInteger disposed=textures.count;
     NSOpenGLContext *context=[self openGLContext];[context makeCurrentContext];
-    for(NSNumber *identifier in [textures.allKeys sortedArrayUsingSelector:@selector(compare:)]){GLuint texture=[textures[identifier] unsignedIntValue];glDeleteTextures(1,&texture);}
+    for(NSNumber *identifier in [textures.allKeys sortedArrayUsingSelector:@selector(compare:)])[self killSpriteMap:identifier.integerValue];
     [textures removeAllObjects];
     [self appendDebugMessage:[NSString stringWithFormat:@"    Disposed %lu SpriteMaps",(unsigned long)disposed]];
     [self appendDebugMessage:@"Disposing SpriteList"];
@@ -2372,10 +2377,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
     if(command.action==ASTRO_UI_KEY) {editingKey=command.key;keyCaptureDeadline=NSProcessInfo.processInfo.systemUptime+10;NSMutableArray *labels=[ui.keyLabels mutableCopy];labels[editingKey]=@"Press a key";ui.keyLabels=labels;}
     if(command.action==ASTRO_UI_SMOOTH) {
-        ui.smooth=!ui.smooth;[[self openGLContext] makeCurrentContext];
-        for(NSNumber *texture in textures.allValues){glBindTexture(GL_TEXTURE_2D,texture.unsignedIntValue);
-            glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,ui.smooth?GL_LINEAR:GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,ui.smooth?GL_LINEAR:GL_NEAREST);}
+        [[self openGLContext] makeCurrentContext];[self setMenuCursor:4];[ui setButton:name pressed:YES];ui.smooth=!ui.smooth;
+        for(int identifier=0;identifier<107;identifier++){[self killSpriteMap:identifier];[self texture:identifier];}
+        [ui setButton:name pressed:NO];[self setMenuCursor:0];
     }
     if(command.action==ASTRO_UI_SOUND_VOLUME) {
         ui.soundVolume=((int)lround(ui.soundVolume*10)+1)%11/10.0;audio.soundVolume=ui.soundVolume/2;
