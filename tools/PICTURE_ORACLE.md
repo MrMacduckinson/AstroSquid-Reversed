@@ -367,3 +367,31 @@ by this prefix probe). Window creation uses id1/style5/rect0/0/480/640 and
 WINDOW31 returns its port before drawable setup. All cases consume one GetKeys.
 This establishes branch policy; actual AGL/DSp/backend availability, hardware
 restoration, fatal UI and modern-host implementation remain outside proof.
+
+## Real G5 fullscreen and restoration
+
+`ppc_fullscreen_live_probe.c` runs only on authorized G5/Tiger, linked Carbon,
+AGL, OpenGL and DrawSprocket. Original PEF/literals/STR#25000 arguments are the
+same as policy probes; optional --dsp selects actual original DrawSprocket path.
+A parent copies the initial CGDisplay mode dictionary; an exec child has12sec
+alarm, parent15sec watchdog and recovery to the saved mode if necessary.
+The parent reports native_restore separately from final_restore; recovery is
+a failure of the native-restoration check. No settings or clock changes.
+
+Direct original LMSETUPAGLFULLSCREEN fails on this G5 at pixel-format selection:
+formatNULL,context0,no frequency attempts,AGL error0. Final tool exits4 to
+report unavailable; original mode1440x900,bpp32,hz0 remains unchanged. This is
+not a successful AGL-fullscreen rendering test and is not generalized to all
+machines. Returned context and active global are both zero.
+
+Actual original LMFULLSCREENDSP36130 succeeds, obtains front port bounds
+0/0/480/640, and original LMSETUPAGLDRAWABLE363dc creates/current-selects real
+AGL context. Hardware mode becomes640x480,bpp32,hz0. An owned red clear/swap
+followed by GL_FRONT pixel read yields255/0/0. No desktop/QuickDraw screen
+pixels are read. Original LMDEACTIVATEAGLCONTEXT36db4 then original
+LMDISPOSEDSP36328 restore1440x900,bpp32,hz0 and currentAGLNULL. Two native runs,
+including final copied-mode/guarded version, pass with native_restore1 and
+final_restore1; watchdog/recovery unused. The real DSp fallback is therefore
+necessary on this hardware. This does not establish full original startup,
+fullscreen GETPICT pixels, Intel backend behavior or host fullscreen parity.
+Temporary inputs/helper executable are removed after recording.
