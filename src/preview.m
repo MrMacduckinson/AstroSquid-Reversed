@@ -130,7 +130,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     int32_t visualSprites;
     double visualRate;
     BOOL visualDebug,wallClockPoll,nestedWorldRender;
-    BOOL engineDebug,fullscreenRequested,graphicsReleased;
+    BOOL engineDebug,fullscreenRequested,graphicsReleased,spriteMapsPreloaded;
     NSString *screenshotBase;
     uint32_t simulationTick,lastSpawnTick;
     NSUInteger scriptSteps;
@@ -367,6 +367,12 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glClearColor(0,0,0,0);
 }
+- (void)preloadSpriteMaps {
+    if(spriteMapsPreloaded)return;
+    [self appendDebugMessage:@"Loading SpriteMaps..."];
+    for(int identifier=0;identifier<107;identifier++)[self texture:identifier];
+    spriteMapsPreloaded=YES;
+}
 - (GLuint)texture:(NSInteger)identifier {
     NSNumber *key = @(identifier);
     if (textures[key]) return [textures[key] unsignedIntValue];
@@ -453,6 +459,12 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(graphicsReleased)return;
     [[self openGLContext] makeCurrentContext];
     NSRect bounds = [self convertRectToBacking:self.bounds];
+    if(!spriteMapsPreloaded){
+        glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
+        glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);glMatrixMode(GL_MODELVIEW);glLoadIdentity();glClear(GL_COLOR_BUFFER_BIT);
+        [ui drawPicture:40 x:0 y:0 width:0 height:0 texture:^GLuint(NSInteger n){return [self texture:n];}];
+        [self presentFrame];[self preloadSpriteMaps];
+    }
     glViewport(0,(GLint)(bounds.size.height*30/480),(GLsizei)bounds.size.width,(GLsizei)(bounds.size.height*380/480));
     glClear(GL_COLOR_BUFFER_BIT);
     glMatrixMode(GL_PROJECTION); glLoadIdentity(); glOrtho(0,640,379,0,-1,1);
@@ -890,7 +902,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(fclose(file))ok=NO;return ok;
 }
 - (BOOL)startFullscreen {
-    [self initializeDebugJournal];
     if(!fullscreenRequested)return NO;
     for(NSDictionary *mode in (__bridge NSArray *)CGDisplayAvailableModes(CGMainDisplayID())) {
         if([mode[(__bridge NSString *)kCGDisplayWidth] intValue]!=640||[mode[(__bridge NSString *)kCGDisplayHeight] intValue]!=480||[mode[(__bridge NSString *)kCGDisplayBitsPerPixel] intValue]!=32)continue;
@@ -2289,6 +2300,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     self.window.delegate=self;self.window.acceptsMouseMovedEvents=YES;
     AstroView *view=[[AstroView alloc] initWithFrame:frame assets:path];
     if(!view) { NSLog(@"Missing or invalid extracted game assets at %@",path); [NSApp terminate:nil]; return; }
+    [view initializeDebugJournal];
     self.view=view;self.window.contentView=view;
     [self.window center];
     [self.window makeKeyAndOrderFront:nil];

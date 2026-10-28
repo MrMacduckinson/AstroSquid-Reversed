@@ -15,7 +15,7 @@ static NSString *journalPath;static NSData *headerBytes;static int errorCode;sta
  [timer invalidate];timer=nil;[audio stop];fullscreenRequested=NO;
  NSData *old=[@"OLD" dataUsingEncoding:NSASCIIStringEncoding];assert([old writeToFile:journalPath atomically:NO]);
  engineDebug=NO;assert([self initializeDebugJournal]&&[self appendDebugMessage:@"disabled"]);assert(!errorReads&&[[NSData dataWithContentsOfFile:journalPath]isEqual:old]);
- engineDebug=YES;assert(![self startFullscreen]);assert([[NSData dataWithContentsOfFile:journalPath]isEqual:headerBytes]);
+ engineDebug=YES;assert([self initializeDebugJournal]);assert(![self startFullscreen]);assert([[NSData dataWithContentsOfFile:journalPath]isEqual:headerBytes]);
  assert([[NSFileManager.defaultManager attributesOfItemAtPath:journalPath error:NULL][NSFileHFSTypeCode]unsignedIntValue]==0x54455854);
  errorCode=0;assert([self appendDebugMessage:@"Hello"]&&errorReads==1);
  errorCode=10000;assert([self appendDebugMessage:@"Hello"]&&errorReads==2);
