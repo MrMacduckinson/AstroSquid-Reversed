@@ -240,3 +240,10 @@ button state, unchanged labels while waiting, key selection, button reset and la
 The host polls complete key state instead of committing the first key event.
 Frame calls in these fixtures are observers; numeric waiting-frame state and
 physical OS event delivery remain separate checks.
+
+`bash tests/key_input_system_host.sh` checks the real Cocoa availability poll,
+`GetKeys`, clock and offscreen rendering through the no-input timeout. It also
+checks that a private application event remains queued and the binding remains
+unchanged. It requests no permissions, injects no keyboard events and records
+no key values. Exit 77 means live input prevented a clean no-input check.
+Held-key delivery through the OS remains a separate validation.
