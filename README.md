@@ -142,6 +142,14 @@ validation and linked-list deletion run on the G5 with synthetic test inputs;
 no user registration data or preference files are accessed. The registered game
 removes only the `Register` button, retaining the other registration-scene objects.
 
+`bash tests/menu_routes_host.sh` compares 108 original/host transitions through
+Play, Continue, Highscores, Settings, Keys and Register, including their return
+buttons. Released, held offscreen and stationary-pointer schedules at intervals
+1/2/3 produce 202,496 ordered records and 37,152,000 canonical IEEE star words
+over 3,096 frames. The fixture enables all raw menu nodes and includes held and
+released Main frames between actions. Registration submission, Credits and
+interrupted transitions remain separate checks.
+
 The complete controlled campaign route passed on the Intel iMac: all 17 stages
 and the ending, through normal world updates and stage transitions. The pilot
 replenishes its shield and uses weapon 53; this proves route connectivity, not an
