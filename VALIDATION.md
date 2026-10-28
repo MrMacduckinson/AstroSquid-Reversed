@@ -18,12 +18,22 @@ Current bounded evidence:
 
 - `tests/outer_loop_host.sh` compares the actual original GAMELOOP entry and
   first ordinary iteration with production beginGameLoop/pollGame/renderTick:
-  10 schedules,150 semantic events,76 clock reads. It covers closed/open CPU,
+  30 schedules,460 semantic events,228 clock reads. It covers closed/open CPU,
   frame and21-tick map gates, fresh stores, signed wrap and clocks consumed
   inside world/factory callbacks. Those callbacks, graphics, audio and input
-  are observers; terminal, transition and respawn branches are excluded. HUD
-  commands are suppressed in this fixture. The original HUD countdown still
-  needs to replace the port's unconditional normal-frame HUD redraw.
+  are observers; terminal, transition and respawn branches are excluded. The
+  production HUD dispatcher now matches original counter states0/1/2 and each
+  decrement. Actual GPU HUD commands are observed at this boundary.
+- `tests/hud_countdown_host.sh` also checks actual drawRect ordering/countdown
+  for normal, WAIT/blink, special, paused and GameOver contexts; unconditional
+  cards/panel transitions do not consume the countdown, and departure trail
+  frames do not draw HUD. Source-backed collision/start/transition/special
+  probes check invalidation, including zero-score kills and removed pickups.
+  The live renderer preserves existing buffers rather than clearing the full
+  screen. On the authorized Retina Intel Mac, the actual drawRect paints a
+  controlled HUD exactly twice, retained across8 alternating FBO frames and8
+  actual window swaps. This proves retention/cadence, not cross-GPU pixel
+  identity for every original sprite.
 
 - The first active frame after tag-2 final-arena loading matches94 original
   cleanup/CALC records, including camera1,211 independent clock reads, RNG,

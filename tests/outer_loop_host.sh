@@ -8,6 +8,9 @@ clang -fobjc-arc -O2 -ffp-contract=off -Wall -Wextra -Wno-unused-parameter -Wno-
   -framework AVFoundation -framework Carbon -o build/outer_loop_host
 scratch=$(mktemp /tmp/astrosquid-outer-loop.XXXXXX)
 trap 'rm "$scratch"' EXIT
-build/outer_loop_host assets > "$scratch"
-cmp tests/outer_loop_native.csv "$scratch"
-echo 'PASS10 original/host outer-loop clock and semantic service schedules'
+for initial in 0 1 2; do
+  build/outer_loop_host assets "$initial" > "$scratch"
+  if [ "$initial" = 0 ]; then fixture=tests/outer_loop_native.csv; else fixture="tests/outer_loop_hud${initial}_native.csv"; fi
+  cmp "$fixture" "$scratch"
+done
+echo 'PASS30 original/host outer-loop and HUD-countdown schedules'

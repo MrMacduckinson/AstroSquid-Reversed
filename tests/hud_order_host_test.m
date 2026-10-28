@@ -1,4 +1,4 @@
-// Actual drawRect ordering; GL rasterization and HUD dirty-count equivalence are separate.
+// Actual drawRect HUD ordering and countdown; pixel retention is checked separately.
 #define main astrosquid_application_main
 #include "../src/preview.m"
 #undef main
@@ -10,6 +10,11 @@ static NSMutableString *events;
 - (void)drawState:(const AstroHUDState *)state texture:(GLuint (^)(NSInteger))texture framebufferWidth:(GLsizei)width height:(GLsizei)height {
     [events appendString:@"H"];
 }
+@end
+@interface AstroObservedPanel:AstroUIRenderer
+@end
+@implementation AstroObservedPanel
+- (void)drawSprites:(AstroUISpriteDrawer)draw texture:(AstroUITextureLoader)texture {[events appendString:@"O"];}
 @end
 @interface AstroHUDOrderView : AstroView
 @end
@@ -33,7 +38,7 @@ static NSMutableString *events;
 @end
 @implementation AstroView (HUDOrderCheck)
 - (void)checkHUDOrder {
-    [timer invalidate];timer=nil;[audio stop];hud=[[AstroObservedHUD alloc] initWithGame:game ui:ui];
+    [timer invalidate];timer=nil;[audio stop];spriteMapsPreloaded=YES;hud=[[AstroObservedHUD alloc] initWithGame:game ui:ui];
     menuVisible=paused=gameOver=changingStage=NO;flow.phase=ASTRO_FLOW_PLAY;campaign.level=4;automatic=NO;
     backgrounds=@[];parallaxData=[NSMutableData data];memset(stars,0,sizeof(stars));
     visualEffects=[NSMutableArray array];
@@ -43,16 +48,41 @@ static NSMutableString *events;
     enemies=[NSMutableArray arrayWithObject:e];world=[NSMutableArray arrayWithObject:e];
     observing=YES;ui.frameInterval=1;
     for(int nested=0;nested<2;nested++){
-        worldRenderTick=100;observedWallTick=200;events=[NSMutableString string];
+        hudRedraws=2;worldRenderTick=100;observedWallTick=200;events=[NSMutableString string];
         [self advanceWorldForWait:nested];
         assert([events isEqual:nested?@"WHPL":@"HWPL"]&&!nestedWorldRender);
     }
-    events=[NSMutableString string];[self renderSpecialWorld];
+    hudRedraws=2;events=[NSMutableString string];[self renderSpecialWorld];
     assert([events isEqual:@"HW"]&&!nestedWorldRender);[self presentSpecialFrame];assert([events isEqual:@"HWP"]);
-    events=[NSMutableString string];drawInnerSpecial=YES;worldRenderTick=100;observedWallTick=200;
+    hudRedraws=2;events=[NSMutableString string];drawInnerSpecial=YES;worldRenderTick=100;observedWallTick=200;
     [self advanceWorldForWait:YES];assert([events isEqual:@"HWPWHPL"]&&!nestedWorldRender);drawInnerSpecial=NO;
+    for(int nested=0;nested<2;nested++){
+        nestedWorldRender=nested;hudRedraws=2;
+        for(int frame=0;frame<5;frame++){
+            events=[NSMutableString string];[self display];
+            assert([events isEqual:frame<2?(nested?@"WHP":@"HWP"):@"WP"]);
+            assert(hudRedraws==(frame==0?1:0));
+        }
+    }
+    nestedWorldRender=NO;changingStage=YES;transition.simulate_world=1;hudRedraws=2;
+    events=[NSMutableString string];[self display];assert([events isEqual:@"WHP"]&&hudRedraws==1);
+    transition.simulate_world=0;hudRedraws=2;
+    events=[NSMutableString string];[self display];assert([events isEqual:@"WP"]&&hudRedraws==2);changingStage=NO;
+    worldRenderTick=200;events=[NSMutableString string];[self renderTick];assert([events isEqual:@"L"]&&hudRedraws==2);
+    gameOver=YES;events=[NSMutableString string];[self display];assert([events isEqual:@"WHP"]&&hudRedraws==1);gameOver=NO;
+    ui=[[AstroObservedPanel alloc]initWithAssets:assetPath error:NULL];assert(ui);[ui show:@"Pause"];menuVisible=YES;paused=YES;
+    for(int frame=0;frame<4;frame++){
+        if(!frame)hudRedraws=2;events=[NSMutableString string];[self display];
+        assert([events isEqual:frame<2?@"WOHP":@"WOP"]&&hudRedraws==(frame?0:1));
+    }
+    hudRedraws=2;events=[NSMutableString string];[self drawPanelTransition];
+    assert(hudRedraws==2&&!panelTransitionRender&&events.length==120);
+    [ui show:@"GameOver"];hudRedraws=2;events=[NSMutableString string];[self drawPanelTransition];assert(hudRedraws==2&&events.length==240&&!panelTransitionRender);
+    for(int frame=0;frame<3;frame++){
+        events=[NSMutableString string];[self display];assert([events isEqual:@"WOHP"]&&hudRedraws==2);
+    }
     observing=NO;
-    puts("PASS actual host drawRect HUD/world/swap/LM: ordinary HWPL, WAIT/blink WHPL, nested special HW then deferred P");
+    puts("PASS actual drawRect HUD countdown/order: normal, WAIT/blink, special, closed gate, trail, GameOver delay, conditional Pause and unconditional30/60frame panel transitions/GameOver");
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{

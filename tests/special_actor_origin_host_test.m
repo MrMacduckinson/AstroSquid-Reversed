@@ -34,7 +34,7 @@ static AstroEnemy *origin;
     origin=[AstroEnemy new];ui.frameInterval=3;observing=YES;
     for(int weapon=40;weapon<=50;weapon+=10){
         special=(AstroSpecial){0};specialReturnPending=specialLoopRunning=NO;reads=calculations=0;
-        simulationTick=observedWallTick=worldRenderTick=100;lastPlayerShot=77;inventory.specials=2;playerWeapon=weapon;
+        simulationTick=observedWallTick=worldRenderTick=100;lastPlayerShot=77;hudRedraws=0;inventory.specials=2;playerWeapon=weapon;
         origin->kind=1;origin->bounds=(AstroRect){20,30,91,50};origin->state.action_tick=9;
         origin->state.update_tick=99;origin->state.animation_tick=100;origin->state.frame=12;origin->state.tilt=3;origin->state.state=1;
         origin->visual=(AstroVisual){1,20,30,71,20,100};
@@ -44,7 +44,7 @@ static AstroEnemy *origin;
         assert(origin->state.update_tick>=131&&origin->state.update_tick<=132);
         assert(origin->kind==1&&playerCombat.kind==1&&lastPlayerShot==77&&origin->state.action_tick==special.action_until);
         assert(origin->state.action_tick>=192&&origin->state.action_tick<=193);
-        assert(inventory.specials==1&&playerBounds.left==500&&origin->bounds.left==20+(int)calculations);
+        assert(hudRedraws==2&&inventory.specials==1&&playerBounds.left==500&&origin->bounds.left==20+(int)calculations);
     }
     observing=NO;origin=nil;
     puts("PASS source-backed host timed40/50 retain firing actor identity, own action clock and cached gun while primary remains independent");

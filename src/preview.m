@@ -126,7 +126,8 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     uint32_t presentedBeamSeed;
     BOOL simulationRender,deferPresent;
     uint32_t worldRenderTick,visualRateTick;
-    int16_t visualFrames;
+    int16_t visualFrames,hudRedraws;
+    BOOL panelTransitionRender;
     int32_t visualSprites;
     double visualRate;
     BOOL visualDebug,wallClockPoll,nestedWorldRender;
@@ -462,6 +463,15 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     glColor4d(1,1,1,scene->alpha);glBegin(GL_QUADS);
     for(int i=0;i<4;i++) {glTexCoord2d(uv[i*2],uv[i*2+1]);glVertex2d(scene->xy[i*2],scene->xy[i*2+1]);}glEnd();
 }
+- (void)drawHUD:(BOOL)consume {
+    if(consume&&!hudRedraws)return;
+    AstroHUDState overlay={[world containsObject:[NSNull null]]&&!(flow.phase==ASTRO_FLOW_READY&&!initialReadyCard),playerCombat.hit_points,inventory.weapon,
+        inventory.upgrade,inventory.specials,inventory.lives,score};
+    NSRect bounds=[self convertRectToBacking:self.bounds];
+    [hud drawState:&overlay texture:^GLuint(NSInteger n){return [self texture:n];}
+        framebufferWidth:(GLsizei)bounds.size.width height:(GLsizei)bounds.size.height];
+    if(consume)hudRedraws--;
+}
 - (void)drawRect:(NSRect)dirty {
     if(graphicsReleased)return;
     [[self openGLContext] makeCurrentContext];
@@ -474,14 +484,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [self presentFrame];[self preloadSpriteMaps];if(![self initializeAudio])exit(1);[self reloadMainMenu];
     }
     glViewport(0,(GLint)(bounds.size.height*30/480),(GLsizei)bounds.size.width,(GLsizei)(bounds.size.height*380/480));
-    glClear(GL_COLOR_BUFFER_BIT);
+    BOOL worldOverlay=menuVisible&&([ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"]);
+    // Original RENDERGAMEWINDOW preserves both buffers outside its world draws.
+    if(!worldOverlay&&(menuVisible||flow.phase!=ASTRO_FLOW_PLAY))glClear(GL_COLOR_BUFFER_BIT);
     glMatrixMode(GL_PROJECTION); glLoadIdentity(); glOrtho(0,640,379,0,-1,1);
     glMatrixMode(GL_MODELVIEW); glLoadIdentity();
     if(!menuVisible&&flow.phase!=ASTRO_FLOW_PLAY) {
-        AstroHUDState overlay={[world containsObject:[NSNull null]]&&!(flow.phase==ASTRO_FLOW_READY&&!initialReadyCard),playerCombat.hit_points,inventory.weapon,
-            inventory.upgrade,inventory.specials,inventory.lives,score};
-        [hud drawState:&overlay texture:^GLuint(NSInteger n){return [self texture:n];}
-            framebufferWidth:(GLsizei)bounds.size.width height:(GLsizei)bounds.size.height];
+        [self drawHUD:NO];
         glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
         glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);
         glMatrixMode(GL_MODELVIEW);glLoadIdentity();
@@ -491,8 +500,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         else [ui drawBriefingForStage:flow.stage list:astro_flow_text_list(&flow) texture:^GLuint(NSInteger n){return [self texture:n];}];
         [self presentFrame];[self recordCardPresentation];return;
     }
-    BOOL worldOverlay=menuVisible&&([ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"]);
-    BOOL hudAfterWorld=worldOverlay||nestedWorldRender;
+    BOOL hudAfterWorld=worldOverlay||nestedWorldRender||gameOver||(changingStage&&transition.simulate_world);
+    BOOL worldHUD=!(changingStage&&!transition.simulate_world);
     if(menuVisible&&!worldOverlay) {
         glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
         glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);
@@ -509,11 +518,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         } texture:^GLuint(NSInteger n){return [self texture:n];}];
         if(!deferPresent)[self presentFrame];return;
     }
-    AstroHUDState overlay={[world containsObject:[NSNull null]]&&!(flow.phase==ASTRO_FLOW_READY&&!initialReadyCard),playerCombat.hit_points,inventory.weapon,
-        inventory.upgrade,inventory.specials,inventory.lives,score};
     // GAMELOOP paints HUD first; RENDERGAMEWINDOW can cover its shared edge.
-    if(!hudAfterWorld)[hud drawState:&overlay texture:^GLuint(NSInteger n){return [self texture:n];}
-        framebufferWidth:(GLsizei)bounds.size.width height:(GLsizei)bounds.size.height];
+    if(!hudAfterWorld&&worldHUD)[self drawHUD:YES];
     if(campaign.level<4||campaign.level==7) {
         glDisable(GL_TEXTURE_2D);glDisable(GL_BLEND);glColor3d(0,0,0);glBegin(GL_QUADS);
         glVertex2d(0,0);glVertex2d(640,0);glVertex2d(640,380);glVertex2d(0,380);glEnd();
@@ -570,15 +576,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [self sprite:v->sprite x:v->x-camera y:v->y width:v->width height:v->height];
     }
     if(!simulationRender)[self drawSpecialOverlays];
-    if(hudAfterWorld) {
-        [hud drawState:&overlay texture:^GLuint(NSInteger n){return [self texture:n];}
-            framebufferWidth:(GLsizei)bounds.size.width height:(GLsizei)bounds.size.height];
-    }
+    if(hudAfterWorld&&!worldOverlay&&worldHUD)[self drawHUD:YES];
     if(worldOverlay) {
         glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
         glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);glMatrixMode(GL_MODELVIEW);glLoadIdentity();
         [ui drawSprites:^(NSInteger n,double x,double y,double w,double h){[self sprite:n x:x y:y width:w height:h];}
             texture:^GLuint(NSInteger n){return [self texture:n];}];
+        [self drawHUD:[ui.anchor isEqual:@"Pause"]&&!panelTransitionRender];
     }
     if(!deferPresent){[self presentFrame];}
 }
@@ -692,7 +696,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     playerCombat.kind=-1;
     // NEWPLAYERSTART samples both local clocks even when it skips the blink loop.
     (void)[self playerClockTick];(void)[self playerClockTick];
-    inventory.upgrade=0;playerCombat.kind=1;
+    inventory.upgrade=0;hudRedraws=2;playerCombat.kind=1;
 }
 - (void)createPlayerAtX:(double)x y:(double)y {
     playerState=(AstroPlayer){{0,0},12,1,1,0,0};playerVelocity=(AstroVelocity){0,0};
@@ -990,7 +994,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         .render_tick=&worldRenderTick,.action_tick=actor?&actor->state.action_tick:&lastPlayerShot,.render_world=specialRenderWorld,.present=specialPresent,
         .spawn=specialSpawn,.bullet=specialBullet,.beam=specialBeam,.sprite=specialSprite,
         .polygon=specialPolygon,.sound=specialSound,.create_spawn=specialCreate,.finish_spawn=specialFinish};
-    inventory.specials--;emittedSpecials++;
+    inventory.specials--;hudRedraws=2;emittedSpecials++;
     if(!astro_special_start(&special,playerWeapon,context.gun_x,context.gun_y,0,[self playerClockTick],&context)) {
         NSLog(@"Cannot start special attack");exit(1);
     }
@@ -1021,7 +1025,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)hitPlayerWithCombat:(AstroCombatState *)attacker {
     BOOL hit=!attacker->remove&&(attacker->layer==1||attacker->layer==2);
-    astro_bullet_hits_player(attacker,&playerCombat);
+    astro_bullet_hits_player(attacker,&playerCombat);if(hit)hudRedraws=2;
     if(hit&&playerCombat.hit_points>0)[self showPlayerHit:NO];
 }
 - (void)hitPlayerWithEnemy:(AstroEnemy *)enemy {
@@ -1042,14 +1046,16 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         AstroEnemy *enemy=context->objects[beam->target];
         AstroCombatState target=[self combatFor:enemy];
         if(enemy->kind==1){
-            astro_bullet_hits_player(&b,&target);[self applyCombat:target to:enemy];
+            BOOL hit=!b.remove&&(b.layer==1||b.layer==2);
+            astro_bullet_hits_player(&b,&target);if(hit)hudRedraws=2;[self applyCombat:target to:enemy];
             if(target.hit_points>0)[self showPlayerHit:NO bounds:enemy->bounds];
             context->targets[beam->target].remove=target.remove;
         }
         if(enemy->kind==5||(enemy->kind>19&&enemy->kind<30)) {
-            if(astro_bullet_hits_enemy(&b,&target,[enemy->definition[@"kill_score"] intValue],&score)){
-                assert(actor);[self addDeathEffects:actor];
-            }
+            BOOL hit=!b.remove&&(b.layer==1||b.layer==3);
+            int impact=astro_bullet_hits_enemy(&b,&target,[enemy->definition[@"kill_score"] intValue],&score);
+            if(hit&&target.hit_points<1)hudRedraws=2;
+            if(impact){assert(actor);[self addDeathEffects:actor];}
             if(target.hit_points!=enemy->hitPoints) damageHits++;
             [self applyCombat:target to:enemy];
             context->targets[beam->target].remove=target.remove;
@@ -1209,13 +1215,15 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             else {
                 AstroCombatState victim=[self combatFor:target];
                 BOOL hit=!attacker.remove&&(attacker.layer==1||attacker.layer==2);
-                astro_bullet_hits_player(&attacker,&victim);[self applyCombat:victim to:target];
+                astro_bullet_hits_player(&attacker,&victim);if(hit)hudRedraws=2;[self applyCombat:victim to:target];
                 if(hit&&victim.hit_points>0)[self showPlayerHit:NO bounds:b];
             }
             [self applyCombat:attacker to:source];
         } else if(kind==2&&(targetKind==5||(targetKind>=20&&targetKind<=29))) {
             AstroCombatState bullet=[self combatFor:source],victim=[self combatFor:target];
+            BOOL hit=!bullet.remove&&(bullet.layer==1||bullet.layer==3);
             int impact=astro_bullet_hits_enemy(&bullet,&victim,[target->definition[@"kill_score"] intValue],&score);
+            if(hit&&victim.hit_points<1)hudRedraws=2;
             if(impact)[self addDeathEffects:source];
             if(victim.hit_points!=target->hitPoints)damageHits++;
             [self applyCombat:bullet to:source];[self applyCombat:victim to:target];
@@ -1226,12 +1234,12 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             if(playerSource)playerCombat=collector;else [self applyCombat:collector to:source];
             if(!old&&target->state.remove)[audio playStringCue:[target->placement[@"attribute"] intValue]%10==1?302:
                 [target->placement[@"attribute"] intValue]%10==9?304:303 position:(a.left-camera)/640];
-            playerWeapon=inventory.weapon+inventory.upgrade;
+            hudRedraws=2;playerWeapon=inventory.weapon+inventory.upgrade;
         } else if(kind==1&&targetKind>=20&&targetKind<=29) {
             AstroCombatState scenery=[self combatFor:target],actor=playerSource?playerCombat:[self combatFor:source];
             if(playerSource)actor.velocity=playerVelocity;
             BOOL hit=!scenery.remove;
-            astro_player_hits_scenery(&actor,a,&scenery,b);[self applyCombat:scenery to:target];
+            astro_player_hits_scenery(&actor,a,&scenery,b);if(hit)hudRedraws=2;[self applyCombat:scenery to:target];
             if(playerSource){playerCombat=actor;playerVelocity=actor.velocity;}else [self applyCombat:actor to:source];
             if(hit&&actor.hit_points>0)[self showPlayerHit:YES bounds:a];
         }
@@ -1422,6 +1430,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(selftestPath)playerCombat.hit_points=30000;
 }
 - (void)beginStageTransition {
+    hudRedraws=2;
     pendingCampaign=campaign;
     if(!finalArena)campaign.level=[[levels[selectedLevel] substringFromIndex:5] intValue];
     if(pendingCampaign.complete){pendingCampaign.level=campaign.level+1;pendingCampaign.half=1;}
@@ -1514,7 +1523,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)beginRespawnBlink {
     respawnStartTick=[self playerClockTick];respawnBlinkTick=[self playerClockTick];
-    respawnBlinkWidth=0;invulnerableUntil=1;
+    respawnBlinkWidth=0;invulnerableUntil=1;hudRedraws=2;
 }
 - (void)pollRespawnBlink {
     uint32_t comparison=[self playerClockTick];
@@ -2042,7 +2051,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)drawPanelTransition {
     // Original PAUSETRANS/GAMEOVERTRANS redraw without world steps or Delay.
-    while(ui.transitioning){[ui animateTicks:1];[self display];}
+    BOOL previous=panelTransitionRender;panelTransitionRender=YES;
+    @try {while(ui.transitioning){[ui animateTicks:1];[self display];}}
+    @finally {panelTransitionRender=previous;}
 }
 - (void)enterPause {
     menuVisible=YES;paused=YES;[audio playCue:@"Menu"];
