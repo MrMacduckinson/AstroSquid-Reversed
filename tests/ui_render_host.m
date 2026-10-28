@@ -56,13 +56,20 @@ int main(int argc,const char **argv){@autoreleasepool{
     glReadPixels(0,0,640,480,GL_RGBA,GL_UNSIGNED_BYTE,empty.mutableBytes);
     ui.editingName=[@"" stringByPaddingToLength:255 withString:@"W" startingAtIndex:0];ui.editingCursor=255;
     glClear(GL_COLOR_BUFFER_BIT);[ui drawSprites:sprite texture:load];glReadPixels(0,0,640,480,GL_RGBA,GL_UNSIGNED_BYTE,longName.mutableBytes);
-    assert(!glIsEnabled(GL_SCISSOR_TEST)&&glGetError()==GL_NO_ERROR);unsigned changes=0;
+    assert(!glIsEnabled(GL_SCISSOR_TEST)&&glGetError()==GL_NO_ERROR);unsigned inside=0,outside=0;
     const unsigned char *before=empty.bytes,*after=longName.bytes;
     for(int y=0;y<480;y++)for(int x=0;x<640;x++){
         size_t offset=(y*640+x)*4;int differs=memcmp(before+offset,after+offset,4)!=0;
-        if(x<225||x>=423||y<203||y>=225)assert(!differs);else changes+=differs;
+        if(differs){assert(x>=225&&y>=202&&y<225);if(x<423)inside++;else outside++;}
     }
-    assert(changes>100);puts("PASS long score name scrolls inside field and restores GL scissor state");
+    assert(inside>100&&outside>100);
+    glClearColor(0,0,0,1);glClear(GL_COLOR_BUFFER_BIT);glEnable(GL_SCISSOR_TEST);glScissor(11,13,17,19);
+    [ui drawSprites:sprite texture:load];GLint inherited[4];glGetIntegerv(GL_SCISSOR_BOX,inherited);
+    assert(glIsEnabled(GL_SCISSOR_TEST)&&inherited[0]==11&&inherited[1]==13&&inherited[2]==17&&inherited[3]==19);
+    glReadPixels(0,0,640,480,GL_RGBA,GL_UNSIGNED_BYTE,empty.mutableBytes);before=empty.bytes;
+    for(int y=0;y<480;y++)for(int x=0;x<640;x++)if(x<11||x>=28||y<13||y>=32){size_t i=(y*640+x)*4;assert(!before[i]&&!before[i+1]&&!before[i+2]);}
+    glDisable(GL_SCISSOR_TEST);glScissor(0,0,640,480);
+    puts("PASS original fixed-origin long name extends past field; inherited scissor is respected and unchanged");
     glViewport(0,0,1,1);glDisable(GL_SCISSOR_TEST);glClearColor(0,0,0,0);glClear(GL_COLOR_BUFFER_BIT);
     glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,1,0,1,-1,1);glMatrixMode(GL_MODELVIEW);glLoadIdentity();
     NSDictionary *atlas=game[@"textures"][@"2"];double u=193.0/[atlas[@"width"] doubleValue],v=46.5/[atlas[@"height"] doubleValue];

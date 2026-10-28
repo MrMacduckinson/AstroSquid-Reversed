@@ -16,6 +16,17 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- `tests/field_draw_host.sh` matches316 original field records:90 focused
+  text/cursor/visibility profiles and the absent-field case. Text bytes,
+  logical rectangles, coordinates, sizes, fill mode and RGBA match exactly.
+  Native menu-world Y is translated by70, the original DOMOUSE overlay offset;
+  parent viewport/projection and glyph rasterization are outside this fixture.
+  Original DRAWMYEDITFIELD keeps name origin225 fixed, moves the caret with the
+  full integer prefix width and adds no scrolling/scissor. The port now follows
+  that behavior and original vertical coordinates. Actual Intel GL checks
+  confirm long names extend beyond the box and inherited scissor state is
+  respected without being changed. Caret clock tests remain separate.
+
 - `tests/text_cursor_host.sh` compares3027 original/host records:390 integer
   GETSTRINGWIDTH measurements,2385 SETCURSORPOS positions and252 DOMOUSE/root
   mouseDown routes. Cases include empty/space/MacRoman strings, long names,

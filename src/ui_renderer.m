@@ -216,28 +216,22 @@
     if([_anchor isEqual:@"GameOver"]&&!_transitioning){glColor4d(1,1,1,1);[self drawText:@"Game Over" x:240 baseline:190 size:32 texture:texture];}
     if([_anchor isEqual:@"GameOver"]&&self.editingHighscore>0){
         glColor4d(1,1,1,1);[self drawText:@"Highscore!" x:240 baseline:240 size:32 texture:texture];
-        glDisable(GL_TEXTURE_2D);glBegin(GL_LINE_LOOP);
-        glVertex2d(223,254);glVertex2d(423,254);glVertex2d(423,276);glVertex2d(223,276);glEnd();
-        [self drawText:@"Name:" x:225 baseline:254 size:12 texture:texture];
+        glDisable(GL_TEXTURE_2D);glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);glBegin(GL_QUADS);
+        glVertex2d(223,255);glVertex2d(423,255);glVertex2d(423,277);glVertex2d(223,277);glEnd();glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+        [self drawText:@"Name:" x:225 baseline:255 size:12 texture:texture];
         NSString *name=self.editingName?:@"";
         NSUInteger cursor=MIN((NSUInteger)MAX(self.editingCursor,0),name.length);
         double cursorWidth=[self textWidth:[name substringToIndex:cursor] size:20];
-        double offset=MAX(0,cursorWidth-196);
-        GLint viewport[4],oldScissor[4];glGetIntegerv(GL_VIEWPORT,viewport);glGetIntegerv(GL_SCISSOR_BOX,oldScissor);
-        GLboolean scissor=glIsEnabled(GL_SCISSOR_TEST);glEnable(GL_SCISSOR_TEST);
-        glScissor(viewport[0]+(GLint)(225*viewport[2]/640.0),viewport[1]+(GLint)(203*viewport[3]/480.0),
-            (GLsizei)(198*viewport[2]/640.0),(GLsizei)(22*viewport[3]/480.0));
-        [self drawText:name x:225-offset baseline:277 size:20 texture:texture];
+        [self drawText:name x:225 baseline:278 size:20 texture:texture];
         if(self.readTick){
             uint32_t tick=self.readTick();
             uint32_t reset=(int32_t)_caret.deadline<(int32_t)tick?self.readTick():tick;
             astro_score_caret_draw(&_caret,tick,reset);
         }
         if(self.editingCaretVisible){
-            double x=225+cursorWidth-offset;
-            glDisable(GL_TEXTURE_2D);glBegin(GL_QUADS);glVertex2d(x,255);glVertex2d(x+1,255);glVertex2d(x+1,274);glVertex2d(x,274);glEnd();
+            double x=225+cursorWidth;
+            glDisable(GL_TEXTURE_2D);glBegin(GL_QUADS);glVertex2d(x,256);glVertex2d(x+1,256);glVertex2d(x+1,275);glVertex2d(x,275);glEnd();
         }
-        glScissor(oldScissor[0],oldScissor[1],oldScissor[2],oldScissor[3]);if(!scissor)glDisable(GL_SCISSOR_TEST);
     }
     if([_anchor isEqual:@"Highscores Menu"]){
         NSDictionary *object=[self object:@"Highscores Menu"];NSRect r=[self bounds:object];NSInteger i=0;
