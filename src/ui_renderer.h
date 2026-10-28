@@ -21,6 +21,7 @@ typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
 @property(nonatomic,copy) NSString *editingName;
 @property(nonatomic) NSInteger editingCursor;
 @property(nonatomic,copy) uint32_t (^readTick)(void);
+@property(nonatomic,copy) void (^beforeNavigate)(NSString *name);
 @property(nonatomic,readonly) BOOL editingCaretVisible;
 - (void)beginScoreClock:(uint32_t)tick;
 @property(nonatomic) NSInteger unlockedLevel;

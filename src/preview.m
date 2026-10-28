@@ -300,6 +300,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     ui=[[AstroUIRenderer alloc] initWithAssets:path error:&error];
     if(!ui) {NSLog(@"Cannot load original interface: %@",error);return nil;}
     __weak AstroView *weakView=self;ui.readTick=^{return [weakView currentGameTick];};
+    ui.beforeNavigate=^(NSString *name){if([name isEqual:@"Back"])[weakView saveSettings];};
     randomSeed=1;[self reloadMainMenu];
     ui.registered=YES;ui.registeredName=@"MACSPB";editingKey=-1;
     ui.unlockedLevel=MAX(1,MIN(16,[[NSUserDefaults standardUserDefaults] integerForKey:@"AstroSquidUnlockedLevel"]));
@@ -1969,7 +1970,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(menuVisible&&paused)return;
     if(event.isARepeat) return;
     if(editingKey>=0&&key<128) {
-        controlKeys[editingKey]=key;editingKey=-1;[self refreshKeyLabels];[self saveSettings];return;
+        controlKeys[editingKey]=key;editingKey=-1;[self refreshKeyLabels];return;
     }
     if(!selftestPath)return;
     if(key==45||key==35) {
@@ -2009,7 +2010,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(splashVisible){splashVisible=NO;return;}
     if(menuVisible&&paused)return;
     if(menuVisible&&gameOver&&ui.editingHighscore<=0)return;
-    if(editingKey>=0){controlKeys[editingKey]=code;editingKey=-1;[self refreshKeyLabels];[self saveSettings];}
+    if(editingKey>=0){controlKeys[editingKey]=code;editingKey=-1;[self refreshKeyLabels];}
 }
 - (void)refreshScores {
     NSMutableArray *rows=[NSMutableArray array];
@@ -2152,10 +2153,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         for(NSNumber *texture in textures.allValues){glBindTexture(GL_TEXTURE_2D,texture.unsignedIntValue);
             glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,ui.smooth?GL_LINEAR:GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,ui.smooth?GL_LINEAR:GL_NEAREST);}
-        [self saveSettings];
     }
-    if(command.action==ASTRO_UI_SOUND_VOLUME) {ui.soundVolume=((int)lround(ui.soundVolume*10)+1)%11/10.0;audio.soundVolume=ui.soundVolume;[self saveSettings];}
-    if(command.action==ASTRO_UI_MUSIC_VOLUME) {ui.musicVolume=((int)lround(ui.musicVolume*10)+1)%11/10.0;audio.musicVolume=ui.musicVolume;[self saveSettings];}
+    if(command.action==ASTRO_UI_SOUND_VOLUME) {ui.soundVolume=((int)lround(ui.soundVolume*10)+1)%11/10.0;audio.soundVolume=ui.soundVolume;}
+    if(command.action==ASTRO_UI_MUSIC_VOLUME) {ui.musicVolume=((int)lround(ui.musicVolume*10)+1)%11/10.0;audio.musicVolume=ui.musicVolume;}
     if(command.action==ASTRO_UI_NEW_GAME||command.action==ASTRO_UI_CONTINUE) {
         NSString *stage=[NSString stringWithFormat:@"Data %d%c",command.stage,command.section==1?'A':'B'];
         NSUInteger index=[levels indexOfObject:stage];if(index==NSNotFound)return;

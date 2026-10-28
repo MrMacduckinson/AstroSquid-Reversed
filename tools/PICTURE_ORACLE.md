@@ -546,3 +546,25 @@ encoding equivalence are not established by this bounded review.
 Next persistence issue to audit: DOMOUSE has SAVEPREFS on registration success
 and Back (STR#25000be), whereas current host saves each settings edit. Do not
 assume preferences have no in-menu saves; Back leads to MainMenu(b3).
+
+## Settings edit versus Back save timing
+
+Typed original DOMOUSE3f178 calls SAVEPREFS only at registration success and
+plain Back (STR#25000be); Back targets MainMenu(b3). Ordinary control capture,
+filter and volume edits do not contain that call. CLOSEDOWN still saves.
+Host removes eager saveSettings from ordinary keyDown/flagsChanged assignments
+and SetSmooth/SetSVolume/SetMVolume actions. Their immediate runtime effect
+remains intact. UI renderer's optional beforeNavigate hook lets the owning
+view save only plain Back before automatic navigation; other Back variants
+and Credits/Yeah do not save. Existing standalone renderer behavior is retained
+when no observer is installed. Registration behavior was not changed here.
+
+Actual Intel settings_save_host test spies on the existing writer entry point:
+filter/volume/ordinarykey/modifier edits add zero saves, Back6/Back2 add zero,
+plainBack saves exactly once with SettingsMenu still current and all edited
+values present, held/repeated mouse-down does not duplicate it. Normal close
+saves pending values. It uses real menu hit geometry and navigation, not a
+synthetic Back string call. No real user defaults are written by the spy.
+Existing keymap128/quit/highscore timing/windowPICT checks and primary/Intel
+builds PASS. This establishes writer-call timing, not native file-format or
+crash-durability equivalence of NSUserDefaults; full app selftest not rerun.

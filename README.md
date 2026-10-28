@@ -26,7 +26,8 @@ Arrows move, Command fires, Option uses a special attack. Escape pauses; any key
 resumes at the next eligible input poll. As in the original, a key still held
 while entering pause (including Escape) can immediately dismiss it. Use Settings
 to reassign keys, adjust sound/music and
-change filtering. Keys, settings, scores and unlocked stages persist between
+change filtering. Control/audio/filter changes apply immediately and are saved
+on Back or normal quit. Keys, settings, scores and unlocked stages persist between
 launches. Close the window or use Command-Q to request quit. Like the original,
 quit waits for the active special, respawn or card/score interaction to return
 before clearing the world and closing the application.
