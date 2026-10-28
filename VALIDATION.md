@@ -16,6 +16,17 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- `tests/panel_projection_host.sh` checks actual drawRect for all30 Pause and
+  60 GameOver transition frames plus two steady frames, at1x and2x backing size
+  (188 frames). Native `ppc_panel_projection_oracle.c` executes original HUD ->
+  RENDERGAMEWINDOW -> DRAWGAMEOVEROVERLAY: the panel inherits viewport0/30/640/380
+  and projection0/640/379/0, retaining the same17 logical commands. Production
+  now keeps that projection, subtracting70 from UI coordinates with a scoped
+  modelview translation restored before HUD. Actual GL viewport/translation
+  are exact; projection matrix tolerance1e-8 accounts for driverfloat storage.
+  The original whole transition input loop and complete scene composite remain
+  outside these checks.
+
 - `tests/gameover_draw_host.sh` matches17 original whole
   DRAWGAMEOVEROVERLAY text/field commands across four focused/unfocused and
   caret-visible/hidden profiles. Original PEF execution retains sprite lookup,

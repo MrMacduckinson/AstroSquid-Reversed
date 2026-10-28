@@ -578,10 +578,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(!simulationRender)[self drawSpecialOverlays];
     if(hudAfterWorld&&!worldOverlay&&worldHUD)[self drawHUD:YES];
     if(worldOverlay) {
-        glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
-        glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);glMatrixMode(GL_MODELVIEW);glLoadIdentity();
+        // Panel UI coordinates include70; the original keeps the world projection.
+        glPushMatrix();glTranslated(0,-70,0);
         [ui drawSprites:^(NSInteger n,double x,double y,double w,double h){[self sprite:n x:x y:y width:w height:h];}
             texture:^GLuint(NSInteger n){return [self texture:n];}];
+        glPopMatrix();
         [self drawHUD:[ui.anchor isEqual:@"Pause"]&&!panelTransitionRender];
     }
     if(!deferPresent){[self presentFrame];}
