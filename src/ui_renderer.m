@@ -299,7 +299,7 @@
     for(NSDictionary *line in credits[@"lines"]){
         double size=[line[@"size"] doubleValue],brightness=[line[@"brightness"] doubleValue];NSString *text=line[@"text"];
         glColor4d(brightness,brightness,brightness,1);
-        [self drawText:text x:[line[@"center_x"] doubleValue]-[self textWidth:text size:size]/2 baseline:[line[@"baseline"] doubleValue] size:size texture:texture];
+        [self drawText:text x:[line[@"center_x"] doubleValue]-(int)[self textWidth:text size:size]/2.0 baseline:[line[@"baseline"] doubleValue] size:size texture:texture];
     }glColor4d(1,1,1,1);
 }
 - (void)drawEndingPage:(NSInteger)page texture:(AstroUITextureLoader)texture {

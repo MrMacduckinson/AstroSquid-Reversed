@@ -10,4 +10,4 @@ scratch=$(mktemp /tmp/astrosquid-card-text.XXXXXX)
 trap 'rm "$scratch"' EXIT
 build/card_text_host_test assets > "$scratch"
 cmp tests/card_text_native.csv "$scratch"
-echo 'PASS48 original card text commands: MacRoman bytes, order and exact IEEE coordinates/sizes/colors'
+echo 'PASS52 original card/credits text commands: MacRoman bytes, order and exact IEEE coordinates/sizes/colors'

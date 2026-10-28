@@ -1,10 +1,12 @@
-/* Original GETREADY/ENDDIALOG text commands; semantic GPU/audio/input observers. */
+/* Original GETREADY/ENDDIALOG and bounded startup credits text; semantic GPU/audio/input observers. */
 #define main unused_hud_oracle_main
 #include "ppc_hud_oracle.c"
 #undef main
 #include <assert.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <setjmp.h>
+static jmp_buf credits_finished;
 static unsigned char *card_globals;
 static unsigned card_case,texts,delays,polls,music_calls,swaps,gameovers,stops,plays;
 static uint64_t word(double x){uint64_t u;memcpy(&u,&x,8);return u;}
@@ -15,7 +17,7 @@ void card_text(double *x,double *y,unsigned char *text,double *size){
 }
 void card_hud(void){}
 void card_picture(void){}
-void card_swap(void){swaps++;}
+void card_swap(void){swaps++;if(card_case==18)longjmp(credits_finished,1);}
 void card_keys(void){polls++;*(int16_t *)(card_globals+0xab6)=polls%(card_case%3+1)==0;}
 void card_music(void){music_calls++;}
 void card_stop(void){stops++;}
@@ -41,18 +43,26 @@ int main(int argc,char **argv){
     Str255 text;for(int i=1;i<=256;i++){GetIndString(text,129,i);text[text[0]+1]=0;font_widths[i]=atof((char *)text+1)/32;}font_widths[32]=.2;
     const struct {unsigned at;void *fn;} hooks[]={
         {0x3572c,card_text_fb},{0x43134,card_hud_fb},{0x3bb58,card_picture_fb},{0x35eb8,card_swap_fb},
-        {0x4cb28,card_keys_fb},{0x334bc,card_music_fb},{0x31af4,card_stop_fb},{0x31edc,card_play_fb},{0x4cef0,card_gameover_fb}};
-    for(unsigned i=0;i<sizeof(hooks)/sizeof(hooks[0]);i++)jump_to(code+hooks[i].at,hooks[i].fn);MakeDataExecutable(code,433284);
-    for(card_case=0;card_case<18;card_case++){
+        {0x33b40,card_picture_fb},{0x4cb28,card_keys_fb},{0x334bc,card_music_fb},{0x31af4,card_stop_fb},{0x31edc,card_play_fb},{0x4cef0,card_gameover_fb}};
+    for(unsigned i=0;i<sizeof(hooks)/sizeof(hooks[0]);i++)jump_to(code+hooks[i].at,hooks[i].fn);
+    // Keep the real startup frame, skip services, stop at the credits' first swap.
+    assert(*(uint32_t *)(code+0x654a0)==0x3be00001);
+    *(uint32_t *)(code+0x654a0)=0x48000000|(0x65950-0x654a0);
+    MakeDataExecutable(code,433284);
+    for(card_case=0;card_case<19;card_case++){
         memset(g,0,0x1300);texts=delays=polls=music_calls=swaps=gameovers=stops=plays=0;
         *(void **)(g+0x21c)=lit;*(void **)(g+0x388)=heap;*(void **)(g+0x38c)=heap;*(void **)(g+0xeb6)=font_widths;
         *(double *)(g+0x378)=4503601774854144.;*(uint32_t *)(g+0x380)=0x43300000;
         *(int16_t *)(g+0xed6)=640;*(int16_t *)(g+0xed8)=480;
         *(int16_t *)(g+0xa82)=card_case<16?card_case/2+1:8;*(int16_t *)(g+0xa84)=card_case<16?card_case%2+1:2;*(int16_t *)(g+0xa0c)=1;*(int16_t *)(g+0xabc)=card_case%2;
+        if(card_case==18){
+            if(!setjmp(credits_finished))invoke_fb(code+0x65484,g,toc,NULL,NULL,NULL);
+            assert(texts==4&&swaps==1&&!delays&&!polls&&!music_calls&&!gameovers&&!stops&&!plays);continue;
+        }
         invoke_fb(code+(card_case<16?0x4e004:0x50388),g,toc,NULL,NULL,NULL);
         unsigned pages=card_case<16?1:4;
         assert(texts==2*pages&&delays==pages&&swaps==pages&&polls==pages*(card_case%3+1)&&music_calls==polls);
         assert(gameovers==(card_case>=16)&&stops==(card_case<16)&&plays==(card_case<16&&card_case%2));
     }
-    CloseResFile(rf);fputs("PASS18 original cards:48 text commands, Delay60 per page, key/music polling and accepted-key music/GameOver boundary\n",stderr);return 0;
+    CloseResFile(rf);fputs("PASS19 original cards/credits:52 text commands, Delay60 per page, key/music polling and accepted-key music/GameOver boundary\n",stderr);return 0;
 }

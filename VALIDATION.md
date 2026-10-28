@@ -16,11 +16,13 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
-- `tests/card_text_host.sh` matches48 original GETREADY/ENDDIALOG text
+- `tests/card_text_host.sh` matches52 original GETREADY/ENDDIALOG/credits text
   commands: all16 ready briefings and all4 ending pages under two key-poll
-  schedules. MacRoman bytes, order and IEEE coordinates, sizes and RGBA
+  schedules, plus4 startup credits lines. MacRoman bytes, order and IEEE coordinates, sizes and RGBA
   values match exactly. The original LMTEXTWIDTH and font resource remain
-  active in the G5 oracle; glyph drawing is observed. This fixes fractional
+  active in the G5 oracle; glyph drawing is observed. The startup capture
+  retains the original INITSAGAIA frame, skips initialization services with
+  one checked branch and stops at the credits swap. This fixes fractional
   centering (native integer width before division) and restores the ending
   prompt before each page body. The native card run also asserts Delay60 per
   page, key/music poll counts and accepted-key STOP/PLAY or GAMEOVER entry;
