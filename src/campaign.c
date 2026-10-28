@@ -3,7 +3,8 @@ int astro_campaign_event(AstroCampaign *c,int tag,int marker) {
     if(c->complete) return ASTRO_CAMPAIGN_NONE;
     if(marker&&tag!=-1) {c->arena=1;return ASTRO_CAMPAIGN_NONE;}
     if(!marker&&tag==-2) {
-        c->level=9;c->half=2;c->arena=0;return ASTRO_CAMPAIGN_LOAD;
+        /* The death handler loads map9 in-place; global stage remains8B. */
+        c->arena=0;return ASTRO_CAMPAIGN_NONE;
     }
     if(tag!=-1) return ASTRO_CAMPAIGN_NONE;
     c->arena=0;

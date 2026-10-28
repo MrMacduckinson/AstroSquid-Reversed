@@ -108,7 +108,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     AstroFlow flow;
     AstroTransition transition;
     AstroCampaign pendingCampaign;
-    BOOL changingStage,engineGlow,departureTrail;
+    BOOL changingStage,engineGlow,departureTrail,finalArena;
     uint64_t engineGlowBirth;
     uint32_t playerSpawnTick;
     AstroTransitionRect departureGlow,trailRect,engineGlowRect;
@@ -660,9 +660,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     visualEffects=[NSMutableArray array];specialPolygons=[NSMutableArray array];specialFlashes=[NSMutableArray array];
     special=(AstroSpecial){0};specialLoopRunning=specialReturnPending=NO;specialTargetObjects=nil;specialTargetData=nil;
     NSString *stage=levels[selectedLevel];
+    finalArena=NO;
     campaign=(AstroCampaign){[[stage substringFromIndex:5] intValue],[stage hasSuffix:@"A"]?1:2,0,0};
     campaignAction=ASTRO_CAMPAIGN_NONE;respawnTick=invulnerableUntil=0;respawnPending=NO;gameOver=NO;gameOverPending=NO;engineGlow=departureTrail=NO;playerVisualDeleted=NO;
     presentedBeams=@[];
+    [self loadLevelMap];
+}
+- (void)loadLevelMap {
     NSDictionary *level=game[@"levels"][levels[selectedLevel]];
     if(!starsInitialized) {astro_stars_init(stars,1,&randomSeed);starsInitialized=YES;}
     astro_stars_init(stars,0,&randomSeed);
@@ -1112,6 +1116,30 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(!astro_death_effects_phased(&source,context.tick,&randomSeed,createDeathEffect,finishDeathEffect,&context)) {
         NSLog(@"Invalid death effect configuration");exit(1);
     }
+    if(source.tag==-2)[self enterFinalArena];
+}
+- (void)enterFinalArena {
+    double offset=-camera;
+    if([world containsObject:[NSNull null]]){
+        playerVisual.x+=offset;playerEntityX+=offset;
+    }
+    for(AstroEnemy *enemy in enemies){
+        enemy->visual.x+=offset;enemy->state.x+=offset;
+        if(enemy->renderLayer==2)enemy->visualDeleted=YES;
+    }
+    for(NSMutableData *data in [visualEffects copy]){
+        LiveEffect *effect=data.mutableBytes;effect->visual.x+=offset;
+        if(effect->layer==2)[visualEffects removeObjectIdenticalTo:data];
+    }
+    if(playerHitVisual.active){playerHitVisual.visual.x+=offset;if(playerHitLayer==2)playerHitVisual.active=NO;}
+    if(engineGlow)engineGlowRect.x+=offset;
+    if(departureTrail)trailRect.x+=offset;
+    [mapPlacements removeAllObjects];
+    [audio stopMusic];if(ui.musicVolume>0)[audio playMusic:2];
+    [self appendDebugMessage:@"0"];
+    selectedLevel=[levels indexOfObject:@"Data 9B"];assert(selectedLevel!=NSNotFound);
+    camera=-0.0;campaign.arena=0;campaign.complete=0;campaignAction=ASTRO_CAMPAIGN_NONE;finalArena=NO;
+    [self loadLevelMap];finalArena=YES;
 }
 - (void)updateVisualEffects {
     NSMutableData *pending=[NSMutableData dataWithLength:(visualEffects.count+enemies.count+2)*sizeof(VisualUpdate)];
@@ -1365,7 +1393,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(enemy->kind==4||enemy->kind==20) {
         AstroDebris debris={enemy->kind,state->state,state->frame,state->remove,state->update_tick,
             state->animation_tick,state->action_tick,state->velocity};
-        astro_debris_step_clocked(&debris,enemy->bounds.right,camera,astro_debris_gravity(campaign.level),actorReadTick,(__bridge void *)self);
+        astro_debris_step_clocked(&debris,enemy->bounds.right,camera,finalArena?-.2:astro_debris_gravity(campaign.level),actorReadTick,(__bridge void *)self);
         state->velocity=debris.velocity;state->update_tick=debris.update_tick;
         state->animation_tick=debris.animation_tick;state->remove=debris.remove;
     }
@@ -1387,7 +1415,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)beginStageTransition {
     pendingCampaign=campaign;
-    campaign.level=[[levels[selectedLevel] substringFromIndex:5] intValue];
+    if(!finalArena)campaign.level=[[levels[selectedLevel] substringFromIndex:5] intValue];
+    if(pendingCampaign.complete){pendingCampaign.level=campaign.level+1;pendingCampaign.half=1;}
     campaign.half=[levels[selectedLevel] hasSuffix:@"A"]?1:2;campaign.complete=0;campaign.arena=1;
     campaignAction=ASTRO_CAMPAIGN_NONE;changingStage=YES;playerCombat.hit_points=200;
     astro_transition_begin(&transition,campaign.half==1?ASTRO_TRANSITION_MID:ASTRO_TRANSITION_END,simulationTick,0);
@@ -1433,7 +1462,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)stepEnemies {
     if(campaignAction!=ASTRO_CAMPAIGN_NONE&&!changingStage) {
-        if(selftestPath||(campaignAction==ASTRO_CAMPAIGN_LOAD&&campaign.level==9)) {
+        if(selftestPath) {
             AstroCampaign next=campaign;[self loadCampaignStage:next];
             [self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;
         } else [self beginStageTransition];
@@ -1578,7 +1607,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(previous==ASTRO_FLOW_END_CARD&&flow.phase!=previous&&changingStage) {
         AstroCampaign next=pendingCampaign;astro_transition_accept_card(&transition);changingStage=NO;
         if(!next.complete){[self loadCampaignStage:next];if(flow.phase==ASTRO_FLOW_READY)[self unlockStage];}
-        else {campaign.complete=1;[enemies removeAllObjects];[world removeAllObjects];playerNextActor=nil;}
+        else {campaign=next;[enemies removeAllObjects];[world removeAllObjects];playerNextActor=nil;}
     }
     if(previous==ASTRO_FLOW_READY&&flow.phase==ASTRO_FLOW_PLAY){
         [audio stopMusic];if(ui.musicVolume>0)[audio playMusic:2];

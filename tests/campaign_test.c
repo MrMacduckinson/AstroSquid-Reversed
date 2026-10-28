@@ -11,7 +11,7 @@ int main(void) {
         assert(astro_campaign_event(&c,1,0)==ASTRO_CAMPAIGN_NONE&&c.arena);
         if(level<8) assert(astro_campaign_event(&c,-1,0)==ASTRO_CAMPAIGN_LOAD);
     }
-    assert(astro_campaign_event(&c,-2,0)==ASTRO_CAMPAIGN_LOAD&&c.level==9&&c.half==2);
+    assert(astro_campaign_event(&c,-2,0)==ASTRO_CAMPAIGN_NONE&&c.level==8&&c.half==2&&!c.arena);
     assert(astro_campaign_event(&c,-1,0)==ASTRO_CAMPAIGN_COMPLETE&&c.complete);
     assert(astro_campaign_event(&c,-2,0)==ASTRO_CAMPAIGN_NONE);
     puts("PASS: complete campaign marker/boss/final-stage path and unrelated death events");return 0;
