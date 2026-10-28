@@ -23,6 +23,7 @@ static unsigned pauseEntries;
         assert(pad==0);
         if(copy!=16){assert(id==135&&copy==32&&any==1);poison++;continue;}
         for(unsigned i=0;i<16;i++){unsigned byte;assert(sscanf(hex+2*i,"%2x",&byte)==1);fixtureMap[i]=byte;}
+        [self readVisualKeys];assert(visualDebug==((fixtureMap[122>>3]>>(122&7))&1));
         quitRequested=quitBefore;memset(keys,1,sizeof(keys));[self readKeyMap];
         assert(keys[123]==left&&keys[124]==right&&keys[126]==up&&keys[125]==down);
         assert(keys[53]==pause&&keys[55]==fire&&keys[58]==special);

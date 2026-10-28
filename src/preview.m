@@ -1039,7 +1039,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
     [visualEffects removeObjectsInArray:finished];
 }
-- (void)readVisualKeys {visualDebug=CGEventSourceKeyState(kCGEventSourceStateCombinedSessionState,125);}
+- (void)readVisualKeys {unsigned char map[16];[self copyKeyMap:map];visualDebug=(map[122>>3]>>(122&7))&1;}
 - (void)handleVisualEffects {
     simulationTick=[self playerClockTick];[self updateVisualEffects];[self readVisualKeys];
     uint32_t diagnostic=[self playerClockTick];
