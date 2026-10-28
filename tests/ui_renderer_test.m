@@ -19,7 +19,7 @@ int main(int argc,const char **argv){@autoreleasepool{
     assert(fabs([[ui valueForKey:@"cameraX"] doubleValue]-(-590.63886067661))<1e-10);
     assert(fabs([[ui valueForKey:@"cameraY"] doubleValue]-(-338.9153762681465))<1e-10);
     assert([ui.registeredName isEqual:@""]);ui.registeredName=@"MACSPB";
-    assert([[ui mouseDownX:369 y:175] isEqual:@"Play"]);assert(![ui mouseUpX:0 y:0]);
+    assert([[ui mouseDownX:369 y:175] isEqual:@"Play"]);assert([ui.anchor isEqual:@"Main Menu"]);assert(![ui mouseUpX:0 y:0]);[ui show:@"Play Menu"];
     assert([ui.anchor isEqual:@"Play Menu"]);assert(ui.transitioning);
     [ui animateTicks:120];assert(!ui.transitioning);
     assert([[ui mouseDownX:394 y:268] isEqual:@"New Game"]);[ui mouseUpX:0 y:0];
@@ -40,5 +40,5 @@ int main(int argc,const char **argv){@autoreleasepool{
     assert(!memcmp(firstPause.bytes,[[[ui valueForKey:@"orbStates"] objectForKey:@"Pause"] bytes],32));
     [ui show:@"GameOver"];[ui animateTicks:59];assert(ui.transitioning);
     [ui animateTicks:1];assert(!ui.transitioning&&ui.panelOffset==0);
-    puts("PASS original menu pointer navigation, mouse-down activation and original panel frame counts, font spacing and campaign text");
+    puts("PASS original menu pointer actions, mouse-down activation and original panel frame counts, font spacing and campaign text");
 }}

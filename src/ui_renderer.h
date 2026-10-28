@@ -25,7 +25,6 @@ typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
 @property(nonatomic,copy) NSString *editingName;
 @property(nonatomic) NSInteger editingCursor;
 @property(nonatomic,copy) uint32_t (^readTick)(void);
-@property(nonatomic,copy) void (^beforeNavigate)(NSString *name);
 @property(nonatomic,readonly) BOOL editingCaretVisible;
 @property(nonatomic,readonly) NSRect scoreField;
 - (void)prepareScoreField;
@@ -44,8 +43,9 @@ typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
 - (void)reloadMenuWithRandom:(uint32_t *)seed;
 - (void)moveMouseX:(double)x y:(double)y;
 - (void)pollMouseX:(double)x y:(double)y;
+/* Return the action; the root owns its navigation transaction. */
 - (NSString *)mouseDownX:(double)x y:(double)y;
-/* Returns original DOMOUSE action name. Navigation is applied automatically. */
+/* Release pointer state; activation is handled on mouse down. */
 - (NSString *)mouseUpX:(double)x y:(double)y;
 - (void)animateTicks:(unsigned)ticks;
 - (void)drawSprites:(AstroUISpriteDrawer)sprites texture:(AstroUITextureLoader)texture;

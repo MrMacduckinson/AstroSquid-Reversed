@@ -114,6 +114,11 @@ controlled menu transitions against whole original `MOVEMENUTO` execution:
 The fixture retains 52 scene objects and 3,000 stars, observes GPU/audio boundaries,
 and checks that static repaints do not advance clocks or RNG. Mouse-click dispatch
 and the original startup randomization are outside this fixture.
+`bash tests/menu_dispatch_host.sh` additionally compares actual original `DOMOUSE`
+with host hit handling for Settings/Back at three frame intervals: 10,888 records,
+167 frames and 2,004,000 star words, including preference-save ordering and an
+eligible released poll between clicks. Preference file serialization and other
+navigation routes remain outside this fixture.
 
 The complete controlled campaign route passed on the Intel iMac: all 17 stages
 and the ending, through normal world updates and stage transitions. The pilot

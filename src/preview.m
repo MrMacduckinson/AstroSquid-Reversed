@@ -142,6 +142,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     NSTimer *timer;
     AstroAudio *audio;
     AstroUIRenderer *ui;
+    NSString *navigationButton;
     AstroHUDRenderer *hud;
     BOOL menuVisible,splashVisible;
     uint64_t renderClock,playerRenderBirth;
@@ -337,7 +338,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     ui=[[AstroUIRenderer alloc] initWithAssets:path error:&error];
     if(!ui) {NSLog(@"Cannot load original interface: %@",error);return nil;}
     __weak AstroView *weakView=self;ui.readTick=^{return [weakView currentGameTick];};
-    ui.beforeNavigate=^(NSString *name){if([name isEqual:@"Back"])[weakView saveSettings];};
     ui.registered=YES;ui.registeredName=@"MACSPB";editingKey=-1;
     ui.unlockedLevel=MAX(1,MIN(16,[[NSUserDefaults standardUserDefaults] integerForKey:@"AstroSquidUnlockedLevel"]));
     int defaults[6]={55,58,126,125,123,124};memcpy(controlKeys,defaults,sizeof(defaults));
@@ -1765,6 +1765,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if(!previous)[self presentFrame];
     } @finally {deferPresent=previous;menuFrameActive=previousMenuFrame;}
 }
+- (void)finishMenuNavigation {
+    if(!navigationButton)return;
+    [ui setButton:navigationButton pressed:NO];navigationButton=nil;menuMouseLatched=YES;
+}
 - (void)pollMenu {
     if(splashVisible){[audio serviceMusic];return;}
     BOOL gameOverPanel=[ui.anchor isEqual:@"GameOver"];
@@ -1792,6 +1796,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if([ui.anchor isEqual:@"Pause"]&&paused)[self readPauseKeys];
     else if(!gameOverPanel)[self readKeyMap];
     [self pollHeldMenuMouse];
+    if(navigationButton&&!ui.transitioning)[self finishMenuNavigation];
     if(gameOverPanel&&finishGameOver)[self finishGameOver];
 }
 - (uint32_t)cardDelayClockTick {
@@ -1898,7 +1903,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     assert(menuVisible&&[ui.anchor isEqual:@"Main Menu"]);
     [self mouseDown:[self testMouse:NSLeftMouseDown x:369 y:175]];
     [self mouseUp:[self testMouse:NSLeftMouseUp x:369 y:175]];
-    assert([ui.anchor isEqual:@"Play Menu"]);[ui animateTicks:120];[self stepMenu];
+    assert([ui.anchor isEqual:@"Play Menu"]);[ui animateTicks:120];
+    for(unsigned released=0;released<2;released++){observedWallTick=[self currentGameTick]-(uint32_t)ui.frameInterval;[self pollMenu];}
     [self mouseDown:[self testMouse:NSLeftMouseDown x:394 y:268]];
     [self mouseUp:[self testMouse:NSLeftMouseUp x:394 y:268]];
     assert(!menuVisible&&selectedLevel==0&&flow.phase==ASTRO_FLOW_READY);
@@ -2341,15 +2347,17 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (BOOL)menuMouseButtonPressed {return ([NSEvent pressedMouseButtons]&1)!=0;}
 - (void)handleMenuMouseAtPoint:(NSPoint)p {
+    if(navigationButton)return;
     if([ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0&&[ui scoreFieldContainsX:p.x y:p.y]) {
         scoreEditor.cursor=[ui scoreCursorAtX:p.x];[self refreshScoreEditor];
     }
     if(menuMouseLatched)return;
-    menuMouseLatched=YES;
-    [self performMenuAction:[ui mouseDownX:p.x y:p.y]];
+    NSString *name=[ui mouseDownX:p.x y:p.y];
+    if(astro_ui_command(name.UTF8String).action!=ASTRO_UI_NAVIGATE)menuMouseLatched=YES;
+    [self performMenuAction:name];
 }
 - (void)pollHeldMenuMouse {
-    if(!menuVisible||splashVisible||editingKey>=0||ui.transitioning||![self menuMouseButtonPressed])return;
+    if(navigationButton||!menuVisible||splashVisible||editingKey>=0||ui.transitioning||![self menuMouseButtonPressed])return;
     [self handleMenuMouseAtPoint:[self currentMenuMousePoint]];
 }
 - (void)mouseDown:(NSEvent *)event {
@@ -2371,6 +2379,12 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     AstroUICommand command=astro_ui_command(name.UTF8String);
     double position=[ui clickPosition:name];
     if(command.action!=ASTRO_UI_SOUND_VOLUME&&(command.action!=ASTRO_UI_NONE||isfinite(position)))[audio playCue:@"Click" position:position];
+    if(command.action==ASTRO_UI_NAVIGATE){
+        navigationButton=[name copy];[ui setButton:name pressed:YES];
+        if([name isEqual:@"Back"])[self saveSettings];
+        [ui show:[NSString stringWithUTF8String:command.destination]];observedWallTick=[self currentGameTick];
+        if(!ui.transitioning)[self finishMenuNavigation];
+    }
     if(command.action==ASTRO_UI_CLEAR_SCORES){
         [ui setButton:name pressed:YES];[self display];[self delayGameTicks:3];
         astro_scores_clear(highscores);ui.editingHighscore=0;[self saveScores];[ui setButton:name pressed:NO];

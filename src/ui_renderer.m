@@ -155,11 +155,8 @@
 }
 - (NSString *)mouseDownX:(double)x y:(double)y {
     if(_pressed)return nil;
-    if([_anchor isEqual:@"Credits"]){if(_beforeNavigate)_beforeNavigate(@"Yeah");[self show:@"Main Menu"];return @"Yeah";}
-    NSString *result=[self hitX:x y:y];_pressed=result;_hover=result;
-    if(result){AstroUICommand command=astro_ui_command(result.UTF8String);
-        if(command.action==ASTRO_UI_NAVIGATE){if(_beforeNavigate)_beforeNavigate(result);[self show:[NSString stringWithUTF8String:command.destination]];_pressed=result;}
-    }return result;
+    NSString *result=[_anchor isEqual:@"Credits"]?@"Yeah":[self hitX:x y:y];_pressed=result;_hover=result;
+    return result;
 }
 - (NSString *)mouseUpX:(double)x y:(double)y {
     _pressed=nil;_hover=[self hitX:x y:y];return nil;

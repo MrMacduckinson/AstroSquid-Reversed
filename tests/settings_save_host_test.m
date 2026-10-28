@@ -9,6 +9,9 @@ static unsigned saves;static NSString *savedAnchor;static double savedSound,save
 @interface SettingsSaveView:AstroView
 @end
 @implementation SettingsSaveView
+- (uint32_t)currentGameTick {static uint32_t tick=100;return tick++;}
+- (void)copyKeyMap:(unsigned char *)map {memset(map,0,16);}
+- (void)display {}
 - (void)saveSettings {saves++;savedAnchor=[ui.anchor copy];savedSound=ui.soundVolume;savedMusic=ui.musicVolume;savedKey=controlKeys[0];}
 - (void)terminateApplication {terminated=YES;}
 @end
@@ -16,7 +19,9 @@ static unsigned saves;static NSString *savedAnchor;static double savedSound,save
 - (void)clickSettingsNavigation:(NSString *)name {
  NSDictionary *object=[ui object:name];assert(object);NSRect r=[ui bounds:object];
  NSString *hit=[ui mouseDownX:NSMidX(r) y:NSMidY(r)];assert([hit isEqual:name]);
- assert([ui mouseDownX:NSMidX(r) y:NSMidY(r)]==nil);[ui mouseUpX:NSMidX(r) y:NSMidY(r)];
+ assert([ui mouseDownX:NSMidX(r) y:NSMidY(r)]==nil);[self performMenuAction:hit];
+ for(unsigned poll=0;navigationButton;poll++){assert(poll<1000);[self pollMenu];}
+ [ui mouseUpX:NSMidX(r) y:NSMidY(r)];
 }
 - (void)checkSettingsSaves {
  [timer invalidate];timer=nil;[audio stop];splashVisible=NO;selftestPath=campaignTestPath=nil;
