@@ -1,0 +1,36 @@
+0,open,0,Screen 0.pict,50494354,3f3f3f3f
+0,prefix,512,zero
+0,payload,4,TEST
+0,close
+0,message,Screenshot 'Screen 0.pict'
+1,open,1,Screen 1.pict,50494354,3f3f3f3f
+1,prefix,512,zero
+1,payload,4,TEST
+1,close
+1,message,Screenshot 'Screen 1.pict'
+2,open,86399,Screen 86399.pict,50494354,3f3f3f3f
+2,prefix,512,zero
+2,payload,4,TEST
+2,close
+2,message,Screenshot 'Screen 86399.pict'
+3,open,86400,Screen 0.pict,50494354,3f3f3f3f
+3,prefix,512,zero
+3,payload,4,TEST
+3,close
+3,message,Screenshot 'Screen 0.pict'
+4,open,2147483647,Screen 11647.pict,50494354,3f3f3f3f
+4,prefix,512,zero
+4,payload,4,TEST
+4,close
+4,message,Screenshot 'Screen 11647.pict'
+5,open,2147483648,Screen 11648.pict,50494354,3f3f3f3f
+5,prefix,512,zero
+5,payload,4,TEST
+5,close
+5,message,Screenshot 'Screen 11648.pict'
+6,open,4294967295,Screen 23295.pict,50494354,3f3f3f3f
+6,prefix,512,zero
+6,payload,4,TEST
+6,close
+6,message,Screenshot 'Screen 23295.pict'
+7,message,*** Error while taking screenshot

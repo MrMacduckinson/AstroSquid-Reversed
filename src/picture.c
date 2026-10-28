@@ -1,6 +1,8 @@
 #include "picture.h"
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 static void word(unsigned char **p,unsigned value){*(*p)++=(unsigned char)(value>>8);*(*p)++=(unsigned char)value;}
 static void longword(unsigned char **p,uint32_t value){word(p,value>>16);word(p,value);}
 static void rect(unsigned char **p,unsigned height,unsigned width){word(p,0);word(p,0);word(p,height);word(p,width);}
@@ -40,4 +42,18 @@ int astro_picture_encode(const unsigned char *rgb,size_t stride,unsigned width,u
  if((size_t)(p-bytes)&1)*p++=0;word(&p,0xff);
  *size=(size_t)(p-bytes);unsigned char *header=bytes;word(&header,(unsigned)*size);
  free(planar);free(packed);*output=bytes;return 1;
+}
+
+int astro_picture_filename(uint32_t mac_seconds,char *name,size_t capacity){
+ if(!name||!capacity)return 0;
+ int length=snprintf(name,capacity,"Screen %u.pict",(unsigned)(mac_seconds%86400u));
+ return length>=0&&(size_t)length<capacity;
+}
+int astro_picture_file_encode(const unsigned char *rgb,size_t stride,unsigned width,unsigned height,unsigned char **output,size_t *size){
+ if(!output||!size)return 0;*output=NULL;*size=0;
+ unsigned char *picture=NULL;size_t length=0;
+ if(!astro_picture_encode(rgb,stride,width,height,&picture,&length))return 0;
+ unsigned char *file=realloc(picture,length+512);
+ if(!file){free(picture);return 0;}
+ memmove(file+512,file,length);memset(file,0,512);*output=file;*size=length+512;return 1;
 }

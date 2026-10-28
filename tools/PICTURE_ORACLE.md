@@ -80,3 +80,27 @@ window scaling and presented-frame identity are not established by this offscree
 probe. File prefix, timestamp/folder/Finder type/creator, null-picture/error paths,
 startup activation and actual host capture/save remain unfinished. No screenshot
 feature or whole-game equivalence is claimed by this codec milestone.
+
+## SAVEPICTFILE boundary reference
+
+`ppc_picture_save_oracle.c` executes original SAVEPICTFILE1003dfc4 privately
+on G5, using the same PEF/literals plus original STR#25000 (6884 bytes).
+All filesystem calls are observers: no screenshot directory/file is created.
+The native timer, numeric formatting, concatenation and metadata setup remain
+original code. Seven UInt32 Mac-time boundary cases repeat identically; a null
+picture produces only the original error message. Fixture: tests/picture_save_native.csv.
+
+Names are `Screen <unsigned seconds modulo 86400>.pict`. Writes are exactly
+512 zero bytes, then the picture handle contents, followed by close. Open
+metadata is type PICT and creator ????. Static FBOPENFILE1000ec84 with flags
+0x302 attempts creation, opens the data fork, sets metadata, truncates to zero
+and seeks to the start. FBSETFILETYPE1000e43c passes both words unchanged to
+PBHSetFInfoSync. Actual filesystem errors, collision behavior and resulting
+Finder metadata have not been dynamically verified.
+
+`astro_picture_filename` and `astro_picture_file_encode` implement the verified
+name and byte layout; tests/picture_file_test.c replays the native fixture.
+Strict C and ASan/UBSan pass on the primary Mac; strict C passes on Intel iMac.
+The payload regression still matches all ten original captures. These helpers
+remain disconnected from the application: current-port/GL capture and legacy
+working-directory mapping need evidence before integration.
