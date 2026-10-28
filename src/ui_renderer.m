@@ -10,7 +10,9 @@
     NSArray *_objects;
     NSString *_anchor,*_hover,*_pressed;
     double _cameraX,_cameraY,_cameraStepX,_cameraStepY;
-    AstroScoreCaret _caret;
+    AstroScoreCaret _caret,_registrationCarets[2];
+    AstroScoreEditor _registrationFields[2];
+    NSRect _registrationBounds[2];
     double _targetX,_targetY;
     BOOL _transitioning;
     unsigned _panelFrames;
@@ -32,7 +34,7 @@
         _frameInterval=1;_unlockedLevel=1;_smooth=YES;_soundVolume=.6;_musicVolume=1;
         _keyLabels=@[@"Space",@"Option",@"Up",@"Down",@"Left",@"Right"];
         _highscores=@[];astro_score_caret_begin(&_caret,0);
-        [self show:@"Main Menu"];
+        [self show:@"Main Menu"];_activeRegistrationField=-1;[self resetRegistrationFields];
     }return self;
 }
 - (NSDictionary *)object:(NSString *)name {
@@ -97,7 +99,7 @@
 - (void)reloadMenuWithRandom:(uint32_t *)seed afterRandomization:(void (^)(void))initializeBackground {
     _deferMenuCamera=YES;_objects=nil;[self show:@"Main Menu"];_deferMenuCamera=NO;
     // PUTCONTROLS initializes both registration field timers before orb RNG.
-    if(self.readTick){self.readTick();self.readTick();}
+    [self resetRegistrationFields];
     for(NSDictionary *object in _objects){
         NSInteger sprite=[object[@"sprite"] integerValue];
         if(sprite==900||sprite==901)((AstroUIMotion *)[_orbStates[object[@"name"]] mutableBytes])->counter=astro_random(seed,60);
@@ -218,6 +220,52 @@
     return astro_ui_contains(_scoreField.origin.x,_scoreField.origin.y,_scoreField.size.width,_scoreField.size.height,x,y-(_gameOverClosing?0:70));
 }
 - (void)beginScoreClock:(uint32_t)tick {astro_score_caret_begin(&_caret,tick);}
+- (AstroScoreEditor *)registrationFields {return _registrationFields;}
+- (void)resetRegistrationFields {
+    NSDictionary *anchor=[self object:@"Register Menu"];
+    double x=[anchor[@"x"] doubleValue]-320,y=[anchor[@"y"] doubleValue];
+    for(unsigned i=0;i<2;i++){
+        astro_score_editor_begin(&_registrationFields[i]);
+        _registrationBounds[i]=NSMakeRect(x,y+(i?250:195),200,22);
+        astro_score_caret_begin(&_registrationCarets[i],self.readTick?self.readTick():0);
+    }
+}
+- (NSRect)registrationFieldBounds:(unsigned)index {
+    NSParameterAssert(index<2);return NSOffsetRect(_registrationBounds[index],_cameraX,_cameraY);
+}
+- (BOOL)selectRegistrationFieldX:(double)x y:(double)y {
+    BOOL found=NO;
+    for(unsigned i=0;i<2;i++){
+        NSRect r=[self registrationFieldBounds:i];
+        if(x<(int)r.origin.x||y<(int)r.origin.y||x>=(int)NSMaxX(r)||y>=(int)NSMaxY(r))continue;
+        _activeRegistrationField=i;found=YES;AstroScoreEditor *field=&_registrationFields[i];
+        NSString *text=[[NSString alloc]initWithBytes:field->name length:strlen(field->name) encoding:NSMacOSRomanStringEncoding];
+        field->cursor=-1;int offset=(int)((int)x-r.origin.x);
+        for(NSUInteger prefix=0;prefix<=text.length;prefix++)if([self textWidth:[text substringToIndex:prefix] size:20]<offset)field->cursor++;
+    }
+    return found;
+}
+- (int)editRegistrationByte:(unsigned)byte {
+    double widths[]={_registrationBounds[0].size.width,_registrationBounds[1].size.width};int focus=(int)_activeRegistrationField;
+    int result=astro_registration_editor_key(_registrationFields,widths,&focus,byte);_activeRegistrationField=focus;return result;
+}
+- (void)drawEditField:(NSRect)bounds label:(NSString *)label text:(NSString *)text cursor:(NSInteger)index
+             focused:(BOOL)focused caret:(AstroScoreCaret *)caret texture:(AstroUITextureLoader)texture {
+    int left=(int)bounds.origin.x,top=(int)bounds.origin.y;
+    double right=left+bounds.size.width,bottom=top+bounds.size.height,shade=focused?1:.5;
+    glColor4d(shade,shade,shade,1);
+    glDisable(GL_TEXTURE_2D);glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);glBegin(GL_QUADS);
+    glVertex2d(left,top);glVertex2d(right,top);glVertex2d(right,bottom);glVertex2d(left,bottom);glEnd();glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+    [self drawText:label x:left+2 baseline:top size:12 texture:texture];
+    glColor4d(1,1,1,1);
+    [self drawText:text x:left+2 baseline:top+23 size:20 texture:texture];
+    if(!focused)return;
+    if(self.readTick){uint32_t tick=self.readTick(),reset=(int32_t)caret->deadline<(int32_t)tick?self.readTick():tick;astro_score_caret_draw(caret,tick,reset);}
+    if(caret->visible==1){
+        NSUInteger prefix=MIN((NSUInteger)MAX(index,0),text.length);double x=left+2+[self textWidth:[text substringToIndex:prefix] size:20];
+        glDisable(GL_TEXTURE_2D);glBegin(GL_QUADS);glVertex2d(x,top+1);glVertex2d(x+1,top+1);glVertex2d(x+1,bottom-2);glVertex2d(x,bottom-2);glEnd();
+    }
+}
 - (double)textWidth:(NSString *)text size:(double)size {
     NSData *bytes=[text dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:YES];
     const unsigned char *chars=bytes.bytes;NSArray *advance=_data[@"font"][@"advance"];double width=0;
@@ -295,25 +343,8 @@
         if(button)[self label:@"OK" object:button left:NO texture:texture];
     }
     if([_anchor isEqual:@"GameOver"]&&self.editingHighscore>0){
-        int left=(int)_scoreField.origin.x,top=(int)_scoreField.origin.y+70;
-        int right=left+(int)_scoreField.size.width,bottom=top+(int)_scoreField.size.height;
-        glColor4d(1,1,1,1);
-        glDisable(GL_TEXTURE_2D);glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);glBegin(GL_QUADS);
-        glVertex2d(left,top);glVertex2d(right,top);glVertex2d(right,bottom);glVertex2d(left,bottom);glEnd();glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
-        [self drawText:@"Name:" x:left+2 baseline:top size:12 texture:texture];
-        NSString *name=self.editingName?:@"";
-        NSUInteger cursor=MIN((NSUInteger)MAX(self.editingCursor,0),name.length);
-        double cursorWidth=[self textWidth:[name substringToIndex:cursor] size:20];
-        [self drawText:name x:left+2 baseline:top+23 size:20 texture:texture];
-        if(self.readTick){
-            uint32_t tick=self.readTick();
-            uint32_t reset=(int32_t)_caret.deadline<(int32_t)tick?self.readTick():tick;
-            astro_score_caret_draw(&_caret,tick,reset);
-        }
-        if(self.editingCaretVisible){
-            double x=left+2+cursorWidth;
-            glDisable(GL_TEXTURE_2D);glBegin(GL_QUADS);glVertex2d(x,top+1);glVertex2d(x+1,top+1);glVertex2d(x+1,bottom-2);glVertex2d(x,bottom-2);glEnd();
-        }
+        NSRect bounds=_scoreField;bounds.origin.y+=70;
+        [self drawEditField:bounds label:@"Name:" text:self.editingName?:@"" cursor:self.editingCursor focused:YES caret:&_caret texture:texture];
         [self drawText:@"Highscore!" x:240 baseline:240 size:32 texture:texture];
     }
     if([_anchor isEqual:@"Highscores Menu"]){
@@ -325,6 +356,14 @@
             [self drawText:line x:x+30 baseline:y+25*i size:16 texture:texture];
             [self drawText:[NSString stringWithFormat:@" %ld",(long)i+1] x:x-(i==9?11:0) baseline:y+25*i+4 size:24 texture:texture];
             if(++i==10)break;
+        }
+    }
+    if(![_anchor isEqual:@"Pause"]&&![_anchor isEqual:@"GameOver"]){
+        for(unsigned i=0;i<2;i++){
+            AstroScoreEditor *field=&_registrationFields[i];
+            NSString *text=[[NSString alloc]initWithBytes:field->name length:strlen(field->name) encoding:NSMacOSRomanStringEncoding];
+            [self drawEditField:[self registrationFieldBounds:i] label:_data[@"labels"][i?@"321":@"273"] text:text cursor:field->cursor
+                       focused:_activeRegistrationField==(NSInteger)i caret:&_registrationCarets[i] texture:texture];
         }
     }
     glColor4d(1,1,1,1);

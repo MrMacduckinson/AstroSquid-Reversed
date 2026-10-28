@@ -11,6 +11,24 @@ static NSPoint mouseLocation;
 - (NSPoint)menuPoint:(NSEvent *)event {return mouseLocation;}
 - (void)display {}
 @end
+@interface CursorMouseView(RegistrationCheck)
+- (void)registrationMouseName:(unsigned)n camera:(unsigned)c x:(double)cx y:(double)cy focus:(int)focus latch:(unsigned)latch target:(unsigned)target dx:(int)dx dy:(int)dy;
+- (void)prepareRegistration;
+@end
+static CursorMouseView *registrationView;
+static void registration_mouse_case(unsigned n,unsigned c,double cx,double cy,int focus,unsigned latch,unsigned target,int dx,int dy){[registrationView registrationMouseName:n camera:c x:cx y:cy focus:focus latch:latch target:target dx:dx dy:dy];}
+#include "registration_mouse_cases.h"
+@implementation CursorMouseView(RegistrationCheck)
+- (void)prepareRegistration {
+    [timer invalidate];timer=nil;[audio stop];menuVisible=YES;gameOver=paused=splashVisible=NO;editingKey=-1;[ui show:@"Register Menu"];while(ui.transitioning)[ui advanceMenuCamera];[ui setValue:@[] forKey:@"objects"];
+}
+- (void)registrationMouseName:(unsigned)n camera:(unsigned)c x:(double)cx y:(double)cy focus:(int)focus latch:(unsigned)latch target:(unsigned)target dx:(int)dx dy:(int)dy {
+    [ui setValue:@(cx) forKey:@"cameraX"];[ui setValue:@(cy) forKey:@"cameraY"];ui.activeRegistrationField=focus;menuMouseLatched=latch;
+    for(unsigned i=0;i<2;i++){AstroScoreEditor *f=&[ui registrationFields][i];memset(f,0,sizeof(*f));strcpy(f->name,text_cursor_names[n]);f->cursor=77;}
+    mouseLocation=NSMakePoint((int)(cx+62)+dx,(int)(cy+1122+target*55)+dy);[self mouseDown:nil];
+    printf("M,%u,%u,%d,%u,%u,%d,%d,%ld,%d,%d,%d\n",n,c,focus,latch,target,dx,dy,(long)ui.activeRegistrationField,[ui registrationFields][0].cursor,[ui registrationFields][1].cursor,menuMouseLatched);
+}
+@end
 @implementation AstroView(CursorMouseCheck)
 - (void)checkMouseCursor {
     [timer invalidate];timer=nil;[audio stop];menuVisible=gameOver=YES;splashVisible=NO;editingKey=-1;
@@ -25,7 +43,8 @@ static NSPoint mouseLocation;
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
-    assert(argc==2);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
+    assert(argc==2||argc==3);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
+    if(argc==3){assert(!strcmp(argv[2],"registration"));registrationView=[[CursorMouseView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];[registrationView prepareRegistration];run_registration_mouse_cases();return 0;}
     AstroUIRenderer *ui=[[AstroUIRenderer alloc]initWithAssets:[NSString stringWithUTF8String:argv[1]] error:NULL];assert(ui);
     for(unsigned n=0;n<sizeof(text_cursor_names)/sizeof(text_cursor_names[0]);n++){
         NSString *name=[[NSString alloc]initWithBytes:text_cursor_names[n] length:strlen(text_cursor_names[n]) encoding:NSMacOSRomanStringEncoding];assert(name);

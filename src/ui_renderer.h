@@ -1,5 +1,6 @@
 #import <Cocoa/Cocoa.h>
 #import <OpenGL/gl.h>
+#include "scores.h"
 
 typedef void (^AstroUISpriteDrawer)(NSInteger sprite,double x,double y,double width,double height);
 typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
@@ -20,6 +21,12 @@ typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
 - (void)finishGameOverExit;
 @property(nonatomic) BOOL registered;
 @property(nonatomic,copy) NSString *registeredName;
+@property(nonatomic) NSInteger activeRegistrationField;
+- (AstroScoreEditor *)registrationFields;
+- (NSRect)registrationFieldBounds:(unsigned)index;
+- (BOOL)selectRegistrationFieldX:(double)x y:(double)y;
+- (int)editRegistrationByte:(unsigned)byte;
+- (void)resetRegistrationFields;
 /* 1-based row, zero disables new-score entry. Root handles text input. */
 @property(nonatomic) NSInteger editingHighscore;
 @property(nonatomic,copy) NSString *editingName;

@@ -10,8 +10,17 @@ static int mouse_x,mouse_y;
 void cursor_get_mouse(Point *p){p->h=mouse_x;p->v=mouse_y;}
 int cursor_zero(void){return 0;}
 BRIDGE(cursor_get_mouse) BRIDGE(cursor_zero)
+static unsigned char *mouse_g,*mouse_code;static uint32_t mouse_toc[489];
+static void registration_mouse_case(unsigned n,unsigned camera,double cx,double cy,int focus,unsigned latch,unsigned target,int dx,int dy){
+    *(double *)(mouse_g+0xea2)=cx;*(double *)(mouse_g+0xeaa)=cy;*(void **)(mouse_g+0xa06)=focus<0?NULL:mouse_g+0x5b2+focus*0x22a;*(short *)(mouse_g+0x5aa)=latch;
+    for(unsigned i=0;i<2;i++){unsigned char *f=mouse_g+0x5b2+i*0x22a;memset(f,0,0x22a);double bounds[]={62,1122+i*55,200,22};memcpy(f,bounds,sizeof(bounds));*(short *)(f+36)=77;f[296]=strlen(text_cursor_names[n]);memcpy(f+297,text_cursor_names[n],f[296]);}
+    mouse_x=(int)(cx+62)+dx;mouse_y=(int)(cy+1122+target*55)+dy;unsigned char empty[256]={0};invoke_fb(mouse_code+0x3f178,mouse_g,mouse_toc,empty,NULL,NULL);
+    void *active=*(void **)(mouse_g+0xa06);int selected=active==mouse_g+0x5b2?0:active==mouse_g+0x7dc?1:-1;assert(!active||selected>=0);
+    printf("M,%u,%u,%d,%u,%u,%d,%d,%d,%d,%d,%d\n",n,camera,focus,latch,target,dx,dy,selected,*(short *)(mouse_g+0x5d6),*(short *)(mouse_g+0x800),*(short *)(mouse_g+0x5aa));
+}
+#include "../tests/registration_mouse_cases.h"
 int main(int argc,char **argv){
-    if(argc!=4)return 2;alarm(60);struct stat input;
+    if(argc!=4&&argc!=5)return 2;int registration=argc==5;assert(!registration||!strcmp(argv[4],"registration"));alarm(60);struct stat input;
     assert(!stat(argv[1],&input)&&input.st_size==455780&&!stat(argv[2],&input)&&input.st_size==11812);
     unsigned char *code=read_file(argv[1])+128,*lit=read_file(argv[2]),*g=calloc(1,0x1300),*heap=calloc(1,0x100000);assert(g&&heap);
     uint32_t toc[489]={0};for(unsigned i=0;i<484;i++){
@@ -19,11 +28,16 @@ int main(int argc,char **argv){
     }toc[0]=(uint32_t)(uintptr_t)g;
     *(void **)(g+0x21c)=lit;*(void **)(g+0x388)=heap;*(void **)(g+0x38c)=heap;*(void **)(g+0xeb6)=font_widths;
     *(double *)(g+0x378)=4503601774854144.;*(uint32_t *)(g+0x380)=0x43300000;
-    FSRef ref;ResFileRefNum rf;HFSUniStr255 fork;
+    ResFileRefNum rf=0;
+    if(registration){assert(!stat(argv[3],&input)&&input.st_size==723);unsigned char *raw=read_file(argv[3]),*p=raw+2;assert(((unsigned)raw[0]<<8|raw[1])==256);for(unsigned i=1;i<=256;i++){char value[256]={0};memcpy(value,p+1,p[0]);font_widths[i]=atof(value)/32;p+=p[0]+1;}font_widths[32]=.2;}
+    else{
+    FSRef ref;HFSUniStr255 fork;
     assert(!FSPathMakeRef((const UInt8 *)argv[3],&ref,NULL)&&!FSGetResourceForkName(&fork)&&!FSOpenResourceFile(&ref,fork.length,fork.unicode,fsRdPerm,&rf));UseResFile(rf);
     Str255 text;for(int i=1;i<=256;i++){GetIndString(text,129,i);text[text[0]+1]=0;font_widths[i]=atof((char *)text+1)/32;}font_widths[32]=.2;
+    }
     jump_to(code+0x24248,cursor_zero_fb);jump_to(code+0x3b378,cursor_zero_fb);
     MakeDataExecutable(code,433284);unsigned widths=0,positions=0,mouse_probes=0;
+    if(registration){mouse_g=g;mouse_code=code;memcpy(mouse_toc,toc,sizeof(toc));run_registration_mouse_cases();fputs("PASS9072 actual registration field DOMOUSE hits/cursors/latches\n",stderr);return 0;}
     for(unsigned n=0;n<sizeof(text_cursor_names)/sizeof(text_cursor_names[0]);n++){
         const char *name=text_cursor_names[n];unsigned length=strlen(name);assert(length<256);
         unsigned char field[600]={0};field[0x128]=length;memcpy(field+0x129,name,length);

@@ -8,21 +8,34 @@
 #include <unistd.h>
 #include <sys/stat.h>
 static unsigned field_case,command_index,field_outline;
+static int registration_mode;static unsigned char *draw_code,*draw_g;static uint32_t draw_toc[489];static unsigned char labels[2][256];
 static uint64_t word(double x){uint64_t u;memcpy(&u,&x,8);return u;}
 static void colors(void){for(unsigned i=0;i<4;i++)printf(",%016llx",word(color[i]));putchar('\n');}
 static uint32_t field_tick(void){return 100;}
 static void field_mode(unsigned face,unsigned mode){assert(face==GL_FRONT_AND_BACK);field_outline=mode==GL_LINE;}
 void field_box(double *x,double *y,double *r,double *b){
-    printf("%u,%u,B,%u,%016llx,%016llx,%016llx,%016llx",field_case,command_index++,field_outline,word(*x),word(*y+70),word(*r),word(*b+70));colors();
+    printf("%u,%u,B,%u,%016llx,%016llx,%016llx,%016llx",field_case,command_index++,field_outline,word(*x),word(*y+(registration_mode?0:70)),word(*r),word(*b+(registration_mode?0:70)));colors();
 }
 void field_text(double *x,double *y,unsigned char *text,double *size){
     printf("%u,%u,T,",field_case,command_index++);for(unsigned i=0;i<text[0];i++)printf("%02x",text[i+1]);
-    printf(",%016llx,%016llx,%016llx",word(*x),word(*y+70),word(*size));colors();
+    printf(",%016llx,%016llx,%016llx",word(*x),word(*y+(registration_mode?0:70)),word(*size));colors();
 }
 static void field_scissor(int x,int y,int w,int h){printf("%u,%u,S,%d,%d,%d,%d\n",field_case,command_index++,x,y,w,h);}
 BRIDGE(field_box) BRIDGE(field_text)
+static void registration_draw_case(const char *name,int cursor,unsigned visible,int focus,double camera_x,double camera_y){
+    unsigned char fields[2][600]={{0}};*(double *)(draw_g+0xea2)=camera_x;*(double *)(draw_g+0xeaa)=camera_y;
+    for(unsigned i=0;i<2;i++){unsigned char *field=fields[i];double bounds[]={62,1122+i*55,200,22};memcpy(field,bounds,sizeof(bounds));
+        *(uint32_t *)(field+32)=200;*(short *)(field+36)=cursor;*(short *)(field+38)=visible?1:-1;
+        memcpy(field+40,labels[i],labels[i][0]+1);field[296]=strlen(name);memcpy(field+297,name,strlen(name));
+    }
+    *(void **)(draw_g+0xa06)=focus<0?NULL:fields[focus];command_index=0;
+    for(unsigned i=0;i<2;i++)invoke_fb(draw_code+0x41b70,draw_g,draw_toc,fields[i],NULL,NULL);
+    assert(command_index==(focus>=0&&visible?7u:6u));field_case++;
+}
+#include "../tests/registration_draw_cases.h"
+static unsigned char *string_at(unsigned char *raw,unsigned index){unsigned count=((unsigned)raw[0]<<8)|raw[1];assert(index&&index<=count);unsigned char *p=raw+2;for(unsigned i=1;i<index;i++)p+=p[0]+1;return p;}
 int main(int argc,char **argv){
-    if(argc!=4)return 2;alarm(30);struct stat input;
+    if(argc!=4&&argc!=6)return 2;registration_mode=argc==6;assert(!registration_mode||!strcmp(argv[5],"registration"));alarm(30);struct stat input;
     assert(!stat(argv[1],&input)&&input.st_size==455780&&!stat(argv[2],&input)&&input.st_size==11812);
     unsigned char *code=read_file(argv[1])+128,*lit=read_file(argv[2]),*g=calloc(1,0x1300),*heap=calloc(1,0x100000);assert(g&&heap);
     uint32_t toc[489]={0};for(unsigned i=0;i<484;i++){
@@ -34,10 +47,19 @@ int main(int argc,char **argv){
     }toc[0]=(uint32_t)(uintptr_t)g;
     *(void **)(g+0x21c)=lit;*(void **)(g+0x388)=heap;*(void **)(g+0x38c)=heap;*(void **)(g+0xeb6)=font_widths;
     *(double *)(g+0x378)=4503601774854144.;*(uint32_t *)(g+0x380)=0x43300000;
-    FSRef ref;ResFileRefNum rf;HFSUniStr255 fork;
+    ResFileRefNum rf=0;
+    if(registration_mode){
+        assert(!stat(argv[3],&input)&&input.st_size==723&&!stat(argv[4],&input)&&input.st_size==6884);
+        unsigned char *font=read_file(argv[3]),*strings=read_file(argv[4]);
+        for(unsigned i=1;i<=256;i++){unsigned char *p=string_at(font,i);char value[256]={0};memcpy(value,p+1,p[0]);font_widths[i]=atof(value)/32;}
+        font_widths[32]=.2;memcpy(labels[0],string_at(strings,273),string_at(strings,273)[0]+1);memcpy(labels[1],string_at(strings,321),string_at(strings,321)[0]+1);
+    }else{
+    FSRef ref;HFSUniStr255 fork;
     assert(!FSPathMakeRef((const UInt8 *)argv[3],&ref,NULL)&&!FSGetResourceForkName(&fork)&&!FSOpenResourceFile(&ref,fork.length,fork.unicode,fsRdPerm,&rf));UseResFile(rf);
     Str255 text;for(int i=1;i<=256;i++){GetIndString(text,129,i);text[text[0]+1]=0;font_widths[i]=atof((char *)text+1)/32;}font_widths[32]=.2;GetIndString(text,25000,273);assert(text[0]==5&&!memcmp(text+1,"Name:",5));
+    }
     jump_to(code+0x41730,field_box_fb);jump_to(code+0x3572c,field_text_fb);jump_to(code+0x342b4,noop);MakeDataExecutable(code,433284);
+    if(registration_mode){draw_code=code;draw_g=g;memcpy(draw_toc,toc,sizeof(toc));run_registration_draw_cases();fprintf(stderr,"PASS native%u registration field draw profiles\n",field_case);return 0;}
     for(unsigned n=0;n<sizeof(text_cursor_names)/sizeof(text_cursor_names[0]);n++){
         unsigned length=strlen(text_cursor_names[n]);int cursors[]={-1,0,length/2,length,length+5};
         for(unsigned c=0;c<5;c++)for(unsigned visible=0;visible<2;visible++){

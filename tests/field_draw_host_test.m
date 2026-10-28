@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <stdint.h>
 #include "text_cursor_cases.h"
+#import <objc/runtime.h>
+static BOOL registrationMode;static AstroUIRenderer *registrationUI;
 static unsigned field_case,command_index,primitive,vertices;
 static GLenum polygonMode=GL_FILL;
 static BOOL recording;
@@ -25,17 +27,26 @@ void glDisable(GLenum cap){if(recording&&cap==GL_SCISSOR_TEST)printf("%u,%u,E,0\
 @end
 @implementation FieldDrawUI
 - (void)drawText:(NSString *)text x:(double)x baseline:(double)y size:(double)size texture:(AstroUITextureLoader)texture {
-    if(!recording||(![text isEqual:@"Name:"]&&![text isEqual:self.editingName]))return;
+    if(!recording||(!registrationMode&&![text isEqual:@"Name:"]&&![text isEqual:self.editingName]))return;
     NSData *data=[text dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:YES];assert(data);
     printf("%u,%u,T,",field_case,command_index++);const unsigned char *p=data.bytes;for(NSUInteger i=0;i<data.length;i++)printf("%02x",p[i]);
     printf(",%016llx,%016llx,%016llx",word(x),word(y),word(size));colors();
 }
 @end
+static void registration_draw_case(const char *name,int cursor,unsigned visible,int focus,double camera_x,double camera_y){
+    AstroUIRenderer *ui=registrationUI;[ui setValue:@(camera_x) forKey:@"cameraX"];[ui setValue:@(camera_y) forKey:@"cameraY"];ui.activeRegistrationField=focus;
+    AstroScoreCaret *carets=(AstroScoreCaret *)((char *)(__bridge void *)ui+ivar_getOffset(class_getInstanceVariable([AstroUIRenderer class],"_registrationCarets")));
+    for(unsigned i=0;i<2;i++){AstroScoreEditor *field=&[ui registrationFields][i];memset(field,0,sizeof(*field));memcpy(field->name,name,strlen(name));field->cursor=cursor;carets[i]=(AstroScoreCaret){200,visible?1:-1};}
+    command_index=0;recording=YES;[ui drawSprites:^(NSInteger n,double x,double y,double w,double h){} texture:^GLuint(NSInteger n){return 0;}];recording=NO;
+    assert(command_index==(focus>=0&&visible?7u:6u));field_case++;
+}
+#include "registration_draw_cases.h"
 int main(int argc,const char **argv){@autoreleasepool{
-    assert(argc==2);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
+    assert(argc==2||argc==3);registrationMode=argc==3;assert(!registrationMode||!strcmp(argv[2],"registration"));[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
     NSOpenGLPixelFormatAttribute attributes[]={NSOpenGLPFAColorSize,24,NSOpenGLPFAAlphaSize,8,0};
     NSOpenGLContext *context=[[NSOpenGLContext alloc]initWithFormat:[[NSOpenGLPixelFormat alloc]initWithAttributes:attributes] shareContext:nil];assert(context);[context makeCurrentContext];
     FieldDrawUI *ui=[[FieldDrawUI alloc]initWithAssets:[NSString stringWithUTF8String:argv[1]] error:NULL];assert(ui);
+    if(registrationMode){[ui show:@"Register Menu"];[ui setValue:@[] forKey:@"objects"];ui.readTick=^uint32_t{return 100;};registrationUI=ui;run_registration_draw_cases();return 0;}
     [ui show:@"GameOver"];[ui animateTicks:120];[ui setValue:@[] forKey:@"objects"];ui.editingHighscore=1;ui.readTick=^uint32_t{return 100;};
     for(unsigned n=0;n<sizeof(text_cursor_names)/sizeof(text_cursor_names[0]);n++){
         NSString *name=[[NSString alloc]initWithBytes:text_cursor_names[n] length:strlen(text_cursor_names[n]) encoding:NSMacOSRomanStringEncoding];assert(name);

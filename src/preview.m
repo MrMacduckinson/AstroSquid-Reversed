@@ -143,6 +143,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     AstroAudio *audio;
     AstroUIRenderer *ui;
     NSString *navigationButton;
+    NSMutableData *registrationKeyEvents;
     AstroHUDRenderer *hud;
     BOOL menuVisible,splashVisible;
     uint64_t renderClock,playerRenderBirth;
@@ -1834,11 +1835,17 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         }else for(unsigned i=0;i<128;i++)if(keys[i]){finishGameOver=YES;break;}
         if(finishGameOver)ui.gameOverClosing=YES;
     }
+    BOOL moving=ui.transitioning||navigationButton!=nil;
     [self stepMenu];
     if(![ui.anchor isEqual:@"Pause"])[audio serviceMusic];
     if(overlay)observedWallTick=[self currentGameTick];
     if([ui.anchor isEqual:@"Pause"]&&paused)[self readPauseKeys];
     else if(!gameOverPanel)[self readKeyMap];
+    if(!overlay&&!moving&&ui.activeRegistrationField>=0&&registrationKeyEvents.length){
+        unsigned char ch=*(const unsigned char *)registrationKeyEvents.bytes;
+        [registrationKeyEvents replaceBytesInRange:NSMakeRange(0,1) withBytes:NULL length:0];
+        if([ui editRegistrationByte:ch]==ASTRO_SCORE_EDIT_ALERT&&![self resolveTextOverflow:&[ui registrationFields][ui.activeRegistrationField] byte:ch])return;
+    }
     [self pollHeldMenuMouse];
     if(navigationButton&&!ui.transitioning)[self finishMenuNavigation];
     if(gameOverPanel&&finishGameOver)[self finishGameOver];
@@ -2178,33 +2185,47 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [alert addButtonWithTitle:@"Stop"];[alert addButtonWithTitle:@"Continue"];
     return [alert runModal]==NSAlertSecondButtonReturn;
 }
-- (BOOL)editScoreByte:(unsigned)ch {
-    size_t length=strlen(scoreEditor.name);
-    size_t left=scoreEditor.cursor<0?0:MIN((size_t)scoreEditor.cursor,length);
-    size_t right=scoreEditor.cursor>(int)length?0:MIN((size_t)((int)length-scoreEditor.cursor),length);
-    if(astro_score_editor_key(&scoreEditor,ch)!=ASTRO_SCORE_EDIT_ALERT)return YES;
-    NSMutableData *first=[NSMutableData dataWithBytes:scoreEditor.name length:left];
+- (BOOL)resolveTextOverflow:(AstroScoreEditor *)editor byte:(unsigned)ch {
+    size_t length=strlen(editor->name);
+    size_t left=editor->cursor<0?0:MIN((size_t)editor->cursor,length);
+    size_t right=editor->cursor>(int)length?0:MIN((size_t)((int)length-editor->cursor),length);
+    NSMutableData *first=[NSMutableData dataWithBytes:editor->name length:left];
     unsigned char character=(unsigned char)ch;
     NSData *second;
     if(left==255)second=[NSData dataWithBytes:&character length:1];
-    else{[first appendBytes:&character length:1];second=[NSData dataWithBytes:scoreEditor.name+length-right length:right];}
+    else{[first appendBytes:&character length:1];second=[NSData dataWithBytes:editor->name+length-right length:right];}
     BOOL proceed=[self continueScoreOverflow:first right:second];
-    if(astro_score_editor_resolve_alert(&scoreEditor,proceed)==ASTRO_SCORE_EDIT_STOP){terminationAllowed=YES;[NSApp terminate:nil];return NO;}
+    if(astro_score_editor_resolve_alert(editor,proceed)==ASTRO_SCORE_EDIT_STOP){terminationAllowed=YES;[NSApp terminate:nil];return NO;}
     return YES;
+}
+- (BOOL)editScoreByte:(unsigned)ch {
+    if(astro_score_editor_key(&scoreEditor,ch)!=ASTRO_SCORE_EDIT_ALERT)return YES;
+    return [self resolveTextOverflow:&scoreEditor byte:ch];
+}
+- (NSData *)fieldCharacters:(NSEvent *)event {
+    unsigned byte=0;
+    switch(event.keyCode){
+        case 51:byte=8;break;case 117:byte=127;break;case 123:byte=28;break;case 124:byte=29;break;
+        case 126:byte=30;break;case 125:byte=31;break;case 115:byte=1;break;case 119:byte=4;break;
+        case 116:byte=11;break;case 121:byte=12;break;case 114:byte=5;break;case 71:byte=27;break;
+        case 36:byte=13;break;case 76:byte=3;break;case 48:byte=9;break;case 53:byte=27;break;
+    }
+    if(!byte&&event.characters.length){unichar ch=[event.characters characterAtIndex:0];if(ch>=NSF1FunctionKey&&ch<=NSF35FunctionKey)byte=16;}
+    if(byte){unsigned char ch=byte;return [NSData dataWithBytes:&ch length:1];}
+    return [event.characters dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:NO];
 }
 - (void)keyDown:(NSEvent *)event {
     unsigned key=event.keyCode;
     if(splashVisible){if(key<128){keys[key]=YES;[self acceptSplash];}return;}
     if(key<128) keys[key]=YES;
+    if(menuVisible&&!gameOver&&!paused&&editingKey<0&&ui.activeRegistrationField>=0){
+        if(!registrationKeyEvents)registrationKeyEvents=[NSMutableData data];
+        NSData *bytes=[self fieldCharacters:event];if(bytes)[registrationKeyEvents appendData:bytes];
+        return;
+    }
     if(menuVisible&&[ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0) {
-        unsigned ch=key==51?8:key==117?127:key==123?28:key==124?29:
-            key==126||key==115?30:key==125||key==119?31:key==36?13:key==76?3:0;
         if(!scoreKeyEvents)scoreKeyEvents=[NSMutableData data];
-        if(ch){unsigned char byte=ch;[scoreKeyEvents appendBytes:&byte length:1];}
-        else{
-            NSData *bytes=[event.characters dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:NO];
-            if(bytes)[scoreKeyEvents appendData:bytes];
-        }
+        NSData *bytes=[self fieldCharacters:event];if(bytes)[scoreKeyEvents appendData:bytes];
         return;
     }
     if(menuVisible&&gameOver)return;
@@ -2392,6 +2413,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if([ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0&&[ui scoreFieldContainsX:p.x y:p.y]) {
         scoreEditor.cursor=[ui scoreCursorAtX:p.x];[self refreshScoreEditor];
     }
+    if(![ui.anchor isEqual:@"Pause"]&&![ui.anchor isEqual:@"GameOver"])[ui selectRegistrationFieldX:p.x y:p.y];
     if(menuMouseLatched)return;
     NSString *name=[ui mouseDownX:p.x y:p.y];
     AstroUIAction action=astro_ui_command(name.UTF8String).action;
@@ -2424,6 +2446,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     double position=[ui clickPosition:name];
     if(command.action!=ASTRO_UI_SOUND_VOLUME&&(command.action!=ASTRO_UI_NONE||isfinite(position)))[audio playCue:@"Click" position:position];
     if(command.action==ASTRO_UI_NAVIGATE){
+        if([name isEqual:@"Register"])ui.activeRegistrationField=0;
+        if([@[@"Back3",@"Back4",@"Back5",@"Back6",@"Back7"]containsObject:name])ui.activeRegistrationField=-1;
         navigationButton=[name copy];[ui setButton:name pressed:YES];
         if([name isEqual:@"Back"])[self saveSettings];
         [ui show:[NSString stringWithUTF8String:command.destination]];observedWallTick=[self currentGameTick];
@@ -2434,7 +2458,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         astro_scores_clear(highscores);ui.editingHighscore=0;[self saveScores];[ui setButton:name pressed:NO];
     }
     if(command.action==ASTRO_UI_KEY) {
-        editingKey=command.key;[ui setButton:name pressed:YES];
+        ui.activeRegistrationField=-1;editingKey=command.key;[ui setButton:name pressed:YES];
         @try {int code=[self waitForMenuKey];if(code>=0)controlKeys[editingKey]=code;}
         @finally {[ui setButton:name pressed:NO];editingKey=-1;[self refreshKeyLabels];menuMouseLatched=YES;}
     }
