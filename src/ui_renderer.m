@@ -289,9 +289,9 @@
 }
 - (void)drawBriefingForStage:(NSInteger)stage list:(NSInteger)list texture:(AstroUITextureLoader)texture {
     NSString *text=[self briefingForStage:stage list:list];
-    glColor4d(.7,.7,.7,1);[self drawText:text x:320-[self textWidth:text size:12]/2 baseline:330 size:12 texture:texture];
+    glColor4d(.7,.7,.7,1);[self drawText:text x:320-(int)[self textWidth:text size:12]/2.0 baseline:330 size:12 texture:texture];
     glColor4d(.4,.4,.4,1);NSString *prompt=_data[@"labels"][@"278"];
-    [self drawText:prompt x:320-[self textWidth:prompt size:10]/2 baseline:370 size:10 texture:texture];glColor4d(1,1,1,1);
+    [self drawText:prompt x:320-(int)[self textWidth:prompt size:10]/2.0 baseline:370 size:10 texture:texture];glColor4d(1,1,1,1);
 }
 - (void)drawSplashWithTexture:(AstroUITextureLoader)texture {
     NSDictionary *credits=_data[@"credits"];
@@ -304,7 +304,9 @@
 }
 - (void)drawEndingPage:(NSInteger)page texture:(AstroUITextureLoader)texture {
     NSArray *pages=_data[@"ending"];if(page<0||page>=(NSInteger)pages.count)return;
+    NSString *prompt=_data[@"labels"][@"278"];
+    glColor4d(.4,.4,.4,1);[self drawText:prompt x:320-(int)[self textWidth:prompt size:10]/2.0 baseline:370 size:10 texture:texture];
     NSDictionary *p=pages[page];NSString *text=p[@"text"];double size=[p[@"size"] doubleValue];
-    glColor4d(.7,.7,.7,1);[self drawText:text x:[p[@"center_x"] doubleValue]-[self textWidth:text size:size]/2 baseline:[p[@"baseline"] doubleValue] size:size texture:texture];glColor4d(1,1,1,1);
+    glColor4d(.7,.7,.7,1);[self drawText:text x:[p[@"center_x"] doubleValue]-(int)[self textWidth:text size:size]/2.0 baseline:[p[@"baseline"] doubleValue] size:size texture:texture];glColor4d(1,1,1,1);
 }
 @end

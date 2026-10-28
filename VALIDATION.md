@@ -16,6 +16,17 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- `tests/card_text_host.sh` matches48 original GETREADY/ENDDIALOG text
+  commands: all16 ready briefings and all4 ending pages under two key-poll
+  schedules. MacRoman bytes, order and IEEE coordinates, sizes and RGBA
+  values match exactly. The original LMTEXTWIDTH and font resource remain
+  active in the G5 oracle; glyph drawing is observed. This fixes fractional
+  centering (native integer width before division) and restores the ending
+  prompt before each page body. The native card run also asserts Delay60 per
+  page, key/music poll counts and accepted-key STOP/PLAY or GAMEOVER entry;
+  existing port delay/music probes pass separately. End-of-level cards and
+  unregistered reminder branches are outside this native fixture.
+
 - `tests/outer_loop_host.sh` compares the actual original GAMELOOP entry and
   first ordinary iteration with production beginGameLoop/pollGame/renderTick:
   30 schedules,460 semantic events,228 clock reads. It covers closed/open CPU,
