@@ -250,3 +250,42 @@ GDB quits/kills the owned inferior after the second read. No completed UI/game/
 audio initialization, original live process patch, or original on-disk change
 is part of this successful test. Temporary copied executable/resources and
 directory helper binary are removed after evidence is recorded.
+
+## Full original menu capture after asset initialization
+
+`ppc_full_window_capture.gdb` and debugger-only `ppc_capture_reference.c` close
+the current-port lifetime gap for the original windowed menu. Prepare an owned
+/tmp/astrosquid-full-port-20261028/AstroSquid with selected download3 stub/rsrc
+forks as above. Copy Data from the preserved G5 reference into that owned
+directory (these auxiliary Data files were not independently matched to v3;
+textures/program resources use selected v3 rsrc). Build capture.dylib with
+gcc -std=gnu99 -O2 -dynamiclib ppc_capture_reference.c -framework Carbon.
+The hook also needs ppc_bridge.h. Run native GDB -batch -x the commandfile
+against LaunchCFMApp. It modifies only the owned inferior's test input state.
+
+The first GETKEYMAP is DOFIRSTRUNCHECK before GETPREFS/INITSAGAIA; its screen
+port does NOT prove a game-window capture. Main FUN10066c40 sets fullscreen1
+before that call, overriding the earlier engine thunk's fullscreen0 default.
+Therefore normal game startup defaults fullscreen, an outstanding host gap.
+The successful window test sets ee0=0 at INITSAGAIA entry (controlled window
+case). Original LMINITMINI, all107 map loads, sound/music setup, attribute loads
+and intro rendering execute. The intro waits for a key: after original keymap
+returns at65f2c, set ab6=1 for one controlled any-key transition. Stop at
+MainLoop returnsite66cf0, disable the intro keymap-return breakpoint, then stop
+at the menu's GETKEYMAP (caller return66e7c). Explicit address boundaries avoid
+GDB `finish` on untyped PEF functions, which waited indefinitely in the intro
+in an earlier attempt; only native PBHGetVolSync uses finish.
+
+Observed menu current port equals owned window1 port; bounds0/0/480/640,
+foregroundblack/backgroundwhite, fullscreen0/debug0. The dylib checks current
+port equals the supplied window's port and bounds640x480, refusing desktop
+ports. It calls actual GETPICT_139dc with current original globals/TOC via the
+FB bridge and writes only the fixed owned window.pict. Two native launches
+return0 and1228936-byte payloads; each matches existing window-white.pict.gz
+after only pmTable/pmExt address zeroing. Canonical SHA256:
+ac9321d7766f17cee0df3813d45da9556639c9f5799e1c58c018ada89df800ea.
+No duplicate fixture is retained. GDB kills owned inferior without CLOSEDOWN
+or SAVEPREFS; no settings are intentionally written. No original files/live
+original process are patched. Fullscreen capture, in-game later port changes,
+Finder launch and full gameplay equivalence remain unproved. Primary/Intel
+app runtime is unchanged; this is original G5 evidence only.
