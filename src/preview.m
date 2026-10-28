@@ -2233,7 +2233,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (uint32_t)currentGameTick {
     return (uint32_t)floor((NSProcessInfo.processInfo.systemUptime-clockOrigin)*60);
 }
-- (void)gameOverDelayTicks:(uint32_t)ticks {
+- (void)delayGameTicks:(uint32_t)ticks {
     [NSThread sleepForTimeInterval:ticks/60.0];
 }
 - (void)beginGameOver {
@@ -2243,7 +2243,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         simulationTick=[self currentGameTick];[self cleanupWorld];
         [self calculateActors];[self handleVisualEffects];
         simulationRender=YES;[self display];simulationRender=NO;
-        [self gameOverDelayTicks:(uint32_t)(milliseconds*60/1000)];
+        [self delayGameTicks:(uint32_t)(milliseconds*60/1000)];
     }
     flow.phase=savedPhase;simulationTick=[self currentGameTick];
     menuVisible=YES;[ui show:@"GameOver"];[self drawPanelTransition];
@@ -2366,7 +2366,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     AstroUICommand command=astro_ui_command(name.UTF8String);
     double position=[ui clickPosition:name];
     if(command.action!=ASTRO_UI_SOUND_VOLUME&&(command.action!=ASTRO_UI_NONE||isfinite(position)))[audio playCue:@"Click" position:position];
-    if(command.action==ASTRO_UI_CLEAR_SCORES){astro_scores_clear(highscores);ui.editingHighscore=0;[self saveScores];}
+    if(command.action==ASTRO_UI_CLEAR_SCORES){
+        [ui setButton:name pressed:YES];[self display];[self delayGameTicks:3];
+        astro_scores_clear(highscores);ui.editingHighscore=0;[self saveScores];[ui setButton:name pressed:NO];
+    }
     if(command.action==ASTRO_UI_KEY) {editingKey=command.key;keyCaptureDeadline=NSProcessInfo.processInfo.systemUptime+10;NSMutableArray *labels=[ui.keyLabels mutableCopy];labels[editingKey]=@"Press a key";ui.keyLabels=labels;}
     if(command.action==ASTRO_UI_SMOOTH) {
         ui.smooth=!ui.smooth;[[self openGLContext] makeCurrentContext];

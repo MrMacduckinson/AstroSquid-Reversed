@@ -10,7 +10,7 @@ static BOOL observing;
 @end
 @implementation AstroGameOverView
 - (uint32_t)currentGameTick {return controlledTick;}
-- (void)gameOverDelayTicks:(uint32_t)ticks {
+- (void)delayGameTicks:(uint32_t)ticks {
     static const unsigned expected[]={0,1,1,2,3,3,4,4,5,6};
     assert(delays<10&&ticks==expected[delays++]);controlledTick+=ticks;[events appendString:@"D"];
 }
