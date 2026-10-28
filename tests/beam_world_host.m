@@ -4,6 +4,7 @@
 static FILE *beamClocks;
 static unsigned beamClockCount;
 static const char *beamPhase;
+static BOOL beamChain,beamKill;
 @interface AstroBeamTraceView : AstroTraceView
 - (void)traceBeamWeapon:(int)weapon cleanupFirst:(BOOL)cleanup;
 @end
@@ -36,7 +37,13 @@ static const char *beamPhase;
     NSDictionary *a=game[@"attributes"][@"73"];int sprite=[a[@"sprite"] intValue];
     AstroEnemy *target=[self entityForPlacement:@{@"attribute":@73,@"tag":@0,@"x":@(weapon==40?300:180),@"y":@190,
         @"width":@(spriteInfo[sprite].width),@"height":@(spriteInfo[sprite].height)}];
-    target->hitPoints=100;[self prependEnemy:target];[self dumpWorldTrace:@"setup"];
+    target->hitPoints=beamKill?1:100;[self prependEnemy:target];
+    if(beamChain||beamKill){
+        AstroEnemy *second=[self entityForPlacement:@{@"attribute":@73,@"tag":@0,@"x":@225,@"y":@200,
+            @"width":@(spriteInfo[sprite].width),@"height":@(spriteInfo[sprite].height)}];
+        second->hitPoints=beamKill?1:100;[self prependEnemy:second];
+    }
+    [self dumpWorldTrace:@"setup"];
     beamPhase="fire";tracePhase=beamPhase;[self fireWeapon:weapon x:104 y:202 heading:0 source:1];[self dumpWorldTrace:@"fire"];
     if(cleanup){beamPhase="cleanup";tracePhase=beamPhase;[self cleanupWorld];[self dumpWorldTrace:@"cleanup"];}
     beamPhase="render";tracePhase=beamPhase;simulationRender=YES;
@@ -52,7 +59,7 @@ static const char *beamPhase;
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
-    assert(argc==5);beamClocks=fopen(argv[4],"w");assert(beamClocks);
+    assert(argc==5||argc==6);beamChain=argc==6&&!strcmp(argv[5],"chain");beamKill=argc==6&&!strcmp(argv[5],"kill");assert(argc==5||beamChain||beamKill);beamClocks=fopen(argv[4],"w");assert(beamClocks);
     [NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
     [[NSUserDefaults standardUserDefaults] setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}} forName:NSArgumentDomain];
     AstroBeamTraceView *view=[[AstroBeamTraceView alloc] initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];

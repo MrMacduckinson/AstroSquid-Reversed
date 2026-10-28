@@ -22,7 +22,7 @@ static void render_beams(unsigned char *code,uint32_t *toc){
 }
 int main(int argc,char **argv){
     setvbuf(stdout,NULL,_IONBF,0);
-    if(argc!=8)return 2;int weapon=atoi(argv[5]),cleanup_first=atoi(argv[6]);if((weapon!=40&&weapon!=50)||(cleanup_first!=0&&cleanup_first!=1))return 2;
+    if(argc!=8&&argc!=9)return 2;int chain=argc==9&&!strcmp(argv[8],"chain"),kill=argc==9&&!strcmp(argv[8],"kill");if(argc==9&&!chain&&!kill)return 2;int weapon=atoi(argv[5]),cleanup_first=atoi(argv[6]);if(!((weapon>=40&&weapon<=43)||(weapon>=50&&weapon<=53))||(cleanup_first!=0&&cleanup_first!=1))return 2;
     clock_events=fopen(argv[7],"w");if(!clock_events)return 2;setvbuf(clock_events,NULL,_IONBF,0);
     unsigned char *pef=read_file(argv[1]),*code=pef+128,*lit=read_file(argv[2]),*g=calloc(1,0x1300),*heap=calloc(1,0x100000);world_globals=g;phase="setup";
     unsigned char *raw=read_file(argv[4]);strings=NewHandle(6884);if(!strings)return 2;memcpy(*strings,raw,6884);
@@ -43,7 +43,9 @@ int main(int argc,char **argv){
     set_short(g,0xa52,1);set_short(g,0xa8a,weapon);set_short(g,0xa8e,2);*(uint32_t *)(g+0x244)=0x12345678;
     jump_to(code+0x3ce84,world_sound_fb);jump_to(code+0x3a278,no_draw);MakeDataExecutable(code,433284);
     unsigned char *player=spawn(code,toc,1,1,30,190);set_pointer(g,0xa7a,player);set_short(player,24,12);set_short(player,26,1);set_short(player,88,100);
-    unsigned char *target=spawn(code,toc,7,3,weapon==40?300:180,190);set_short(target,88,100);tick=0;snapshot();
+    unsigned char *target=spawn(code,toc,7,3,weapon==40?300:180,190);set_short(target,88,kill?1:100);
+    if(chain||kill){unsigned char *second=spawn(code,toc,7,3,225,200);set_short(second,88,kill?1:100);}
+    tick=0;snapshot();
     phase="fire";world_invoke5(code+0x58f40,g,toc,(void *)(intptr_t)weapon,(void *)104,(void *)202,0,player);snapshot();
     if(cleanup_first){phase="cleanup";invoke_fb(code+0x539b8,g,toc,NULL,NULL,NULL);snapshot();}
     phase="render";render_beams(code,toc);snapshot();

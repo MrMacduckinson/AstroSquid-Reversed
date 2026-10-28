@@ -12,11 +12,19 @@ clang -fobjc-arc -O2 -ffp-contract=off -Wno-deprecated-declarations \
   -framework AVFoundation -framework Carbon -o build/beam_world_host
 scratch=$(mktemp -d /tmp/astrosquid-beam-world.XXXXXX)
 trap 'rm -r "$scratch"' EXIT
-for weapon in 40 50; do
-  for cleanup in 0 1; do
-    build/beam_world_host assets "$weapon" "$cleanup" "$scratch/clocks.tsv" > "$scratch/world.tsv"
-    cmp "tests/beam_world_native/world-$weapon-$cleanup.tsv" "$scratch/world.tsv"
-    cmp "tests/beam_world_native/clocks-$weapon-$cleanup.tsv" "$scratch/clocks.tsv"
-  done
+cases=0
+for fixture in tests/beam_world_native/world-*.tsv; do
+  name=${fixture##*/}; name=${name#world-}; name=${name%.tsv}
+  IFS=- read -r weapon cleanup scenario <<< "$name"
+  set -- "$weapon" "$cleanup" "$scratch/clocks.tsv"
+  case "$scenario" in
+    "") ;;
+    chain|kill) set -- "$@" "$scenario" ;;
+    *) echo "Unknown scenario: $scenario" >&2; exit 2 ;;
+  esac
+  build/beam_world_host assets "$@" > "$scratch/world.tsv"
+  cmp "$fixture" "$scratch/world.tsv"
+  cmp "tests/beam_world_native/clocks-$name.tsv" "$scratch/clocks.tsv"
+  cases=$((cases+1))
 done
-echo 'PASS four coupled beam world traces: 121 state records and 23 clock observations identical to G5'
+echo "PASS $cases coupled beam world and clock traces identical to G5"
