@@ -108,6 +108,13 @@ highscore entry, stage cards, midpoint autopilot and departure animation are
 connected. Preferences and unlocked stages persist. Score defaults, tie ordering
 and Classic name editing were checked against original PPC routines on G5.
 
+On the Intel reference Mac, `bash tests/menu_transition_host.sh` compares six
+controlled menu transitions against whole original `MOVEMENUTO` execution:
+164 frames, 10,684 ordered records and all 1,968,000 canonical IEEE star words.
+The fixture retains 52 scene objects and 3,000 stars, observes GPU/audio boundaries,
+and checks that static repaints do not advance clocks or RNG. Mouse-click dispatch
+and the original startup randomization are outside this fixture.
+
 The complete controlled campaign route passed on the Intel iMac: all 17 stages
 and the ending, through normal world updates and stage transitions. The pilot
 replenishes its shield and uses weapon 53; this proves route connectivity, not an

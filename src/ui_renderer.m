@@ -57,8 +57,9 @@
     if([scene isEqual:@"Data B2"]){
         NSString *name=[anchor isEqual:@"Credits"]?@"CreditsMenu":anchor;
         NSDictionary *a=[self object:name];
-        if(a)astro_ui_camera(name.UTF8String,[a[@"x"] doubleValue],[a[@"y"] doubleValue],
-                            [a[@"width"] doubleValue],[a[@"height"] doubleValue],&_targetX,&_targetY);
+        if(a){const AstroUIMotion *state=[_orbStates[a[@"name"]] bytes];
+            astro_ui_camera(name.UTF8String,state->x,state->y,state->width,state->height,&_targetX,&_targetY);
+        }
     }
     _transitioning=sameScene&&![_anchor isEqual:@"Credits"];
     if(!_transitioning){

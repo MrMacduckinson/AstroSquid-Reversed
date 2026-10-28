@@ -126,7 +126,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     BOOL quitRequested,gameLoopActive,gameEndRequested,gameEndHighscores,terminationAllowed;
     NSArray *presentedBeams;
     uint32_t presentedBeamSeed;
-    BOOL simulationRender,deferPresent;
+    BOOL simulationRender,deferPresent,menuFrameActive;
     uint32_t worldRenderTick,visualRateTick;
     int16_t visualFrames,hudRedraws;
     BOOL panelTransitionRender;
@@ -520,6 +520,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         }
         AstroSceneSink menuSink={(__bridge void *)self,sceneLine,sceneSprite,scenePoint,sceneTrail};
         astro_stars_draw(stars,1,campaign.level,0,&menuSink);
+        if(menuFrameActive){menuFrameActive=NO;[self handleMenuSprites];[self pollMenuMouse];}
         visualSprites=0;
         [ui drawSprites:^(NSInteger n,double x,double y,double w,double h){
             [self sprite:n x:x y:y width:w height:h];
@@ -1755,15 +1756,14 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         astro_stars_move(stars,ui.cameraX,ui.cameraY,-ui.cameraX,-ui.cameraY,640-ui.cameraX,480-ui.cameraY,
             menuScroll.x,menuScroll.y,ui.cameraStepX,ui.cameraStepY,ui.frameInterval,&randomSeed,NULL,0,1);
     }
-    if(!overlay)[self handleMenuSprites];
-    [self pollMenuMouse];
-    BOOL previous=deferPresent;deferPresent=YES;
+    if(overlay)[self pollMenuMouse];
+    BOOL previous=deferPresent,previousMenuFrame=menuFrameActive;deferPresent=YES;menuFrameActive=!overlay;
     @try {
         [self display];
         if([ui.anchor isEqual:@"Pause"])[audio serviceMusic];
         if(overlay)[ui animateTicks:1];else [ui animateMenuObjects];
         if(!previous)[self presentFrame];
-    } @finally {deferPresent=previous;}
+    } @finally {deferPresent=previous;menuFrameActive=previousMenuFrame;}
 }
 - (void)pollMenu {
     if(splashVisible){[audio serviceMusic];return;}

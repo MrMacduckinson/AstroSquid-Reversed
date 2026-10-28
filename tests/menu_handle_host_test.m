@@ -3,8 +3,7 @@
 #include "../src/preview.m"
 #undef main
 static unsigned sample,reads;
-static BOOL observing,checkingOrder,overlayOrder;
-static unsigned orderStep;
+static BOOL observing;
 static const uint32_t starts[]={100,101,160,UINT32_MAX-1,0x7fffffff,0x80000000};
 @interface MenuHandleView:AstroView
 - (void)checkHandle;
@@ -12,10 +11,7 @@ static const uint32_t starts[]={100,101,160,UINT32_MAX-1,0x7fffffff,0x80000000};
 @implementation MenuHandleView
 - (uint32_t)playerClockTick {if(!observing)return 1000;uint32_t n=starts[sample]+reads++;printf("T,%u,%u\n",sample,n);return n;}
 - (void)copyKeyMap:(unsigned char *)p {memset(p,0,16);if(sample&1)p[15]=4;if(observing)printf("K,%u,%u\n",sample,sample&1);}
-- (void)handleMenuSprites {if(checkingOrder){assert(!overlayOrder&&orderStep==0);orderStep=1;}[super handleMenuSprites];}
-- (void)pollMenuMouse {if(checkingOrder){assert(orderStep==(overlayOrder?0:1));orderStep=2;}else [super pollMenuMouse];}
-- (void)display {if(checkingOrder){assert(orderStep==2);orderStep=3;}}
-- (void)presentFrame {if(checkingOrder){assert(orderStep==3);orderStep=4;}}
+- (void)display {}
 - (void)checkHandle {
     [timer invalidate];timer=nil;[audio stop];
     for(sample=0;sample<6;sample++){
@@ -35,11 +31,7 @@ static const uint32_t starts[]={100,101,160,UINT32_MAX-1,0x7fffffff,0x80000000};
         }
         uint64_t bits;memcpy(&bits,&visualRate,8);printf("F,%u,%d,%d,%u,%016llx,%u\n",sample,visualDebug,visualFrames,visualRateTick,bits,reads);
     }
-    checkingOrder=YES;splashVisible=NO;deferPresent=NO;
-    for(unsigned overlay=0;overlay<2;overlay++){
-        overlayOrder=overlay;orderStep=0;[ui show:overlay?@"GameOver":@"Main Menu"];[ui animateTicks:60];[self stepMenu];assert(orderStep==4);
-    }
-    fputs("PASS root normal handler before mouse/draw; GameOver excludes handler\n",stderr);
+
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{

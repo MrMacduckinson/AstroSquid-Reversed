@@ -1,0 +1,43 @@
+/* Whole MOVEMENUTO: real camera/gate/stars/RNG/LMHANDLE/MOUSEOVER/ANIMATEMENU.
+   Original Data B2 records seed the 52-node list; GPU/audio OS boundaries observed. */
+#define main unused_hud_oracle_main
+#include "ppc_hud_oracle.c"
+#undef main
+#include <assert.h>
+#include <unistd.h>
+#include <sys/stat.h>
+static unsigned profile,route,reads,frame,recording;
+static unsigned char *gref,*nodes[52];static double *stars;static Handle strings;static FILE *star_dump;
+static uint64_t word(double x){uint64_t b;memcpy(&b,&x,8);return b;}
+static uint32_t tick(void){if(!recording)return 1000;assert(reads<10000);uint32_t t=1000+reads++;printf("T,%u,%u,%u\n",profile,route,t);return t;}
+static void keys(void *p){memset(p,0,16);if(recording)printf("K,%u,%u,%u\n",profile,route,frame);}
+static void mouse(Point *p){p->h=-30000;p->v=-30000;}
+static int zero(void){return 0;}
+static Handle resource(ResType type,short id){assert(type=='STR#'&&id==25000);return strings;}
+static void snapshot(unsigned f){for(unsigned i=0;i<52;i++){unsigned char *n=nodes[i];printf("N,%u,%u,%u,%u,%d,%d,%u",profile,route,f,i,*(short *)(n+38),*(int *)(n+296),*(uint32_t *)(n+34));for(unsigned a=0;a<4;a++)printf(",%016llx",word(*(double *)(n+a*8)));putchar('\n');}}
+void star_draw(void){assert(fwrite(stars+4,8,3000*4,star_dump)==3000*4);printf("S,%u,%u,%u,%u,%016llx,%016llx",profile,route,frame,*(uint32_t *)(gref+0x244),word(*(double *)(gref+0xea2)),word(*(double *)(gref+0xeaa)));for(unsigned i=0;i<4;i++)printf(",%016llx",word(stars[4+i]));putchar('\n');}
+void sprite_draw(void){snapshot(frame);printf("D,%u,%u,%u\n",profile,route,frame);}
+void menu_draw(void){printf("O,%u,%u,%u\n",profile,route,frame);}
+void swap(void){*(short *)(gref+0xec6)=(short)((unsigned short)*(short *)(gref+0xec6)+1u);printf("W,%u,%u,%u\n",profile,route,frame++);assert(frame<1000);}
+void music(void){printf("U,%u,%u,%u\n",profile,route,frame);}
+BRIDGE(star_draw) BRIDGE(sprite_draw) BRIDGE(menu_draw) BRIDGE(swap) BRIDGE(music)
+static unsigned char *find(const char *name){for(unsigned i=0;i<52;i++)if(nodes[i][40]==strlen(name)&&!memcmp(nodes[i]+41,name,strlen(name)))return nodes[i];abort();}
+int main(int argc,char **argv){
+ if(argc!=7)return 2;alarm(60);star_dump=fopen(argv[6],"wb");assert(star_dump);struct stat st;assert(!stat(argv[1],&st)&&st.st_size==455780&&!stat(argv[2],&st)&&st.st_size==11812&&!stat(argv[3],&st)&&st.st_size==6884&&!stat(argv[4],&st)&&st.st_size==14014&&!stat(argv[5],&st)&&st.st_size==52*308);
+ unsigned char *code=read_file(argv[1])+128,*lit=read_file(argv[2]),*raw=read_file(argv[3]),*table=read_file(argv[4]),*scene=read_file(argv[5]),*g=calloc(1,0x1400),*heap=calloc(1,0x100000);assert(g&&heap);gref=g;stars=calloc(3001*4,8);assert(stars);strings=NewHandle(6884);assert(strings);memcpy(*strings,raw,6884);for(unsigned i=0;i<52;i++){nodes[i]=calloc(1,308);assert(nodes[i]);}
+ uint32_t toc[489]={0};for(unsigned i=0;i<484;i++){void *fn=dlsym(RTLD_DEFAULT,import_names[i]);if(!strcmp(import_names[i],"TickCount"))fn=tick;if(!strcmp(import_names[i],"GetKeys"))fn=keys;if(!strcmp(import_names[i],"GetMouse"))fn=mouse;if(!strcmp(import_names[i],"Button"))fn=zero;if(!strcmp(import_names[i],"GetResource"))fn=resource;descriptors[i][0]=(uint32_t)(uintptr_t)(fn?fn:missing_import);toc[i]=(uint32_t)(uintptr_t)descriptors[i];}toc[0]=(uint32_t)(uintptr_t)g;
+ const struct{unsigned at;void *fn;} hooks[]={{0x24248,zero},{0x45af0,star_draw_fb},{0x3aaf8,sprite_draw_fb},{0x46394,menu_draw_fb},{0x35eb8,swap_fb},{0x334bc,music_fb}};
+ for(unsigned i=0;i<sizeof(hooks)/sizeof(*hooks);i++)jump_to(code+hooks[i].at,hooks[i].fn);MakeDataExecutable(code,433284);
+ for(profile=0;profile<3;profile++){
+  memset(g,0,0x1400);recording=reads=0;*(void **)(g+0x21c)=lit;*(void **)(g+0xe82)=table;*(void **)(g+0x388)=heap;*(void **)(g+0x38c)=heap;*(void **)(g+0xa54)=stars;*(void **)(g+0xe86)=nodes[0];*(double *)(g+0x378)=4503601774854144.;*(uint32_t *)(g+0x380)=0x43300000;*(short *)(g+0xed6)=640;*(short *)(g+0xed8)=480;*(short *)(g+0xa52)=profile+1;*(short *)(g+0x58c)=1;*(uint32_t *)(g+0xec8)=1000;*(uint32_t *)(g+0x244)=0x12345678;*(double *)(g+0xea2)=-599.5;*(double *)(g+0xeaa)=-344;*(double *)(g+0xa58)=2;*(double *)(g+0xa60)=-1;
+  for(unsigned i=0;i<52;i++){memcpy(nodes[i],scene+i*308,308);*(uint32_t *)(nodes[i]+34)=1000;*(void **)(nodes[i]+300)=i<51?nodes[i+1]:NULL;*(void **)(nodes[i]+304)=i?nodes[i-1]:NULL;}
+  for(unsigned i=1;i<=3000;i++){stars[i*4]=80;stars[i*4+1]=(i*17)%640;stars[i*4+2]=(i*29)%480;stars[i*4+3]=i%5+1;}
+  recording=1;
+  for(route=0;route<2;route++){
+   frame=0;const char *button=route?"Back":"Settings",*destination=route?"Main Menu":"Settings Menu";invoke_fb(code+0x343b4,g,toc,find(button),(void *)901,NULL);
+   unsigned char name[256]={0};name[0]=strlen(destination);memcpy(name+1,destination,name[0]);invoke_fb(code+0x4b3a4,g,toc,name,(void *)1,NULL);
+   invoke_fb(code+0x343b4,g,toc,find(button),(void *)900,NULL);snapshot(999);printf("Z,%u,%u,%u,%u,%016llx,%016llx\n",profile,route,frame,reads,word(*(double *)(g+0xea2)),word(*(double *)(g+0xeaa)));
+  }recording=0;
+ }
+ assert(!fclose(star_dump));fputs("PASS3 whole MOVEMENUTO profiles, two-way52node scenes and3000realstars/RNG, no GPU window\n",stderr);return 0;
+}
