@@ -64,6 +64,13 @@ captures; those captures do not establish equivalence of the current full game.
   pause key, Command-Q as the stop flag and keypad multiply as the debug-enabled
   screenshot key. This does not prove physical-device input, pause-loop timing
   or implementation of the stop/screenshot actions in the port.
+- `tests/pause_native.csv` records16 original G5 PAUSE/GETKEYMAP cases and708
+  boundary/state observations. Two captures were byte-identical. It establishes
+  held-key exit at eligible frame polls, interval1/2/3 gates, fresh post-swap CPU
+  clock stores, HUD dirty decrements, CmdQ state, clock wrap and cleanup order.
+  UI/audio/render/mouse are controlled observers. This native reference does
+  not establish host pause equivalence: event-driven immediate pause/resume
+  and interrupted WAIT/blink continuation still require a connected fix.
 - `tests/caret_vectors.csv` contains4225 original DRAWMYEDITFIELD captures of
   deadline, visibility and conditional TickCount reads. GL/font drawing is
   replaced by no-ops in the private native oracle; original caret logic runs.
