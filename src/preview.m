@@ -334,7 +334,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(!ui) {NSLog(@"Cannot load original interface: %@",error);return nil;}
     __weak AstroView *weakView=self;ui.readTick=^{return [weakView currentGameTick];};
     ui.beforeNavigate=^(NSString *name){if([name isEqual:@"Back"])[weakView saveSettings];};
-    [self reloadMainMenu];
     ui.registered=YES;ui.registeredName=@"MACSPB";editingKey=-1;
     ui.unlockedLevel=MAX(1,MIN(16,[[NSUserDefaults standardUserDefaults] integerForKey:@"AstroSquidUnlockedLevel"]));
     int defaults[6]={55,58,126,125,123,124};memcpy(controlKeys,defaults,sizeof(defaults));
@@ -471,7 +470,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
         glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);glMatrixMode(GL_MODELVIEW);glLoadIdentity();glClear(GL_COLOR_BUFFER_BIT);
         [ui drawPicture:40 x:0 y:0 width:0 height:0 texture:^GLuint(NSInteger n){return [self texture:n];}];
-        [self presentFrame];[self preloadSpriteMaps];if(![self initializeAudio])exit(1);
+        [self presentFrame];[self preloadSpriteMaps];if(![self initializeAudio])exit(1);[self reloadMainMenu];
     }
     glViewport(0,(GLint)(bounds.size.height*30/480),(GLsizei)bounds.size.width,(GLsizei)(bounds.size.height*380/480));
     glClear(GL_COLOR_BUFFER_BIT);
