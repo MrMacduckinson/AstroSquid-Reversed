@@ -104,3 +104,28 @@ Strict C and ASan/UBSan pass on the primary Mac; strict C passes on Intel iMac.
 The payload regression still matches all ten original captures. These helpers
 remain disconnected from the application: current-port/GL capture and legacy
 working-directory mapping need evidence before integration.
+
+## Owned AGL window: offscreen codec is NOT a window replacement
+
+`ppc_picture_gl_oracle.c` runs on G5 only. Build like the capture oracle, adding
+-framework AGL -framework OpenGL. Arguments are original PEF and literals.
+It creates its own 640x480 Carbon document window, paints QuickDraw blue,
+executes original GETPICT_, draws red through AGL using original
+LMSETUPAGLDRAWABLE100363dc attributes (4,5,73,50,32,0), swaps, validates GL_FRONT
+red, and calls original GETPICT_ again. Both pictures are decoded into an owned
+GWorld and all307200 RGB pixels are compared. No user desktop/window is captured.
+
+Two final native runs pass: GL_FRONT255/0/0, captured306975blue,225other,0red,
+0black,0changed RGB pixels versus before GL. The225other pixels are also identical
+between captures; none retains the decoder's0x55 fill. Their cause was not proved.
+Window payload1228944 bytes has DirectBitsRgn,packType1,cmpCount3, unlike the
+offscreen packType4/cmpCount4 fixtures. Original serialized state also includes
+QuickDraw foreground color and finite clip. The existing offscreen encoder
+must NOT be presented as byte-identical to this window path. A glReadPixels
+replacement would capture different pixels on this tested platform.
+
+Scope: owned Carbon document window on G5/Tiger, not the original full game
+window or fullscreen DrawSprocket/AGL path, not Intel/AppKit. Original window
+style/current-port initialization and fullscreen semantics remain unresolved.
+The tool deliberately asserts this calibrated G5 result and disposes its own
+window/context on success. It does not install hooks or modify original files.
