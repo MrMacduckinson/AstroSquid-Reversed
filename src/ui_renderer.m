@@ -5,6 +5,7 @@
 #include <math.h>
 
 @implementation AstroUIRenderer {
+    BOOL _deferMenuCamera;
     NSDictionary *_data;
     NSArray *_objects;
     NSString *_anchor,*_hover,*_pressed;
@@ -44,7 +45,7 @@
     BOOL sameScene=[scene isEqual:@"Data B2"]&&_objects==_data[@"scenes"][scene];
     _objects=_data[@"scenes"][scene];_anchor=[anchor copy];_hover=nil;_pressed=nil;
     if(!sameScene){
-        _cameraX=0;_cameraY=0;[_orbStates removeAllObjects];[_hoverDeadlines removeAllObjects];
+        if(!_deferMenuCamera){_cameraX=0;_cameraY=0;}[_orbStates removeAllObjects];[_hoverDeadlines removeAllObjects];
         for(NSDictionary *object in _objects){
             NSInteger counter=[object[@"animation_counter"] integerValue];
             AstroUIMotion state={[object[@"x"] doubleValue],[object[@"y"] doubleValue],[object[@"width"] doubleValue],[object[@"height"] doubleValue],(int32_t)counter,[object[@"sprite"] shortValue]};
@@ -62,7 +63,7 @@
         }
     }
     _transitioning=sameScene&&![_anchor isEqual:@"Credits"];
-    if(!_transitioning){
+    if(!_transitioning&&!_deferMenuCamera){
         if([scene isEqual:@"Data B2"]){
             double dx,dy;do {dx=(_targetX-_cameraX)/(10.0/_frameInterval);dy=(_targetY-_cameraY)/(10.0/_frameInterval);_cameraX+=dx;_cameraY+=dy;}while(fabs(dx)>=1||fabs(dy)>=1);
         }else {_cameraX=_targetX;_cameraY=_targetY;}
@@ -91,10 +92,25 @@
     _panelFrames=30;_panelStep=-380.0/30;_transitioning=YES;
 }
 - (void)reloadMenuWithRandom:(uint32_t *)seed {
-    _objects=nil;[self show:@"Main Menu"];
+    [self reloadMenuWithRandom:seed afterRandomization:nil];
+}
+- (void)reloadMenuWithRandom:(uint32_t *)seed afterRandomization:(void (^)(void))initializeBackground {
+    _deferMenuCamera=YES;_objects=nil;[self show:@"Main Menu"];_deferMenuCamera=NO;
+    // PUTCONTROLS initializes both registration field timers before orb RNG.
+    if(self.readTick){self.readTick();self.readTick();}
     for(NSDictionary *object in _objects){
         NSInteger sprite=[object[@"sprite"] integerValue];
         if(sprite==900||sprite==901)((AstroUIMotion *)[_orbStates[object[@"name"]] mutableBytes])->counter=astro_random(seed,60);
+    }
+    _cameraX=0;_cameraY=0;
+    if(initializeBackground)initializeBackground();
+    // MOVEMENUTO(Main,0) retains its clock gate while skipping rendered frames.
+    uint32_t previous=self.readTick?self.readTick():0;_transitioning=YES;
+    while(_transitioning){
+        uint32_t now=self.readTick?self.readTick():0;
+        if((int32_t)(now-previous)<0)continue;
+        previous=self.readTick?self.readTick():0;
+        [self advanceMenuCamera];
     }
 }
 - (BOOL)enabled:(NSDictionary *)object {

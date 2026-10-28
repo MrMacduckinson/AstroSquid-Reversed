@@ -41,6 +41,8 @@ typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
 - (void)show:(NSString *)anchor;
 /* Original PUTCONTROLS: source-order random phase for orb records only. */
 - (void)reloadMenuWithRandom:(uint32_t *)seed;
+/* Initialize stars/drift between orb RNG and the original unrendered camera move. */
+- (void)reloadMenuWithRandom:(uint32_t *)seed afterRandomization:(void (^)(void))initializeBackground;
 - (void)moveMouseX:(double)x y:(double)y;
 - (void)pollMouseX:(double)x y:(double)y;
 /* Return the action; the root owns its navigation transaction. */

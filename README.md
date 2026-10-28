@@ -128,6 +128,13 @@ intervals and three camera positions, including fractional coordinates and
 overlapping objects. All raw nodes are enabled for this fixture; registration
 and unlock filtering, OS event conversion and other scenes remain separate checks.
 
+`bash tests/menu_setup_host.sh` compares original `PUTCONTROLSINWINDOW`, including
+the actual scene factory, with the root menu reload: nine seed/interval/previous
+camera profiles, 28,455 records, all 27,000 initialized stars and RNG/camera values
+at every clock read. The original registration-field clock reads and unrendered
+camera movement are retained. Registration UI state and unlock filtering are
+outside this all-enabled fixture.
+
 The complete controlled campaign route passed on the Intel iMac: all 17 stages
 and the ending, through normal world updates and stage transitions. The pilot
 replenishes its shield and uses weapon 53; this proves route connectivity, not an

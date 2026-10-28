@@ -32,7 +32,11 @@ static BOOL rawQuit;
 }
 - (void)deleteActor:(id)object {[super deleteActor:object];if(observing)[actual addObject:@"dispose_entity"];}
 - (void)destroyGameWorld {[super destroyGameWorld];if(shutdownMode)[shutdownEvents addObject:@"destroy"];}
-- (void)reloadMainMenu {if(observing){assert(!world.count&&!mapPlacements.count&&!gameLoopActive);[actual addObject:@"controls"];}[super reloadMainMenu];}
+- (void)reloadMainMenu {
+    if(observing){assert(!world.count&&!mapPlacements.count&&!gameLoopActive);[actual addObject:@"controls"];}
+    // The native quit fixture observes PUTCONTROLS as one boundary; menu_setup covers its clocks.
+    BOOL previous=observing;observing=NO;[super reloadMainMenu];observing=previous;
+}
 - (void)flushGameEvents {if(observing)[actual addObject:@"flush"];}
 - (void)completeGameLoopIfRequested {
     BOOL wasActive=gameLoopActive;[super completeGameLoopIfRequested];

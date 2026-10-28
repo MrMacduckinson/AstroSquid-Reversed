@@ -1740,9 +1740,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
 }
 - (void)reloadMainMenu {
-    [ui reloadMenuWithRandom:&randomSeed];
-    astro_stars_init(stars,1,&randomSeed);starsInitialized=YES;
-    menuScroll.x=astro_random(&randomSeed,8)-4;menuScroll.y=astro_random(&randomSeed,8)-4;
+    [ui reloadMenuWithRandom:&randomSeed afterRandomization:^{
+        astro_stars_init(stars,1,&randomSeed);starsInitialized=YES;
+        menuScroll.x=astro_random(&randomSeed,8)-4;menuScroll.y=astro_random(&randomSeed,8)-4;
+    }];
 }
 - (void)pollMenuMouse {
     NSPoint p=[self currentMenuMousePoint];[ui pollMouseX:p.x y:p.y];
