@@ -113,6 +113,9 @@
     }
     return result;
 }
+- (double)clickPosition:(NSString *)name {
+    NSDictionary *object=[self object:name];return object?[self bounds:object].origin.x/640:NAN;
+}
 - (void)moveMouseX:(double)x y:(double)y {_hover=[self hitX:x y:y];}
 - (NSString *)mouseDownX:(double)x y:(double)y {
     if(_pressed)return nil;

@@ -2334,7 +2334,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)performMenuAction:(NSString *)name {
     AstroUICommand command=astro_ui_command(name.UTF8String);
-    if(command.action!=ASTRO_UI_NONE)[audio playCue:@"Click"];
+    if(command.action!=ASTRO_UI_NONE)[audio playCue:@"Click" position:[ui clickPosition:name]];
     if(command.action==ASTRO_UI_CLEAR_SCORES){astro_scores_clear(highscores);ui.editingHighscore=0;[self saveScores];}
     if(command.action==ASTRO_UI_KEY) {editingKey=command.key;keyCaptureDeadline=NSProcessInfo.processInfo.systemUptime+10;NSMutableArray *labels=[ui.keyLabels mutableCopy];labels[editingKey]=@"Press a key";ui.keyLabels=labels;}
     if(command.action==ASTRO_UI_SMOOTH) {
@@ -2358,7 +2358,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [audio setPaused:NO];[audio playMusic:1];
     } else if(command.action==ASTRO_UI_QUIT) [self requestQuit];
     else if(command.action==ASTRO_UI_RESUME) {[self resumePause];}
-    else if(command.action==ASTRO_UI_GAME_OVER_OK)[self finishGameOver];
+    else if(command.action==ASTRO_UI_GAME_OVER_OK){gameEndRequested=YES;[self finishGameOver];}
     else if(command.action==ASTRO_UI_QUIT_GAME) {
         gameEndRequested=YES;gameEndHighscores=NO;
         paused=NO;gameOver=NO;menuVisible=NO;

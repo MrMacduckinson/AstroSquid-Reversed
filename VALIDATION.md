@@ -16,6 +16,17 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- `tests/gameover_mouse_host.sh` matches20 records for14 actual original
+  DOMOUSE/LMPOINTSPRITE routes and host mouseDown/UI hit tests: button edges,
+  center, outside and focus/no focus. Native mouse bookkeeping is shimmed;
+  hit testing, name dispatch and state changes execute unchanged. GameOverOK
+  sets the end flag before the terminal tail, whereas the keyboard sets it
+  after its redraws. Click pan matches exact IEEE381/640, using the selected
+  sprite's left edge. The shared menu handler now uses that original formula
+  through UI bounds; missing programmatic targets retain centered playback.
+  Held-mouse/whole-loop polling, hover and other menu camera positions are not
+  independently captured by this fixture.
+
 - `tests/gameover_input_host.sh` matches294 records from six original GAMEOVER
   schedules: focused/unfocused input at frame intervals1/2/3, including closed
   gates. Native HANDLEFIELDEVENTS/HANDLEFIELDKEYS execute unchanged with scripted

@@ -45,6 +45,7 @@ typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
 - (void)animateTicks:(unsigned)ticks;
 - (void)drawSprites:(AstroUISpriteDrawer)sprites texture:(AstroUITextureLoader)texture;
 - (NSInteger)scoreCursorAtX:(double)x;
+- (double)clickPosition:(NSString *)name;
 - (NSString *)nameForKeyCode:(NSInteger)code;
 - (double)textWidth:(NSString *)text size:(double)size;
 - (void)drawText:(NSString *)text x:(double)x baseline:(double)y size:(double)size
