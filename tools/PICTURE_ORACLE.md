@@ -193,3 +193,26 @@ This proves this private runtime's failure path; full app error-vector behavior
 is not proved, and undefined null dereference must not be copied into defined
 logic. No app screenshot integration, full startup base-folder mapping or
 fullscreen proof is claimed.
+
+## Startup key prefix and directory provenance
+
+`ppc_startup_keys_oracle.c` invokes original LMINITMINI10037ec4 with controlled
+GetKeys, replacing SYSTEM10024450 by a longjmp boundary that requires selector8.
+It stops before any UI/audio initialization. All original key/BitTst/flag-store
+instructions before that boundary execute. It tests130 snapshots (none, each
+physical key0..127, leftCmd+leftOption) against debug initial0/1/2 and fullscreen
+initial0/1:780 cases. Each consumes one GetKeys and one SYSTEM8 boundary;
+leftCommand55 stores debug1, leftOption58 stores fullscreen0, otherwise flags
+preserve their supplied initial values. The platform flag ee2 is cleared before
+SYSTEM8. Native G5 optimized run PASS. This proves a prefix, not the full startup
+or subsequent debug-file setup and renderer selection. Existing GETKEYMAP
+reference separately proves held keypad multiply invokes capture on every poll
+only when debug equals1.
+
+Static directory provenance: _INITRUNTIME1001b06c calls GETVOL10000688 and stores
+the returned virtual working-directory reference at g+23e. GETVOL calls
+PBHGetVolSync then FBPBTOFBWD10000458; SYSTEM1 returns that saved reference.
+_FOLDER may change the default volume, so later current working-directory reads
+cannot replace this retained startup base. Do not assume POSIX cwd, bundle
+Resources, executable parent or Downloads without launch-context evidence.
+The original LaunchServices/CFM startup directory mapping remains unresolved.
