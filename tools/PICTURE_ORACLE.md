@@ -525,3 +525,24 @@ Keymap128, window/fullscreen PICT, failure paths and mode restoration in normal
 and directexit scenarios PASS. Primary/Intel builds PASS. Full app-wide selftest
 not rerun this cleanup-only milestone. Temporary probes/binaries are removed;
 whole-game equivalence remains unproved.
+
+## Highscore write timing at shutdown
+
+Current source review found a remaining extra saveScores in host closeDown.
+Original CLOSEDOWN66c74 only saves preferences (native seven-boundary probe
+already verifies this order). SAVEPREFS3dee8 writes the ab8 preference buffer,
+not separate a6e/a72 highscore arrays. In the recovered typed source, direct
+SAVEHIGHSCORES calls are in ADDHIGHSCORE3ed88 and the clear-score DOMOUSE action.
+Host now omits score writes at normal shutdown; qualifying finishGameOver and
+clear-score action retain their immediate existing writes.
+
+Updated actual Intel quit host test spies on score saves: ordinary closeDown
+adds none, qualifying GameOver inserts100 and calls save immediately, nonqualifying
+GameOver adds none. Existing deferred/idempotent/native-tail/AppKit checks PASS;
+primary/Intel builds PASS. This changes no score encoding or insertion rules.
+All possible indirect original calls and native-file versus NSUserDefaults
+encoding equivalence are not established by this bounded review.
+
+Next persistence issue to audit: DOMOUSE has SAVEPREFS on registration success
+and Back (STR#25000be), whereas current host saves each settings edit. Do not
+assume preferences have no in-menu saves; Back leads to MainMenu(b3).

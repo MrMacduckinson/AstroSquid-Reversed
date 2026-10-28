@@ -2091,7 +2091,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)closeDown {
     if(terminationAllowed)return;
     [timer invalidate];timer=nil;
-    [self saveSettings];[self saveScores];[self releaseGraphics];[audio stopEffects];[self destroyGameWorld];[audio stopMusic];audio=nil;
+    [self saveSettings];[self releaseGraphics];[audio stopEffects];[self destroyGameWorld];[audio stopMusic];audio=nil;
     terminationAllowed=YES;[self terminateApplication];
 }
 - (void)completeGameLoopIfRequested {

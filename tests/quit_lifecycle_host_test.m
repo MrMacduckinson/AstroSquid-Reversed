@@ -3,7 +3,7 @@
 #include "../src/preview.m"
 #undef main
 static BOOL observing,shutdownMode;
-static unsigned currentCase,clockReads,keyPolls,menuCode;
+static unsigned currentCase,clockReads,keyPolls,menuCode,scoreSaves;
 static uint32_t fixedTick=100,cardTick=100;
 static NSMutableArray *actual,*expected,*shutdownEvents;
 static BOOL rawQuit;
@@ -39,7 +39,7 @@ static BOOL rawQuit;
 }
 - (void)releaseGraphics {[super releaseGraphics];if(shutdownMode)[shutdownEvents addObject:@"graphics"];}
 - (void)saveSettings {if(shutdownMode)[shutdownEvents addObject:@"settings"];}
-- (void)saveScores {if(shutdownMode)[shutdownEvents addObject:@"scores"];}
+- (void)saveScores {scoreSaves++;if(shutdownMode)[shutdownEvents addObject:@"scores"];}
 - (void)terminateApplication {assert(terminationAllowed&&!gameLoopActive&&!world.count&&!mapPlacements.count);[shutdownEvents addObject:@"terminate"];}
 - (void)makeNewSprites {} // Fixed closed-clock tests; no map factory work requested.
 @end
@@ -77,7 +77,7 @@ static BOOL rawQuit;
         assert(!gameLoopActive&&quitRequested&&!terminationAllowed&&menuVisible&&!world.count&&!mapPlacements.count&&playerVisualDeleted);
         assert([actual isEqual:expected]&&clockReads==nativeReads&&keyPolls==nativePolls&&menuCode==nativeMenu);
         shutdownMode=YES;[self closeDown];[self closeDown];shutdownMode=NO;
-        assert(([shutdownEvents isEqual:@[@"settings",@"scores",@"graphics",@"sound_stop",@"destroy",@"music_stop",@"terminate"]]));
+        assert(([shutdownEvents isEqual:@[@"settings",@"graphics",@"sound_stop",@"destroy",@"music_stop",@"terminate"]]));
     }
     puts("PASS5 native quit-tail projections: input latch, clock totals, cleanup/menu/flush/music then return; shutdown follows return and is idempotent");
     [self resetQuit];rawQuit=YES;[self readSpecialKeys];assert(quitRequested&&gameLoopActive&&!terminationAllowed);
@@ -124,6 +124,10 @@ static BOOL rawQuit;
     window.contentView=nil;[window close];
     [self resetQuit];gameLoopActive=NO;menuVisible=YES;[self requestQuit];shutdownMode=YES;[self tickWallClock];shutdownMode=NO;
     assert(terminationAllowed);puts("PASS actual AppKit delegate defers quit/window close until lifecycle completion; menu quit closes without a game tail");
+    [self resetQuit];astro_scores_clear(highscores);score=100;strcpy(scoreEditor.name,"Score Test");ui.editingHighscore=1;
+    unsigned saved=scoreSaves;[self finishGameOver];assert(scoreSaves==saved+1&&highscores[0].score==100);
+    [self resetQuit];ui.editingHighscore=0;saved=scoreSaves;[self finishGameOver];assert(scoreSaves==saved);
+    puts("PASS qualifying GameOver saves immediately; nonqualifying GameOver and normal shutdown add no score writes");
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
