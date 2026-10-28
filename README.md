@@ -121,6 +121,13 @@ and 6,084,000 star words. This includes hover during movement, preference-save
 ordering, held-button suppression after arrival and release before the next click.
 Preference file serialization and other navigation routes remain outside this fixture.
 
+`bash tests/menu_edges_host.sh` compares the renderer's hit selection with actual
+original `LMPOINTSPRITE`: 342,576 edge queries and 28,548 complete IEEE object
+states. It covers all 52 raw menu objects, animation frames 0–60, three frame
+intervals and three camera positions, including fractional coordinates and
+overlapping objects. All raw nodes are enabled for this fixture; registration
+and unlock filtering, OS event conversion and other scenes remain separate checks.
+
 The complete controlled campaign route passed on the Intel iMac: all 17 stages
 and the ending, through normal world updates and stage transitions. The pilot
 replenishes its shield and uses weapon 53; this proves route connectivity, not an
