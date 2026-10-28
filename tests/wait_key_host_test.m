@@ -3,11 +3,15 @@
 #include "../src/preview.m"
 #undef main
 #undef astro_stars_move
-static unsigned scenario,reads,polls,frames;static uint32_t base;static BOOL recording,binding,dispatchMode;
+static unsigned scenario,reads,polls,frames;static uint32_t base;static BOOL recording,binding,dispatchMode,numericMode;
+static FILE *starDump;static AstroUIRenderer *observedUI;
 static AstroView *observedView;
 static uint64_t wait_bits(double x){uint64_t b;memcpy(&b,&x,8);return b;}
 static NSString *bindingName;static NSArray *oldLabels;
-void wait_stars_move(AstroStar *stars,double cx,double cy,double left,double top,double right,double bottom,double sx,double sy,double ix,double iy,int interval,uint32_t *seed,AstroParallax *layers,size_t count,int menu){assert(ix==0&&iy==0&&menu);if(recording)printf("M,%u,%u\n",scenario,frames);}
+extern void astro_stars_move(AstroStar *,double,double,double,double,double,double,double,double,double,double,int,uint32_t *,AstroParallax *,size_t,int);
+void wait_stars_move(AstroStar *stars,double cx,double cy,double left,double top,double right,double bottom,double sx,double sy,double ix,double iy,int interval,uint32_t *seed,AstroParallax *layers,size_t count,int menu){assert(ix==0&&iy==0&&menu);if(numericMode)astro_stars_move(stars,cx,cy,left,top,right,bottom,sx,sy,ix,iy,interval,seed,layers,count,menu);else if(recording)printf("M,%u,%u\n",scenario,frames);}
+static void snapshot(unsigned phase){unsigned i=0;for(NSDictionary *object in [observedUI valueForKey:@"objects"]){NSString *name=object[@"name"];AstroUIMotion *s=[[[observedUI valueForKey:@"orbStates"]objectForKey:name]mutableBytes];uint32_t deadline=[[[observedUI valueForKey:@"hoverDeadlines"]objectForKey:name]unsignedIntValue];printf("N,%u,%u,%u,%u,%d,%d,%u,%016llx,%016llx,%016llx,%016llx\n",scenario,frames,phase,i++,s->sprite,s->counter,deadline,wait_bits(s->x),wait_bits(s->y),wait_bits(s->width),wait_bits(s->height));}assert(i==52);}
+static void dumpStars(AstroStar *stars){uint64_t words[12000];for(unsigned i=0;i<3000;i++){double v[]={stars[i].brightness,stars[i].x,stars[i].y,stars[i].speed};for(unsigned j=0;j<4;j++)words[i*4+j]=CFSwapInt64HostToBig(wait_bits(v[j]));}assert(fwrite(words,8,12000,starDump)==12000);}
 @interface AstroUIRenderer (KeyCaptureGeometry)
 - (NSDictionary *)object:(NSString *)name;
 - (NSRect)bounds:(NSDictionary *)object;
@@ -15,7 +19,7 @@ void wait_stars_move(AstroStar *stars,double cx,double cy,double left,double top
 @interface WaitUI:AstroUIRenderer
 @end
 @implementation WaitUI
-- (void)animateMenuObjects {if(recording)printf("A,%u,%u\n",scenario,frames);}
+- (void)animateMenuObjects {if(numericMode)[super animateMenuObjects];if(recording){printf("A,%u,%u\n",scenario,frames);if(numericMode)snapshot(1);}}
 @end
 @interface WaitAudio:AstroAudio
 @end
@@ -42,8 +46,8 @@ void wait_stars_move(AstroStar *stars,double cx,double cy,double left,double top
     if(binding){AstroUIMotion *s=[[[ui valueForKey:@"orbStates"]objectForKey:bindingName]mutableBytes];assert(s->sprite==901&&!menuMouseLatched&&[ui.keyLabels isEqual:oldLabels]);}
     if(recording)printf("E,%u,%u\n",scenario,polls);
 }
-- (void)display {assert(!menuFrameActive);if(recording){printf("S,%u,%u\nD,%u,%u\nO,%u,%u",scenario,frames,scenario,frames,scenario,frames);if(dispatchMode){AstroUIMotion *s=[[[ui valueForKey:@"orbStates"]objectForKey:bindingName]mutableBytes];printf(",%d,%d",s->sprite,menuMouseLatched);for(unsigned i=0;i<6;i++)printf(",%d",controlKeys[i]);}putchar('\n');}}
-- (void)presentFrame {if(recording)printf("W,%u,%u\n",scenario,frames++);}
+- (void)display {assert(!menuFrameActive);if(recording){if(numericMode)printf("M,%u,%u\n",scenario,frames);printf("S,%u,%u\n",scenario,frames);if(numericMode){dumpStars(stars);printf("R,%u,%u,%u,%016llx,%016llx,%d\n",scenario,frames,randomSeed,wait_bits(ui.cameraX),wait_bits(ui.cameraY),visualFrames);snapshot(0);}printf("D,%u,%u\nO,%u,%u",scenario,frames,scenario,frames);if(dispatchMode){AstroUIMotion *s=[[[ui valueForKey:@"orbStates"]objectForKey:bindingName]mutableBytes];printf(",%d,%d",s->sprite,menuMouseLatched);for(unsigned i=0;i<6;i++)printf(",%d",controlKeys[i]);}putchar('\n');}}
+- (void)presentFrame {if(numericMode)visualFrames=(int16_t)((uint16_t)visualFrames+1u);if(recording)printf("W,%u,%u\n",scenario,frames++);}
 - (void)handleMenuSprites {abort();}
 - (void)pollMenuMouse {abort();}
 - (void)checkWait {
@@ -53,8 +57,13 @@ void wait_stars_move(AstroStar *stars,double cx,double cy,double left,double top
     for(scenario=0;scenario<(dispatchMode?18u:134u);scenario++){
         reads=polls=frames=0;base=scenario==133?UINT32_MAX-300:1000;unsigned interval=scenario<131?1:scenario-130;
         if(dispatchMode){ui=[[WaitUI alloc]initWithAssets:assetPath error:NULL];assert(ui);__weak WaitView *weakSelf=self;ui.readTick=^{return [weakSelf currentGameTick];};bindingName=names[scenario/3];oldLabels=nil;binding=NO;const int raw[]={55,58,126,125,123,124};memcpy(controlKeys,raw,sizeof(raw));[self refreshKeyLabels];oldLabels=[ui.keyLabels copy];binding=YES;interval=(scenario/3)%3+1;base=scenario/3==5?UINT32_MAX-300:1000;[ui setValue:@0 forKey:@"cameraX"];[ui setValue:@0 forKey:@"cameraY"];menuMouseLatched=NO;editingKey=-1;}
+        if(numericMode){observedUI=ui;ui.registered=NO;ui.unlockedLevel=16;const double cameras[][2]={{0,0},{-599.5,-344},{-.75,.75}};[ui setValue:@(cameras[(scenario/3)%3][0]) forKey:@"cameraX"];[ui setValue:@(cameras[(scenario/3)%3][1]) forKey:@"cameraY"];
+            for(NSDictionary *object in [ui valueForKey:@"objects"])[[ui valueForKey:@"hoverDeadlines"]setObject:@(base) forKey:object[@"name"]];
+            randomSeed=0x12345678;menuScroll=(AstroVelocity){2,-1};visualFrames=0;starsInitialized=YES;
+            for(unsigned i=1;i<=3000;i++)stars[i-1]=(AstroStar){80,i%7==0?-11.0:i%7==1?651.0:(i*17)%640,i%11==0?-11.0:i%11==1?491.0:(i*29)%480,i%100+1};
+        }
         ui.frameInterval=interval;observedWallTick=base;if(!dispatchMode)editingKey=0;recording=YES;
-        if(dispatchMode){printf("C,%u,%u,%u\n",scenario,interval,base);[self performMenuAction:bindingName];AstroUIMotion *s=[[[ui valueForKey:@"orbStates"]objectForKey:bindingName]mutableBytes];printf("Z,%u,%u,%u,%u,%u,%d,%d",scenario,reads,polls,frames,observedWallTick,s->sprite,menuMouseLatched);for(unsigned i=0;i<6;i++)printf(",%d",controlKeys[i]);putchar('\n');recording=NO;continue;}
+        if(dispatchMode){printf("C,%u,%u,%u\n",scenario,interval,base);[self performMenuAction:bindingName];if(numericMode){snapshot(2);printf("F,%u,%d,%u\n",scenario,visualFrames,randomSeed);}AstroUIMotion *s=[[[ui valueForKey:@"orbStates"]objectForKey:bindingName]mutableBytes];printf("Z,%u,%u,%u,%u,%u,%d,%d",scenario,reads,polls,frames,observedWallTick,s->sprite,menuMouseLatched);for(unsigned i=0;i<6;i++)printf(",%d",controlKeys[i]);putchar('\n');recording=NO;continue;}
         printf("P,%u,%u,%u\n",scenario,interval,base);int code=[self waitForMenuKey];
         printf("Z,%u,%d,%d,%u,%u,%u,%u\n",scenario,code<0?-1:code^7,code,reads,polls,frames,observedWallTick);recording=NO;editingKey=-1;
     }
@@ -73,7 +82,7 @@ void wait_stars_move(AstroStar *stars,double cx,double cy,double left,double top
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
-    assert(argc==2||argc==3);dispatchMode=argc==3;assert(!dispatchMode||!strcmp(argv[2],"dispatch"));[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
+    assert(argc==2||argc==3||argc==4);dispatchMode=argc>=3;numericMode=argc==4;assert(!dispatchMode||!strcmp(argv[2],numericMode?"numeric":"dispatch"));if(numericMode){starDump=fopen(argv[3],"wb");assert(starDump);}[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
     [[NSUserDefaults standardUserDefaults]setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}}forName:NSArgumentDomain];
-    WaitView *view=[[WaitView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(view);[view checkWait];
+    WaitView *view=[[WaitView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(view);[view checkWait];if(numericMode)assert(!fclose(starDump));
 }}

@@ -247,3 +247,11 @@ checks that a private application event remains queued and the binding remains
 unchanged. It requests no permissions, injects no keyboard events and records
 no key values. Exit 77 means live input prevented a clean no-input check.
 Held-key delivery through the OS remains a separate validation.
+
+`bash tests/key_wait_numeric_host.sh` retains actual original `MOVESTARS` and
+`ANIMATEMENU` during 18 key-binding transactions. It compares 127,486 records,
+including object states before/after each frame and after button reset, plus
+all 12,864,000 canonical IEEE star words across 1,072 frames. Seeded edge/corner
+stars exercise wrapping and RNG at three camera/interval pairs. These are CPU
+state comparisons; GPU output, real keyboard delivery and other initial states
+remain outside this fixture.
