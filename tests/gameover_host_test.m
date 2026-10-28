@@ -4,7 +4,7 @@
 #undef main
 static uint32_t controlledTick=100;
 static NSMutableString *events;
-static unsigned delays,worldFrames,panelFrames;
+static unsigned delays,worldFrames,panelFrames,flushes;
 static BOOL observing;
 @interface AstroGameOverView : AstroView
 @end
@@ -17,6 +17,7 @@ static BOOL observing;
 - (void)cleanupWorld {if(observing)[events appendString:@"C"];[super cleanupWorld];}
 - (void)calculateActors {if(observing)[events appendString:@"A"];[super calculateActors];}
 - (void)updateVisualEffects {if(observing)[events appendString:@"L"];[super updateVisualEffects];}
+- (void)flushGameEvents {flushes++;[super flushGameEvents];}
 - (void)display {
     if(!observing)return;
     assert(ui.editingHighscore==0);
@@ -35,7 +36,8 @@ static BOOL observing;
     backgrounds=@[];parallaxData=[NSMutableData data];memset(stars,0,sizeof(stars));
     special=(AstroSpecial){0};specialLoopRunning=NO;changingStage=NO;camera=0;tickedScroll=1;
     randomSeed=42;score=12345;astro_scores_clear(highscores);flow.phase=ASTRO_FLOW_PLAY;
-    events=[NSMutableString string];observing=YES;[self beginGameOver];observing=NO;
+    scoreKeyEvents=[NSMutableData dataWithBytes:"stale" length:5];
+    events=[NSMutableString string];observing=YES;[self beginGameOver];observing=NO;assert(!scoreKeyEvents.length&&flushes==1);
     NSMutableString *expected=[NSMutableString string];for(int i=0;i<10;i++)[expected appendString:@"CALRD"];
     for(int i=0;i<60;i++)[expected appendString:@"P"];
     assert([events isEqual:expected]);assert(delays==10&&worldFrames==10&&panelFrames==60);

@@ -16,15 +16,26 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- `tests/gameover_input_host.sh` matches294 records from six original GAMEOVER
+  schedules: focused/unfocused input at frame intervals1/2/3, including closed
+  gates. Native HANDLEFIELDEVENTS/HANDLEFIELDKEYS execute unchanged with scripted
+  GetNextEvent; host uses actual keyDown, pollMenu, editor and drawRect with
+  rendering/audio observers. Exact clocks, bytes, cursor, submitted/active flag,
+  button state and render/animate/swap/music/terminal ordering match. Classic
+  bytes queue in keyDown, one is consumed per eligible frame; the final input
+  frame hides the title before the terminal tail presses OK. Queue and AppKit
+  events flush at entry. Additional checks cover255-byte overflow alerts waiting
+  for the gate and resolving one byte at a time. Mouse input and full scene
+  composite drawing remain outside this fixture.
+
 - `tests/gameover_exit_host.sh` matches23 terminal events from actual original
   GAMEOVER control flow, with and without a qualifying score. World, IO, input,
   scene loading and score implementation are semantic observers on the native
   side. Actual host finishGameOver/drawRect sets button901, hides the title,
   draws world/panel/HUD twice with one intervening swap, requests game end,
   inserts/saves the score, and removes button/fade records. Caller presentation
-  deferral is restored. Input timing before the terminal tail, including the
-  final eligible input-frame render and asynchronous focused keyDown handling,
-  remains outside this gate.
+  deferral is restored. Input timing is covered separately by the294-record gate above;
+  this terminal gate retains its narrower scope.
 
 - `tests/panel_projection_host.sh` checks actual drawRect for all30 Pause and
   60 GameOver transition frames plus two steady frames, at1x and2x backing size

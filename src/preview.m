@@ -114,6 +114,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     AstroTransitionRect departureGlow,trailRect,engineGlowRect;
     AstroScore highscores[10];
     AstroScoreEditor scoreEditor;
+    NSMutableData *scoreKeyEvents;
     int campaignAction;
     uint32_t respawnTick,invulnerableUntil; // Active markers, not deadlines: elapsed comparisons must survive wrap.
     uint32_t respawnWaitStartTick;
@@ -1753,12 +1754,25 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if((int32_t)(comparison-observedWallTick)<ui.frameInterval)return;
     BOOL overlay=[ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"];
     if(!overlay)observedWallTick=[self currentGameTick];
+    BOOL finishGameOver=NO;
+    if(gameOverPanel){
+        if(ui.editingHighscore>0){
+            if(scoreKeyEvents.length){
+                unsigned char ch=*(const unsigned char *)scoreKeyEvents.bytes;
+                [scoreKeyEvents replaceBytesInRange:NSMakeRange(0,1) withBytes:NULL length:0];
+                if(![self editScoreByte:ch])return;
+                [self refreshScoreEditor];
+            }
+            finishGameOver=scoreEditor.submitted;
+        }else for(unsigned i=0;i<128;i++)if(keys[i]){finishGameOver=YES;break;}
+        if(finishGameOver)ui.gameOverClosing=YES;
+    }
     [self stepMenu];
     if(![ui.anchor isEqual:@"Pause"])[audio serviceMusic];
     if(overlay)observedWallTick=[self currentGameTick];
     if([ui.anchor isEqual:@"Pause"]&&paused)[self readPauseKeys];
     else if(!gameOverPanel)[self readKeyMap];
-    else if(ui.editingHighscore<=0)for(unsigned i=0;i<128;i++)if(keys[i]){[self finishGameOver];break;}
+    else if(finishGameOver)[self finishGameOver];
 }
 - (uint32_t)cardDelayClockTick {
     return (uint32_t)(uint64_t)floor(NSProcessInfo.processInfo.systemUptime*60);
@@ -2040,8 +2054,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     NSEvent *text=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0
         timestamp:0 windowNumber:self.window.windowNumber context:nil characters:@"TEST"
         charactersIgnoringModifiers:@"TEST" isARepeat:NO keyCode:17];
-    [self keyDown:text];assert(!strcmp(scoreEditor.name,"TEST"));
-    [self keyDown:[self testEvent:NSKeyDown code:36]];assert(gameEndRequested);[self pollGame];
+    [self keyDown:text];assert(!scoreEditor.name[0]);
+    for(unsigned i=0;i<4;i++){observedWallTick=[self currentGameTick]-(uint32_t)ui.frameInterval;[self pollMenu];}
+    assert(!strcmp(scoreEditor.name,"TEST"));
+    [self keyDown:[self testEvent:NSKeyDown code:36]];assert(!gameEndRequested);
+    observedWallTick=[self currentGameTick]-(uint32_t)ui.frameInterval;[self pollMenu];assert(gameEndRequested);[self pollGame];
     assert([ui.anchor isEqual:@"Highscores Menu"]&&!strcmp(highscores[0].name,"TEST")&&highscores[0].score==12345);
     [self keyDown:[self testEvent:NSKeyDown code:17]];assert(highscores[1].score==0);
     score=0;gameLoopActive=YES;[self beginGameOver];assert(ui.editingHighscore==0);
@@ -2114,13 +2131,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(menuVisible&&[ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0) {
         unsigned ch=key==51?8:key==117?127:key==123?28:key==124?29:
             key==126||key==115?30:key==125||key==119?31:key==36?13:key==76?3:0;
-        if(ch){if(![self editScoreByte:ch])return;}
-        else {
+        if(!scoreKeyEvents)scoreKeyEvents=[NSMutableData data];
+        if(ch){unsigned char byte=ch;[scoreKeyEvents appendBytes:&byte length:1];}
+        else{
             NSData *bytes=[event.characters dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:NO];
-            const unsigned char *text=bytes.bytes;
-            for(NSUInteger i=0;i<bytes.length;i++)if(![self editScoreByte:text[i]])return;
+            if(bytes)[scoreKeyEvents appendData:bytes];
         }
-        [self refreshScoreEditor];if(scoreEditor.submitted)[self finishGameOver];return;
+        return;
     }
     if(menuVisible&&gameOver)return;
     if(menuVisible&&paused)return;
@@ -2217,6 +2234,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     menuVisible=YES;[ui show:@"GameOver"];[self drawPanelTransition];
     ui.editingHighscore=astro_scores_qualifies(highscores,score)?1:0;
     astro_score_editor_begin(&scoreEditor);[ui beginScoreClock:[self currentGameTick]];[self refreshScoreEditor];
+    scoreKeyEvents=nil;[self flushGameEvents];
 }
 - (void)finishGameOver {
     BOOL entered=ui.editingHighscore>0;
@@ -2227,7 +2245,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     } @finally {deferPresent=previous;}
     gameEndRequested=YES;gameEndHighscores=entered;
     if(entered){ui.editingHighscore=astro_scores_insert(highscores,score,scoreEditor.name);[self saveScores];}
-    [ui finishGameOverExit];
+    [ui finishGameOverExit];scoreKeyEvents=nil;
     paused=NO;gameOver=NO;menuVisible=NO;flow.phase=ASTRO_FLOW_PLAY;
 }
 - (void)requestQuit {quitRequested=YES;}

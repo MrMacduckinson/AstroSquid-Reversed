@@ -14,7 +14,7 @@ typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
 - (void)advanceMenuCamera;
 - (void)animateMenuObjects;
 - (void)beginPauseExit;
-@property(nonatomic,readonly) BOOL gameOverClosing;
+@property(nonatomic) BOOL gameOverClosing;
 - (void)beginGameOverExit;
 - (void)finishGameOverExit;
 @property(nonatomic) BOOL registered;
