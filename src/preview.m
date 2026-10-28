@@ -2378,7 +2378,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         ui.soundVolume=((int)lround(ui.soundVolume*10)+1)%11/10.0;audio.soundVolume=ui.soundVolume/2;
         [audio playCue:@"Click"];[ui setButton:name pressed:YES];[self display];[ui setButton:name pressed:NO];
     }
-    if(command.action==ASTRO_UI_MUSIC_VOLUME) {ui.musicVolume=((int)lround(ui.musicVolume*10)+1)%11/10.0;audio.musicVolume=ui.musicVolume;}
+    if(command.action==ASTRO_UI_MUSIC_VOLUME) {
+        [ui setButton:name pressed:YES];[self display];
+        ui.musicVolume=((int)lround(ui.musicVolume*10)+1)%11/10.0;audio.musicVolume=ui.musicVolume;
+        [ui setButton:name pressed:NO];
+    }
     if(command.action==ASTRO_UI_NEW_GAME||command.action==ASTRO_UI_CONTINUE) {
         NSString *stage=[NSString stringWithFormat:@"Data %d%c",command.stage,command.section==1?'A':'B'];
         NSUInteger index=[levels indexOfObject:stage];if(index==NSNotFound)return;
