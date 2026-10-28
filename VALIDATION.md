@@ -16,6 +16,13 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- Required active gap: `tests/known_gaps/mouse_release_host.sh` currently fails
+  the actual host rapid release/repress route. Original
+  `tests/mouse_latch_native.csv` contains50 deterministic hover/held/release
+  records, including original sprite902 deadline updates and delayed latch
+  clearing. This is an original reference and a confirmed mismatch, not a
+  passing equality gate or an exclusion. See the known-gaps README for scope.
+
 - `tests/gameover_scene_mouse_host.sh` matches46 records from27 routes through
   all three DataB1 scene nodes: OK, fade and offscreen player. Original
   GAMEOVERTRANS settles the panel in60 steps before real DOMOUSE/LMPOINTSPRITE;
