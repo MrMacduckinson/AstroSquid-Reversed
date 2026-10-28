@@ -303,7 +303,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     unsigned char startupKeys[16];[self copyKeyMap:startupKeys];engineDebug=(startupKeys[55>>3]>>(55&7))&1;
     fullscreenRequested=!((startupKeys[58>>3]>>(58&7))&1);
     screenshotBase=[[[NSBundle mainBundle] bundlePath] stringByDeletingLastPathComponent];
-    clockOrigin=NSProcessInfo.processInfo.systemUptime;visualRateTick=[self currentGameTick];
+    clockOrigin=NSProcessInfo.processInfo.systemUptime;
     randomSeed=[self macLocalSeconds];astro_random(&randomSeed,1);
     assetPath = [path copy];
     NSData *data = [NSData dataWithContentsOfFile:[path stringByAppendingPathComponent:@"game.json"]];
@@ -467,6 +467,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [[self openGLContext] makeCurrentContext];
     NSRect bounds = [self convertRectToBacking:self.bounds];
     if(!spriteMapsPreloaded){
+        visualRateTick=[self currentGameTick];
         glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
         glMatrixMode(GL_PROJECTION);glLoadIdentity();glOrtho(0,640,480,0,-1,1);glMatrixMode(GL_MODELVIEW);glLoadIdentity();glClear(GL_COLOR_BUFFER_BIT);
         [ui drawPicture:40 x:0 y:0 width:0 height:0 texture:^GLuint(NSInteger n){return [self texture:n];}];
