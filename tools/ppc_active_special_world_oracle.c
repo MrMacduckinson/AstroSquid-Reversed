@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "ppc_bridge.h"
 #include "imports.h"
 
@@ -65,11 +66,36 @@ static void set_pointer(unsigned char *p,int offset,void *value) { *(void **)(p+
 typedef struct {unsigned char *p;size_t size;unsigned id;int alive;} Allocation;
 static Allocation allocations[65536];static unsigned allocation_count,entity_birth,render_birth;
 static unsigned char *world_globals;static const char *phase;
-static Allocation *allocation(void *p){for(unsigned i=0;i<allocation_count;i++)if(allocations[i].p==p)return &allocations[i];return NULL;}
+static Allocation *allocation(void *p){for(unsigned i=allocation_count;i>0;i--)if(allocations[i-1].p==p)return &allocations[i-1];return NULL;}
 static unsigned identity(void *p){Allocation*a=allocation(p);if(!p)return 0;if(!a){fputs("Unregistered pointer in canonical state\n",stderr);exit(2);}return a->id;}
-static void *world_alloc(long bytes){if(bytes<0||allocation_count==65536)exit(2);unsigned char*p=calloc(1,bytes?bytes:1);if(!p)exit(2);unsigned id=bytes==106?++entity_birth:bytes==308?++render_birth:allocation_count+1;allocations[allocation_count++]=(Allocation){p,(size_t)bytes,id,1};return p;}
+static unsigned reused,entity_reused,image_reused,watched_reused;static void *watched_tail;
+#ifdef ASTRO_NATIVE_ALLOCATOR
+static Allocation *free_slots[2][65536];static unsigned free_count[2],lifo_match[2],lifo_miss[2];
+static void observe_reuse(void *p,long bytes,Allocation *prior){
+ int k=bytes==106?0:bytes==308?1:-1;
+ if(k>=0&&free_count[k]){if(free_slots[k][free_count[k]-1]->p==p)lifo_match[k]++;else lifo_miss[k]++;}
+ if(prior){int old=prior->size==106?0:prior->size==308?1:-1;if(old>=0)for(unsigned i=free_count[old];i>0;i--)if(free_slots[old][i-1]->p==p){memmove(free_slots[old]+i-1,free_slots[old]+i,(free_count[old]-i)*sizeof(Allocation *));free_count[old]--;break;}}
+}
+#endif
+static void *world_alloc(long bytes){if(bytes<0||allocation_count==65536)exit(2);
+#ifdef ASTRO_NATIVE_ALLOCATOR
+ unsigned char *p=(unsigned char *)NewPtrClear(bytes?bytes:1);
+#else
+ unsigned char *p=calloc(1,bytes?bytes:1);
+#endif
+ if(!p)exit(2);Allocation *prior=allocation(p);if(prior){if(prior->alive)exit(2);if(p==watched_tail)watched_reused++;reused++;if(bytes==106)entity_reused++;if(bytes==308)image_reused++;}
+
+#ifdef ASTRO_NATIVE_ALLOCATOR
+ observe_reuse(p,bytes,prior);
+#endif
+ unsigned id=bytes==106?++entity_birth:bytes==308?++render_birth:allocation_count+1;allocations[allocation_count++]=(Allocation){p,(size_t)bytes,id,1};return p;}
 static unsigned disposed;static int storm;static uint32_t *storm_toc;
-static void world_dispose(void *p){disposed++;if(storm){Allocation *a=allocation(p);if(!a||!a->alive)exit(2);a->alive=0;return;}fputs("Unexpected disposal in no-deletion active-special fixture\n",stderr);exit(2);}
+static void world_dispose(void *p){disposed++;if(storm){Allocation *a=allocation(p);if(!a||!a->alive)exit(2);a->alive=0;
+#ifdef ASTRO_NATIVE_ALLOCATOR
+ if(a->size==106||a->size==308){unsigned k=a->size==106?0:1;free_slots[k][free_count[k]++]=a;}
+ DisposePtr((Ptr)p);
+#endif
+ return;}fputs("Unexpected disposal in no-deletion active-special fixture\n",stderr);exit(2);}
 void world_sound(unsigned char *name,double *pan){printf("S\t%u\t%s\t",tick,phase);for(unsigned i=1;i<=name[0];i++)printf("%02x",name[i]);printf("\t%016llx\n",(unsigned long long)ieee_word(*pan));}
 extern void world_sound_fb(void);
 __asm__(".text\n.align 2\n.globl _world_sound_fb\n_world_sound_fb:\n"
@@ -121,8 +147,8 @@ static int active_swap(void *context){(void)context;swaps++;active_snapshot("swa
 OBSERVER(active_render) OBSERVER(active_hud) OBSERVER(active_flash)
 int main(int argc,char **argv){
  if(argc<7||argc>10)return 2;int tail=argc>=8&&!strcmp(argv[7],"tail");storm=argc>=8&&!strcmp(argv[7],"storm");if(argc>=8&&!tail&&!storm)return 2;int weapon=argc>=9?atoi(argv[8]):50;if(argc>=9&&(!storm||!((weapon>=40&&weapon<=43)||(weapon>=50&&weapon<=53))))return 2;
- int pair=argc==10&&!strcmp(argv[9],"pair"),kill=argc==10&&!strcmp(argv[9],"kill");if(argc==10&&(!storm||weapon<51||weapon>53||(!pair&&!kill)))return 2;
- if(!freopen(argv[5],"w",stdout))return 2;clock_trace=fopen(argv[6],"w");if(!clock_trace)return 2;
+ int pair=argc==10&&!strcmp(argv[9],"pair"),kill=argc==10&&!strcmp(argv[9],"kill"),tailkill=argc==10&&!strcmp(argv[9],"tailkill");if(argc==10&&(!storm||weapon<51||weapon>53||(!pair&&!kill&&!tailkill)))return 2;
+ if(!freopen(argv[5],"w",stdout))return 2;clock_trace=fopen(argv[6],"w");if(!clock_trace)return 2;if(tailkill){alarm(20);setvbuf(stdout,NULL,_IONBF,0);}
  unsigned char *pef=read_file(argv[1]),*code=pef+128,*literals=read_file(argv[2]),*g=calloc(1,0x1300),*heap=calloc(1,0x100000);world_globals=g;active_code=code;
  uint32_t toc[489]={0};for(int i=0;i<484;i++){void *f=dlsym(RTLD_DEFAULT,import_names[i]);
  if(!strcmp(import_names[i],"TickCount"))f=active_tick;if(!strcmp(import_names[i],"NewPtrClear"))f=world_alloc;if(!strcmp(import_names[i],"DisposePtr"))f=world_dispose;if(!strcmp(import_names[i],"GetKeys"))f=active_keys;if(!strcmp(import_names[i],"aglSwapBuffers"))f=active_swap;if(!strcmp(import_names[i],"glLoadIdentity")||(storm&&!strncmp(import_names[i],"gl",2)))f=noop_gl;
@@ -135,10 +161,16 @@ int main(int argc,char **argv){
  jump_to(code+0x3ce84,world_sound_fb);jump_to(code+0x57afc,active_render_fb);jump_to(code+0x43134,active_hud_fb);if(!storm)jump_to(code+0x55878,active_flash_fb);else{jump_to(code+0x3a278,noop_gl);set_pointer(g,0xcd6,calloc(1,8));set_pointer(g,0x1004,calloc(7,0x108));}MakeDataExecutable(code,433284);
  FSRef ref;ResFileRefNum rf;HFSUniStr255 fork;OSStatus err=FSPathMakeRef((const UInt8*)argv[3],&ref,NULL);if(!err)err=FSGetResourceForkName(&fork);if(!err)err=FSOpenResourceFile(&ref,fork.length,fork.unicode,fsRdPerm,&rf);if(err)return 2;UseResFile(rf);
  if(storm){snprintf(path,sizeof(path),"%s.strings",argv[1]);unsigned char *expected=read_file(path);Handle actual=GetResource('STR#',25000);if(!actual||GetHandleSize(actual)!=6884||memcmp(*actual,expected,6884)){fputs("Reference STR#25000 differs from download3\n",stderr);return 2;}}
- phase="setup";tick=100;if(storm){unsigned char *target=spawn(code,toc,20,4,300,180);set_short(target,88,kill?1:30000);if(pair||kill){unsigned char *second=spawn(code,toc,20,4,350,190);set_short(second,88,30000);}}
+ phase="setup";tick=100;if(storm){unsigned char *target=spawn(code,toc,20,4,300,180);set_short(target,88,kill?1:30000);if(pair||kill||tailkill){unsigned char *second=spawn(code,toc,20,4,350,190);set_short(second,88,tailkill?1:30000);if(tailkill)watched_tail=second;}}
  if(tail)spawn(code,toc,4,1,500,300);
  unsigned char *player=spawn(code,toc,1,1,100,180);set_pointer(g,0xa7a,player);set_short(player,24,12);set_short(player,26,3);set_short(player,88,200);*(uint32_t *)(player+8)=99;*(uint32_t *)(player+12)=100;*(uint32_t *)(player+16)=0;
  active_snapshot("initial");clock_enabled=1;phase="calc";invoke_fb(code+0x54c64,g,toc,NULL,NULL,NULL);active_snapshot("return");
  fclose(clock_trace);fflush(stdout);if((!storm&&(disposed||entity_birth!=(tail?2:1)||render_birth!=(tail?2:1)))||(storm&&(!disposed||entity_birth<(weapon<50?2:3)||render_birth<3))||*(int16_t *)(g+0xa8e)!=0||*(int16_t *)player!=1||!serial)return 1;
+ if(tailkill){Allocation *a=allocation(watched_tail);fprintf(stderr,"CACHED_TAIL original=2 latest=%u bytes=%lu alive=%d reuses=%u kind=%d next=%u\n",a?a->id:0,a?(unsigned long)a->size:0,a?a->alive:0,watched_reused,a&&a->alive&&a->size==106?*(int16_t *)a->p:0,a&&a->alive&&a->size==106?identity(*(void **)(a->p+102)):0);}
+
+#ifdef ASTRO_NATIVE_ALLOCATOR
+ fprintf(stderr,"LIFO entity_match=%u entity_miss=%u image_match=%u image_miss=%u\n",lifo_match[0],lifo_miss[0],lifo_match[1],lifo_miss[1]);
+#endif
+ fprintf(stderr,"ALLOCATOR reused=%u entities=%u images=%u\n",reused,entity_reused,image_reused);
  fprintf(stderr,"PASS active coupled original special%d tail%d clockreads%u renders%u swaps%u huds%u flashes%u entities%u rendersprites%u disposals%u\n",weapon,tail,serial,renders,swaps,huds,flashes,entity_birth,render_birth,disposed);return 0;
 }

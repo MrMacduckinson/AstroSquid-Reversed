@@ -105,3 +105,42 @@ visual; all test/oracle constructors initialize it explicitly. Geometric bounds
 remain integers for collision/effect placement. Three native destruction cases
 prove the resulting sound pan IEEE words alongside the rest of the world trace.
 No API for sound output or GPU rendering was replaced in the production app.
+
+## Actual Carbon allocation and an open freed-tail mismatch
+
+Compile the native oracle with `-DASTRO_NATIVE_ALLOCATOR` to call real
+NewPtrClear/DisposePtr. The default retains disposed storage for stable legacy
+fixtures. Canonical pointer lookup selects the latest allocation generation,
+so actual address reuse cannot resurrect an old canonical identity. Allocation
+and reuse counters are observation only; they never choose an allocation.
+
+All six existing pair/kill cases repeated with actual Carbon allocation and
+matched their committed state AND original callsite/clock streams byte-for-byte.
+They exercised18924 reused addresses (2549 entity and16375 image reuses). This
+is evidence for those private-process traces, not a claim that the harness has
+the full running game's heap layout.
+
+The optional `tailkill` mode (levels51..53; first reference captured for51) makes
+older target1 survive and immediate cached tail target2 die. It has a20-second
+process-local alarm guard. Original CALC caches next before calling player;
+the nested attack deletes target2. In the real Carbon run, that address was
+reused twice and belonged to new shrapnel49 (kind4,next27) when outer CALC resumed.
+The original consequently updates additional live fragments. The host currently
+processes its retained old target object instead. All state/event records match
+until the return boundary; then native clocks127215/visits49 differ from host
+127206/visits43 and six live fragment/entity positions differ. Retained-storage
+native execution matches the host exactly (5290records,127206clockvalues),
+isolating this discrepancy to freed-address semantics.
+
+This case is **OPEN**, not a passing host fixture. Independent real-allocator
+reference is in tests/known_gaps/freed_tail_51_native.tsv and its compressed PC
+clock stream. Reproduce host with `storm 51 tailkill`; the normal comparator
+correctly fails. The16-case passing gate deliberately does not claim this case.
+Do not mark whole-game fidelity complete while this known mismatch remains.
+
+A same-size last-freed-first hypothesis was measured without changing allocator
+selection: only63/460 entity selections and2358/2768 image selections matched it.
+Thus replacing the allocator with a simple LIFO pool would not reproduce the
+observed Carbon allocation sequence. No such emulation or production shortcut
+was added. The exact portable treatment of the original stale pointer remains
+unresolved; no original disk executable, live game or approval settings changed.
