@@ -73,13 +73,14 @@ static void boundary(const char *name,int value,uint32_t cpu,BOOL paused){
     reads=polls=frames=transitions=rowUsed=outerReads=factories=gameReads=0;mode=0;scenario=number%8;
     menuVisible=paused=splashVisible=changingStage=pauseLoopRunning=gameOverPending=NO;gameOver=scenario==7;
     flow.phase=ASTRO_FLOW_PLAY;editingKey=-1;respawnTick=invulnerableUntil=0;
-    observedWallTick=number<8?100:UINT32_MAX-3;ui.frameInterval=scenario%3+1;
+    quitRequested=NO;observedWallTick=number<8?100:UINT32_MAX-3;ui.frameInterval=scenario%3+1;
     simulationTick=42;worldRenderTick=77;lastSpawnTick=66;randomSeed=0x12345678;world=[NSMutableArray array];enemies=[NSMutableArray array];
     memset(keys,0,sizeof(keys));keys[53]=YES;observing=YES;
 }
 - (void)assertPauseComplete {
     assert(rowUsed==rowCount&&frames==scenario/3+1&&polls==frames);
     assert(transitions==(scenario==7?1:2)&&!paused&&!menuVisible&&!pauseLoopRunning);
+    assert(quitRequested==(scenario==6));
     assert(simulationTick==42&&randomSeed==0x12345678&&worldRenderTick==77&&lastSpawnTick==66);
 }
 - (void)checkPause:(const char *)path {

@@ -53,19 +53,57 @@ after that callback intentionally retains the loop-exit value. Actual UI
 allocation, menu animation, RNG, music, cursor and GPU effects are not covered.
 The flush import is observed, so it does not flush the user's real event queue.
 
-## Port gap and remaining scope
+## Host implementation and replay
 
-Current host raw-key polling does not latch Command-Q. AppKit's application menu
-terminates directly, bypassing the original tail. Native GETKEYMAP137 fixtures
-previously verified the latch but only interpreted it in host tests. These new
-traces are reference evidence; no production quit action is implemented by this
-oracle-only change.
+Raw polling now latches Command-Q even when a controlled test input bypasses the
+physical keyboard. Neither raw input nor nested WAIT/blink/special/card loops
+terminate the application. Ordinary-tail completion destroys world/map/effects,
+clears retained next/parent links, reloads the correct menu, presents it, flushes
+queued events and stops/restarts menu music. Only after returning to the caller
+can the main scheduler save preferences/scores, stop audio and terminate.
 
-Source GAMELOOP checks quit58e==1 after GETKEYMAP/HANDLEMISCKEYS. The native main
-loop10066ce4 subsequently sees the same latch and calls CLOSEDOWN10066c74, which
-saves preferences and exits services/world before FBEND. That outer shutdown was
-not executed by this probe. Original WAITLOOP, timed special and respawn blink
-have no early quit58e test: they return to the ordinary tail. Preserve that
-continuation rather than adding immediate termination inside a raw input poll.
-Real nested quit input, full shutdown, screenshot actions and whole-game fidelity
-remain open.
+Normal PauseQuit and completed GameOver/score input use the same terminal tail.
+A game-end request may end the blink loop early (original58c==1); application
+quit58e alone may not. A pending death also suppresses the reverse pause panel,
+as the original condition requires58c==0. Non-editing GameOver keyboard input is
+accepted at an eligible raw-poll frame; keyDown/modifier events alone do not exit.
+AppKit Quit and window-close callbacks request the latch and cancel immediate
+termination; a completed shutdown permits the final AppKit termination call.
+Existing fatal Stop/debug diagnostic paths retain immediate termination.
+
+Compile tests/quit_lifecycle_host_test.m with build.sh dependencies in place of
+src/preview.m, and run on the Intel reference Mac from the repository root:
+
+```
+build/quit_lifecycle_host_test assets
+```
+
+The5 host-compatible cases0/1/4/5/6 match71 projected native event labels, clock
+query totals, final latch/menu selection and empty logical world/map state.
+The projection includes clock/keys, entity deletion, controls/menu presentation,
+flush, stop/play and return. Native LM-image/map disposal details are not separate
+host events. Cases2/3/7 remain boundary diagnostics rather than STARTNEWGAME input
+states. Source-backed tests check WAIT strict60/61 and blink180 versus game end,
+card delay and score/stage deferral, repeat-safe shutdown and actual delegate
+callback policy. special_phase_host_test adds a Command-Q injection inside the
+actual nested special: all31 updates still match the original phase1 timing,
+then the ordinary tail cleans the world. This is a host input perturbation,
+not an additional native nested-quit recording.
+
+An isolated normal app bundle on the Intel Mac received a real Quit AppleEvent.
+The first AppKit reply was deferred/cancelled; the process subsequently saved
+its six control keys and ten score rows and exited0. The private bundle and its
+preference domain were deleted; user game settings were not used or overwritten.
+The normal build/selftest and keyboard/pause/respawn/menu/GameOver/phase/card
+regressions also passed.
+
+## Limits
+
+Native UI/audio/cursor/GL remain observers, including PUTCONTROLS side effects
+as described above. The captured tail has closed CPU/spawn gates. The outer main
+loop10066ce4 and CLOSEDOWN10066c74 were inspected as source, not run natively
+here. Exact LMEXIT/GL resource shutdown, main-loop FB-event timing, score text
+input scheduling, native window-close/AppleEvent reply delivery, real nested
+quit input and full
+renderer/audio equivalence are not established by these checks. Screenshot
+behavior and the broader whole-game fidelity objective remain open.

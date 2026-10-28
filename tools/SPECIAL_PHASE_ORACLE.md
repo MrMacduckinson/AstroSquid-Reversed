@@ -51,6 +51,9 @@ reproduced them again. tests/special_phase_native.csv records7 summaries of
 are not enumerated in this fixture. Intel special_phase_host_test checks exact
 update/beam counts, advancing clock totals, final action/CPU/render/tick values
 and frame/swap counts, plus its existing connected order/continuation assertions.
+A further host-only variant reuses case1's timing while injecting Command-Q in
+actual nested raw input: all31 updates complete, the latch persists, and the
+ordinary tail then cleans the world. It is not an additional native quit capture.
 Compile with build.sh sources/frameworks, replacing src/preview.m with that test;
 run from the repository root:
 

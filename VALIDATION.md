@@ -55,7 +55,7 @@ captures; those captures do not establish equivalence of the current full game.
   call was checked without logging key values. `tests/keymap_host_test.m` checks
   all128 positions, replacement of stale state and call ordering with injected
   snapshots; it is not an original G5 physical-key capture. Execution of the
-  original quit/screenshot actions is not covered by those host checks.
+  screenshot action is not covered by those host checks; quit is checked below.
 - `tests/keymap_native.csv` records137 private-original G5 GETKEYMAP cases with
   scripted maps and a screenshot observer. The host matches control bits and
   key counts for136 API-conforming maps, including every single key. A separate
@@ -63,13 +63,25 @@ captures; those captures do not establish equivalence of the current full game.
   byte zero before every captured call. Native results identify Escape as the
   pause key, Command-Q as the stop flag and keypad multiply as the debug-enabled
   screenshot key. This does not prove physical-device input, pause-loop timing
-  or implementation of the stop/screenshot actions in the port.
+  or implementation of the screenshot action. The host now checks the actual
+  quit latch against these native outputs.
 - `tests/quit_loop_native.csv` records8 original GAMELOOP terminal-tail cases,
   188 event/state observations with closed CPU/spawn gates. It verifies latched
   input, exact positive1 exit checks, actual image/entity/map cleanup and menu/
   event/music/cursor callback order. UI/audio/GL are observers; original outer
-  CLOSEDOWN and advancing/nested world exits are outside this proof. The host
-  still needs the deferred quit latch and terminal-tail implementation.
+  CLOSEDOWN and advancing/nested world exits are outside this native capture.
+  The host now matches71 high-level event labels from5 STARTNEWGAME-compatible
+  paths, plus their clock totals and terminal world/map/menu/quit states. Signed
+  quit=-1 and pre-entry game-end1 remain native diagnostics, not host start states.
+  Actual host checks cover deferred WAIT/blink/card/score/stage completion,
+  normal game exit, retained actor link cleanup, and AppKit quit/window-close
+  routing. A further special-phase test injects Command-Q inside the real nested
+  special and preserves all31 updates before ordinary-tail cleanup. A private
+  real app bundle also received Quit through AppKit, persisted6 keys/10 scores,
+  and exited0; its temporary bundle/preferences were removed.
+  These are bounded lifecycle checks, not full native CLOSEDOWN/GL/audio/event
+  parity. Text-field event/frame scheduling and native window-close delivery
+  remain outside the capture.
 - `tests/pause_native.csv` records16 original G5 PAUSE/GETKEYMAP cases and708
   boundary/state observations. Two captures were byte-identical. It establishes
   held-key exit at eligible frame polls, interval1/2/3 gates, fresh post-swap CPU

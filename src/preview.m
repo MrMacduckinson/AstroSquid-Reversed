@@ -84,6 +84,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     uint32_t respawnStartTick,respawnBlinkTick;
     double respawnBlinkWidth;
     BOOL paused,gameOver,gameOverPending,pauseLoopRunning;
+    BOOL quitRequested,gameLoopActive,gameEndRequested,gameEndHighscores,terminationAllowed;
     NSArray *presentedBeams;
     uint32_t presentedBeamSeed;
     BOOL simulationRender,deferPresent;
@@ -185,6 +186,8 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
 - (void)readVisualKeys;
 - (void)presentFrame;
 - (void)beginGameLoop;
+- (void)requestQuit;
+- (BOOL)canTerminateApplication;
 - (void)pollGame;
 - (void)pollMapSpawns;
 @end
@@ -798,9 +801,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     KeyMap snapshot;GetKeys(snapshot);memcpy(bytes,snapshot,sizeof(snapshot));
 }
 - (void)readKeyMap {
-    if(selftestPath||campaignTestPath)return;
-    unsigned char snapshot[16];[self copyKeyMap:snapshot];
-    for(unsigned i=0;i<128;i++)keys[i]=(snapshot[i>>3]>>(i&7))&1;
+    if(!selftestPath&&!campaignTestPath){
+        unsigned char snapshot[16];[self copyKeyMap:snapshot];
+        for(unsigned i=0;i<128;i++)keys[i]=(snapshot[i>>3]>>(i&7))&1;
+    }
+    if(keys[55]&&keys[12])[self requestQuit];
 }
 - (void)readGameKeys {
     [self readKeyMap];[self handleMiscKeys];
@@ -1332,7 +1337,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
     [self makeNewSprites];
     [self readGameKeys];
-    if((int32_t)([self playerClockTick]-respawnStartTick)>180){
+    if((int32_t)([self playerClockTick]-respawnStartTick)>180||gameEndRequested){
         invulnerableUntil=0;playerVisual.width=spriteInfo[playerVisual.sprite].width;playerCombat.kind=1;
     }
 }
@@ -1394,7 +1399,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)pollGame {
     if(respawnTick){[self pollRespawnWaitFrame];return;}
-    if(invulnerableUntil){[self pollNestedWorld];[self pollMapSpawns];if(!invulnerableUntil)[self readGameKeys];specialReturnPending=NO;return;}
+    if(invulnerableUntil){[self pollNestedWorld];[self pollMapSpawns];if(!invulnerableUntil){[self readGameKeys];[self completeGameLoopIfRequested];}specialReturnPending=NO;return;}
+    if(gameEndRequested){[self pollMapSpawns];[self readGameKeys];[self completeGameLoopIfRequested];return;}
     uint32_t comparison=[self playerClockTick];
     if((int32_t)(comparison-observedWallTick)>0){
         observedWallTick=[self playerClockTick];simulationTick=observedWallTick;
@@ -1403,7 +1409,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         }
         [self advanceWorldForWait:NO];
     }
-    [self pollMapSpawns];if(flow.phase==ASTRO_FLOW_PLAY)[self readGameKeys];specialReturnPending=NO;
+    [self pollMapSpawns];if(flow.phase==ASTRO_FLOW_PLAY){[self readGameKeys];[self completeGameLoopIfRequested];}specialReturnPending=NO;
 }
 - (void)advanceWorldForWait:(BOOL)waiting {
     double old=camera;
@@ -1429,7 +1435,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         else {
             if(readyLoadPending)[self loadCampaignStage:pendingCampaign];
             [self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;
-            [self pollMapSpawns];[self readGameKeys];specialReturnPending=NO;
+            [self pollMapSpawns];[self readGameKeys];[self completeGameLoopIfRequested];specialReturnPending=NO;
         }
     }
     if(flow.phase==ASTRO_FLOW_FINISHED)[self beginGameOver];
@@ -1535,6 +1541,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)pollMenu {
     if(splashVisible)return;
+    BOOL gameOverPanel=[ui.anchor isEqual:@"GameOver"];
+    if(gameOverPanel)[self readKeyMap];
     uint32_t comparison=[self currentGameTick];
     if((int32_t)(comparison-observedWallTick)<ui.frameInterval)return;
     BOOL overlay=[ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"];
@@ -1542,6 +1550,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self stepMenu];
     if(overlay)observedWallTick=[self currentGameTick];
     if([ui.anchor isEqual:@"Pause"]&&paused)[self readPauseKeys];
+    else if(!gameOverPanel)[self readKeyMap];
+    else if(ui.editingHighscore<=0)for(unsigned i=0;i<128;i++)if(keys[i]){[self finishGameOver];break;}
 }
 - (uint32_t)cardDelayClockTick {
     return (uint32_t)(uint64_t)floor(NSProcessInfo.processInfo.systemUptime*60);
@@ -1561,6 +1571,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)tickWallClock {
     if(pauseLoopRunning)return;
     wallClockPoll=YES;@try {
+        if(gameEndRequested){[self pollGame];return;}
         if(!menuVisible&&!paused&&!gameOver&&flow.phase==ASTRO_FLOW_PLAY){
             [self pollGame];self.window.title=@"AstroSquid";return;
         }
@@ -1577,9 +1588,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         BOOL idle=menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY;
         if(editingKey>=0&&NSProcessInfo.processInfo.systemUptime>=keyCaptureDeadline){editingKey=-1;[self refreshKeyLabels];}
         if(menuVisible)[self pollMenu];
+        if(gameEndRequested){[self pollGame];return;}
         if(idle&&!menuVisible)[self setNeedsDisplay:YES];
         self.window.title=@"AstroSquid";
-    } @finally {wallClockPoll=NO;}
+    } @finally {
+        wallClockPoll=NO;
+        if(quitRequested&&!gameLoopActive)[self closeDown];
+    }
 }
 - (void)tick:(NSTimer *)sender {
     if(pauseLoopRunning)return;
@@ -1802,7 +1817,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self readPauseKeys];assert(!paused&&!menuVisible);
     [self testModifier:58 flags:0];
     campaign=(AstroCampaign){1,2,0,0};[self beginStageTransition];assert(changingStage);
-    [self performMenuAction:@"PauseQuit"];[self performMenuAction:@"New Game"];
+    [self performMenuAction:@"PauseQuit"];[self pollGame];[self performMenuAction:@"New Game"];
     assert(!changingStage&&transition.phase==0&&pendingCampaign.level==0&&selectedLevel==0&&flow.phase==ASTRO_FLOW_READY);
 }
 - (void)testScoreAndSettingsHandlers {
@@ -1821,11 +1836,12 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         timestamp:0 windowNumber:self.window.windowNumber context:nil characters:@"TEST"
         charactersIgnoringModifiers:@"TEST" isARepeat:NO keyCode:17];
     [self keyDown:text];assert(!strcmp(scoreEditor.name,"TEST"));
-    [self keyDown:[self testEvent:NSKeyDown code:36]];
+    [self keyDown:[self testEvent:NSKeyDown code:36]];assert(gameEndRequested);[self pollGame];
     assert([ui.anchor isEqual:@"Highscores Menu"]&&!strcmp(highscores[0].name,"TEST")&&highscores[0].score==12345);
     [self keyDown:[self testEvent:NSKeyDown code:17]];assert(highscores[1].score==0);
-    score=0;[self beginGameOver];assert(ui.editingHighscore==0);
-    [self testModifier:55 flags:NSEventModifierFlagCommand|NX_DEVICELCMDKEYMASK];
+    score=0;gameLoopActive=YES;[self beginGameOver];assert(ui.editingHighscore==0);
+    [self testModifier:55 flags:NSEventModifierFlagCommand|NX_DEVICELCMDKEYMASK];assert(gameOver);
+    observedWallTick=[self currentGameTick]-(uint32_t)ui.frameInterval;[self pollMenu];[self pollGame];
     assert(!gameOver&&[ui.anchor isEqual:@"Play Menu"]);[self testModifier:55 flags:0];
     memcpy(highscores,saved,sizeof(saved));score=oldScore;[self refreshScores];
 }
@@ -1854,7 +1870,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)resumePause {
     if(pauseLoopRunning){paused=NO;return;}
-    if(!gameOver){[ui beginPauseExit];[self drawPanelTransition];}
+    if(!gameOver&&!respawnPending&&!gameEndRequested){[ui beginPauseExit];[self drawPanelTransition];}
     menuVisible=NO;paused=NO;[audio setPaused:NO];
 }
 - (NSString *)scoreOperandDescription:(NSData *)operand {
@@ -1881,7 +1897,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(left==255)second=[NSData dataWithBytes:&character length:1];
     else{[first appendBytes:&character length:1];second=[NSData dataWithBytes:scoreEditor.name+length-right length:right];}
     BOOL proceed=[self continueScoreOverflow:first right:second];
-    if(astro_score_editor_resolve_alert(&scoreEditor,proceed)==ASTRO_SCORE_EDIT_STOP){[NSApp terminate:nil];return NO;}
+    if(astro_score_editor_resolve_alert(&scoreEditor,proceed)==ASTRO_SCORE_EDIT_STOP){terminationAllowed=YES;[NSApp terminate:nil];return NO;}
     return YES;
 }
 - (void)keyDown:(NSEvent *)event {
@@ -1899,7 +1915,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         }
         [self refreshScoreEditor];if(scoreEditor.submitted)[self finishGameOver];return;
     }
-    if(menuVisible&&gameOver){[self finishGameOver];return;}
+    if(menuVisible&&gameOver)return;
     if(menuVisible&&paused)return;
     if(event.isARepeat) return;
     if(editingKey>=0&&key<128) {
@@ -1923,7 +1939,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(key==36) {paused=!paused;[audio setPaused:paused];}
     if(key==15) {[audio setPaused:NO];[audio playMusic:2];camera=-0.0;selectedLevel=0;[self resetEnemies];playerX=30;playerY=190;paused=NO;}
     if(key==46) audio.musicVolume=audio.musicVolume>0?0:.5;
-    if(key==53) [NSApp terminate:nil];
+    if(key==53){terminationAllowed=YES;[NSApp terminate:nil];}
 }
 - (void)keyUp:(NSEvent *)event { if(event.keyCode<128) keys[event.keyCode]=NO; }
 - (void)flagsChanged:(NSEvent *)event {
@@ -1942,7 +1958,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(!keys[code])return;
     if(splashVisible){splashVisible=NO;return;}
     if(menuVisible&&paused)return;
-    if(menuVisible&&gameOver&&ui.editingHighscore<=0){[self finishGameOver];return;}
+    if(menuVisible&&gameOver&&ui.editingHighscore<=0)return;
     if(editingKey>=0){controlKeys[editingKey]=code;editingKey=-1;[self refreshKeyLabels];[self saveSettings];}
 }
 - (void)refreshScores {
@@ -1998,9 +2014,37 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)finishGameOver {
     BOOL entered=ui.editingHighscore>0;
     if(entered){ui.editingHighscore=astro_scores_insert(highscores,score,scoreEditor.name);[self saveScores];}
-    paused=NO;gameOver=NO;[self reloadMainMenu];
-    [ui show:entered?@"Highscores Menu":@"Play Menu"];
-    [audio setPaused:NO];[audio playMusic:1];
+    gameEndRequested=YES;gameEndHighscores=entered;
+    paused=NO;gameOver=NO;menuVisible=NO;flow.phase=ASTRO_FLOW_PLAY;
+}
+- (void)requestQuit {quitRequested=YES;}
+- (BOOL)canTerminateApplication {return terminationAllowed;}
+- (void)destroyGameWorld {
+    for(id object in [world copy]){
+        [self deleteActor:object];[self setNextActor:nil forActor:object];
+        if(object!=[NSNull null])((AstroEnemy *)object)->parent=nil;
+    }
+    [mapPlacements removeAllObjects];playerNextActor=nil;
+    [visualEffects removeAllObjects];[specialPolygons removeAllObjects];[specialFlashes removeAllObjects];
+    presentedBeams=@[];playerVisualDeleted=YES;playerHitVisual.active=NO;engineGlow=departureTrail=NO;
+}
+- (void)flushGameEvents {[NSApp discardEventsMatchingMask:NSEventMaskAny beforeEvent:nil];}
+- (void)terminateApplication {[NSApp terminate:nil];}
+- (void)closeDown {
+    if(terminationAllowed)return;
+    [self saveSettings];[self saveScores];[audio stop];[self destroyGameWorld];
+    [timer invalidate];timer=nil;terminationAllowed=YES;[self terminateApplication];
+}
+- (void)completeGameLoopIfRequested {
+    if(!gameLoopActive||(!quitRequested&&!gameEndRequested)||respawnTick||invulnerableUntil||
+        changingStage||flow.phase!=ASTRO_FLOW_PLAY||menuVisible||paused||gameOver||
+        pauseLoopRunning||specialLoopRunning||actorTraversalDepth)return;
+    [self destroyGameWorld];gameLoopActive=NO;
+    paused=gameOver=gameOverPending=NO;menuVisible=YES;
+    [self reloadMainMenu];[ui show:gameEndHighscores?@"Highscores Menu":@"Play Menu"];
+    [self display];gameEndHighscores=NO;[self flushGameEvents];
+    [audio setPaused:NO];[audio stopMusic];[audio playMusic:1];
+    gameEndRequested=NO;
 }
 - (void)unlockStage {
     ui.unlockedLevel=MAX(ui.unlockedLevel,MIN(16,(campaign.level-1)*2+campaign.half));
@@ -2061,14 +2105,15 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         ui.editingHighscore=0;selectedLevel=index;camera=-0.0;[self resetEnemies];playerX=30;playerY=190;
         [self finishPlayerStart];
         memset(keys,0,sizeof(keys));automatic=YES;paused=NO;menuVisible=NO;
+        gameLoopActive=YES;gameEndRequested=gameEndHighscores=NO;
         astro_flow_ready(&flow,campaign.level,campaign.half);cardClockStarted=NO;[self unlockStage];
         [audio setPaused:NO];[audio playMusic:1];
-    } else if(command.action==ASTRO_UI_QUIT) [NSApp terminate:nil];
+    } else if(command.action==ASTRO_UI_QUIT) [self requestQuit];
     else if(command.action==ASTRO_UI_RESUME) {[self resumePause];}
     else if(command.action==ASTRO_UI_GAME_OVER_OK)[self finishGameOver];
     else if(command.action==ASTRO_UI_QUIT_GAME) {
-        paused=NO;gameOver=NO;[self reloadMainMenu];
-        [ui show:@"Play Menu"];[audio setPaused:NO];[audio playMusic:1];
+        gameEndRequested=YES;gameEndHighscores=NO;
+        paused=NO;gameOver=NO;menuVisible=NO;
     }
 }
 - (void)viewDidMoveToWindow { [self.window makeFirstResponder:self]; }
@@ -2103,6 +2148,16 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(preferenceProbe)[view probePreferences:preferenceProbe];
     if(testPath) [view beginSelfTest:testPath];
     if(campaignPath) [view beginCampaignTest:campaignPath];
+}
+- (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender {
+    AstroView *view=(AstroView *)self.window.contentView;
+    if(![view isKindOfClass:[AstroView class]]||[view canTerminateApplication])return NSTerminateNow;
+    [view requestQuit];return NSTerminateCancel;
+}
+- (BOOL)windowShouldClose:(NSWindow *)window {
+    AstroView *view=(AstroView *)window.contentView;
+    if(![view isKindOfClass:[AstroView class]]||[view canTerminateApplication])return YES;
+    [view requestQuit];return NO;
 }
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender { return YES; }
 @end

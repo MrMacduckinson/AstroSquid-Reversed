@@ -1,4 +1,4 @@
-// Replay actual G5 GETKEYMAP outputs; side-effect flags are interpreted, not executed.
+// Replay G5 GETKEYMAP outputs; actual quit latch, screenshot mapping only.
 #define main astrosquid_application_main
 #include "../src/preview.m"
 #undef main
@@ -23,11 +23,11 @@ static unsigned pauseEntries;
         assert(pad==0);
         if(copy!=16){assert(id==135&&copy==32&&any==1);poison++;continue;}
         for(unsigned i=0;i<16;i++){unsigned byte;assert(sscanf(hex+2*i,"%2x",&byte)==1);fixtureMap[i]=byte;}
-        memset(keys,1,sizeof(keys));[self readKeyMap];
+        quitRequested=quitBefore;memset(keys,1,sizeof(keys));[self readKeyMap];
         assert(keys[123]==left&&keys[124]==right&&keys[126]==up&&keys[125]==down);
         assert(keys[53]==pause&&keys[55]==fire&&keys[58]==special);
         int pressed=0;for(unsigned i=0;i<128;i++)pressed+=keys[i];assert(pressed==any);
-        assert(quitAfter==(quitBefore||(keys[55]&&keys[12])));
+        assert(quitAfter==quitRequested);
         assert(shots==(unsigned)(debug==1&&keys[67]));
         count++;
     }

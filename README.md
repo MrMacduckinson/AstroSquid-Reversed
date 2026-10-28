@@ -23,7 +23,9 @@ resumes at the next eligible input poll. As in the original, a key still held
 while entering pause (including Escape) can immediately dismiss it. Use Settings
 to reassign keys, adjust sound/music and
 change filtering. Keys, settings, scores and unlocked stages persist between
-launches. Close the window or use Command-Q to quit.
+launches. Close the window or use Command-Q to request quit. Like the original,
+quit waits for the active special, respawn or card/score interaction to return
+before clearing the world and closing the application.
 
 The game includes all 17 stage files, all four special-attack families and their
 upgrades, enemies, bosses, pickups, deaths/respawns, menus, score entry, stage

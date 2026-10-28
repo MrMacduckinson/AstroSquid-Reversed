@@ -10,6 +10,7 @@ static NSMutableString *events;
 @interface AstroMenuGateView : AstroView
 @end
 @implementation AstroMenuGateView
+- (void)copyKeyMap:(unsigned char *)bytes {memset(bytes,0,16);}
 - (uint32_t)currentGameTick {
     if(!injecting)return [super currentGameTick];
     assert(clockUsed<clockCount);[events appendString:clockUsed?@"T":@"C"];return clockValues[clockUsed++];

@@ -2,7 +2,7 @@
 #define main astrosquid_application_main
 #include "../src/preview.m"
 #undef main
-static BOOL observing;
+static BOOL observing,quitDuringSpecial;
 static unsigned clockReads,innerFrames,presents,outerFrames,animations,posttails,beams,depth;
 static unsigned clockMode;
 static uint32_t latestTick;
@@ -28,7 +28,10 @@ static NSMutableString *events;
     fixedWorldClock=YES;[super calculateSpecialContext:context world:worldContext];fixedWorldClock=NO;
 }
 - (void)animateSpecialWorld {fixedWorldClock=YES;[super animateSpecialWorld];fixedWorldClock=NO;}
-- (void)readSpecialKeys {}
+- (void)copyKeyMap:(unsigned char *)bytes {memset(bytes,0,16);if(quitDuringSpecial){bytes[6]=0x80;bytes[1]=0x10;}}
+- (void)readSpecialKeys {
+    if(quitDuringSpecial){[super readSpecialKeys];assert(quitRequested&&specialLoopRunning&&gameLoopActive&&!terminationAllowed);}
+}
 - (void)calculateActors {
     if(observing){depth++;[events appendString:@"A"];}
     [super calculateActors];if(observing)depth--;
@@ -65,9 +68,11 @@ static NSMutableString *events;
 @end
 @implementation AstroView (SpecialPhaseCheck)
 - (void)checkSpecialPhases {
-    FILE *fixture=fopen("tests/special_phase_native.csv","r");assert(fixture);char line[256];assert(fgets(line,sizeof(line),fixture));
+    FILE *fixture=fopen("tests/special_phase_native.csv","r");assert(fixture);char line[256],nativeRows[7][256];assert(fgets(line,sizeof(line),fixture));
+    for(unsigned i=0;i<7;i++)assert(fgets(nativeRows[i],sizeof(nativeRows[i]),fixture));
+    assert(!fgets(line,sizeof(line),fixture)&&!ferror(fixture));fclose(fixture);
     [timer invalidate];timer=nil;[audio stop];audio.soundVolume=audio.musicVolume=0;
-    int intervals[]={2,3,0,-1,3,3,3};
+    int intervals[]={2,3,0,-1,3,3,3,3};
     for(unsigned scenario=0;scenario<sizeof(intervals)/sizeof(intervals[0]);scenario++){
         [self resetEnemies];[enemies removeAllObjects];[mapPlacements removeAllObjects];
         world=[NSMutableArray arrayWithObject:[NSNull null]];backgrounds=@[];parallaxData=[NSMutableData data];memset(stars,0,sizeof(stars));
@@ -82,15 +87,16 @@ static NSMutableString *events;
         playerState=(AstroPlayer){.frame=12,.tilt=3,.state=1,.update_tick=99,.animation_tick=100};
         playerVelocity=(AstroVelocity){2,0};randomSeed=12345;
         clockReads=innerFrames=presents=outerFrames=animations=posttails=beams=depth=0;events=[NSMutableString string];
-        clockMode=scenario;latestTick=100;fixedWorldClock=NO;
+        quitDuringSpecial=scenario==7;quitRequested=NO;gameLoopActive=quitDuringSpecial;
+        clockMode=quitDuringSpecial?1:scenario;latestTick=100;fixedWorldClock=NO;
         keys[controlKeys[1]]=YES;observing=YES;[self calculateActors];
         assert(!special.active&&!specialLoopRunning&&playerCombat.kind==1);
         assert(depth==0&&outerFrames==0&&animations==beams&&posttails==beams+1&&innerFrames==presents);
         unsigned id,calcs,nativeBeams,reads,action,cpu,render,last,frames,swaps;int interval;
-        assert(fgets(line,sizeof(line),fixture));
-        assert(sscanf(line,"%u,%d,%u,%u,%u,%u,%u,%u,%u,%u,%u",&id,&interval,&calcs,&nativeBeams,
+        unsigned reference=quitDuringSpecial?1:scenario;
+        assert(sscanf(nativeRows[reference],"%u,%d,%u,%u,%u,%u,%u,%u,%u,%u,%u",&id,&interval,&calcs,&nativeBeams,
             &reads,&action,&cpu,&render,&last,&frames,&swaps)==11);
-        assert(id==scenario&&interval==ui.frameInterval&&calcs==beams&&nativeBeams==beams);
+        assert(id==reference&&interval==ui.frameInterval&&calcs==beams&&nativeBeams==beams);
         assert(reads==clockReads&&action==lastPlayerShot&&cpu==observedWallTick&&render==worldRenderTick);
         assert(last==latestTick&&frames==innerFrames&&swaps==presents);
         NSMutableString *expected=[NSMutableString stringWithString:@"A"];
@@ -105,10 +111,14 @@ static NSMutableString *events;
         unsigned previous=outerFrames;[self renderTick];assert(animations==beams+1);
         assert(outerFrames==previous+(ui.frameInterval<=0||scenario==6));
         observing=NO;
+        if(quitDuringSpecial){
+            assert(quitRequested&&gameLoopActive&&!terminationAllowed);[self pollGame];
+            assert(!gameLoopActive&&!world.count&&!terminationAllowed);quitDuringSpecial=NO;
+            puts("PASS Command-Q read inside actual nested special latches without interruption; ordinary tail cleans world after return");
+        }
         printf("PASS synchronous host interval%d: %u nested CALCs, cached gun, inner posttails/LM and outer continuation before parent pass\n",ui.frameInterval,beams);
     }
-    assert(!fgets(line,sizeof(line),fixture)&&!ferror(fixture));fclose(fixture);
-    simulationTick=130;worldRenderTick=128;ui.frameInterval=3;
+    menuVisible=NO;simulationTick=130;worldRenderTick=128;ui.frameInterval=3;
     specialReturnPending=NO;outerClockReads=0;unsigned previousFrames=outerFrames;
     observing=outerClockTest=YES;[self renderTick];observing=outerClockTest=NO;
     assert(outerClockReads==4&&worldRenderTick==133&&simulationTick==134&&outerFrames==previousFrames+1);
