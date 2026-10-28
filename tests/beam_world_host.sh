@@ -19,7 +19,7 @@ for fixture in tests/beam_world_native/world-*.tsv; do
   set -- "$weapon" "$cleanup" "$scratch/clocks.tsv"
   case "$scenario" in
     "") ;;
-    chain|kill) set -- "$@" "$scenario" ;;
+    chain|kill|calc) set -- "$@" "$scenario" ;;
     *) echo "Unknown scenario: $scenario" >&2; exit 2 ;;
   esac
   build/beam_world_host assets "$@" > "$scratch/world.tsv"

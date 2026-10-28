@@ -4,7 +4,7 @@
 static FILE *beamClocks;
 static unsigned beamClockCount;
 static const char *beamPhase;
-static BOOL beamChain,beamKill;
+static BOOL beamChain,beamKill,beamCalc;
 @interface AstroBeamTraceView : AstroTraceView
 - (void)traceBeamWeapon:(int)weapon cleanupFirst:(BOOL)cleanup;
 @end
@@ -12,7 +12,7 @@ static BOOL beamChain,beamKill;
 - (uint32_t)playerClockTick {
     if(!beamPhase)return [super playerClockTick];
     uint32_t tick=1000+beamClockCount++;
-    if(!strcmp(beamPhase,"fire")||!strcmp(beamPhase,"render")){
+    if(!strcmp(beamPhase,"fire")||!strcmp(beamPhase,"render")||!strcmp(beamPhase,"calc")){
         id head=world.firstObject;BOOL player=head==[NSNull null];AstroEnemy *e=player?nil:head;
         fprintf(beamClocks,"Q\t%s\t%u\t%u\t%08x\t%u\t%d\t%u\t%u\t%u\t%u\n",beamPhase,
             beamClockCount-1,tick,randomSeed,entityID(head),player?playerCombat.kind:e->kind,
@@ -26,11 +26,14 @@ static BOOL beamChain,beamKill;
     [super prependEnemy:e];
 }
 - (void)drawSceneSprite:(const AstroSceneSprite *)scene {[self createSceneSprite:scene];}
+- (void)dumpWorldTrace:(NSString *)phase {
+    uint32_t saved=simulationTick;simulationTick=0;[super dumpWorldTrace:phase];simulationTick=saved;
+}
 - (void)traceBeamWeapon:(int)weapon cleanupFirst:(BOOL)cleanup {
     [timer invalidate];timer=nil;[audio stop];audio=[[AstroTraceAudio alloc] initWithAssets:assetPath error:NULL];
     entityIDs=[NSMapTable strongToStrongObjectsMapTable];nextEntityID=1;playerTraceID=1;
     enemies=[NSMutableArray array];world=[NSMutableArray array];visualEffects=[NSMutableArray array];
-    simulationTick=0;camera=0;tickedScroll=0;renderClock=0;randomSeed=0x12345678;
+    simulationTick=0;camera=beamCalc?-0.0:0;tickedScroll=0;renderClock=0;randomSeed=0x12345678;
     score=0;actorVisits=0;inventory=(AstroInventory){weapon,0,2,0};campaign=(AstroCampaign){0};ui.frameInterval=1;
     beamClockCount=0;beamPhase="setup";traceTick=0;tracePhase="setup";
     [self createPlayerAtX:30 y:190];playerCombat=(AstroCombatState){.kind=1,.hit_points=100};
@@ -45,6 +48,14 @@ static BOOL beamChain,beamKill;
     }
     [self dumpWorldTrace:@"setup"];
     beamPhase="fire";tracePhase=beamPhase;[self fireWeapon:weapon x:104 y:202 heading:0 source:1];[self dumpWorldTrace:@"fire"];
+    if(beamCalc){
+        memset(stars,0,sizeof(stars));backgrounds=@[];parallaxData=[NSMutableData data];
+        memset(keys,0,sizeof(keys));special=(AstroSpecial){0};specialLoopRunning=NO;
+        specialReturnPending=NO;changingStage=NO;engineGlow=NO;departureTrail=NO;
+        playerHitVisual=(AstroPlayerHitVisual){0};respawnTick=invulnerableUntil=0;
+        selftestPath=nil;campaignTestPath=nil;playerWeapon=weapon;
+        beamPhase="calc";tracePhase=beamPhase;[self calculateActors];[self dumpWorldTrace:@"calc"];
+    }
     if(cleanup){beamPhase="cleanup";tracePhase=beamPhase;[self cleanupWorld];[self dumpWorldTrace:@"cleanup"];}
     beamPhase="render";tracePhase=beamPhase;simulationRender=YES;
     AstroSceneSink sink={.context=(__bridge void *)self,.sprite=sceneSprite};[self renderBeams:&sink];
@@ -59,7 +70,7 @@ static BOOL beamChain,beamKill;
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
-    assert(argc==5||argc==6);beamChain=argc==6&&!strcmp(argv[5],"chain");beamKill=argc==6&&!strcmp(argv[5],"kill");assert(argc==5||beamChain||beamKill);beamClocks=fopen(argv[4],"w");assert(beamClocks);
+    assert(argc==5||argc==6);beamChain=argc==6&&!strcmp(argv[5],"chain");beamKill=argc==6&&!strcmp(argv[5],"kill");beamCalc=argc==6&&!strcmp(argv[5],"calc");assert(argc==5||beamChain||beamKill||beamCalc);beamClocks=fopen(argv[4],"w");assert(beamClocks);
     [NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
     [[NSUserDefaults standardUserDefaults] setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}} forName:NSArgumentDomain];
     AstroBeamTraceView *view=[[AstroBeamTraceView alloc] initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];

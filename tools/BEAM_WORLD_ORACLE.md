@@ -15,7 +15,10 @@ gcc -g -std=gnu99 -O2 -mno-fused-madd -I analysis/script-oracle \
 ```
 
 Arguments 6/7 select weapon (40..43 or 50..53) and whether cleanup precedes rendering
-(0 or 1). Optional final `kill` adds two HP1 targets; `chain` adds two HP100 targets. Stdout is the canonical G/E/R/S world trace accepted by
+(0 or 1). Optional final `kill` adds two HP1 targets; `chain` adds two HP100 targets.
+`calc` runs one original CALCSPRITES pass after firing, before cleanup/render,
+using the shipped enemy script215. Supply its original77-byte STR# resource
+as `STR25000.bin.215` beside the constants file. Stdout is the canonical G/E/R/S world trace accepted by
 `tools/world_trace.py`; the final argument receives Q clock observations.
 Q fields: phase, zero-based clock ordinal, returned tick, RNG, world-head ID,
 head kind, head update/animation/action clocks, latest render allocation ID.
@@ -30,12 +33,15 @@ No original executable/resources on disk are changed.
 
 ## Observed
 
-All 32 fixtures in `tests/beam_world_native` reproduced byte-for-byte in a
+All 48 fixtures in `tests/beam_world_native` reproduced byte-for-byte in a
 second fresh process, both world and clock streams. The original four remain
 unchanged. Sixteen base cases cover all eight weapon levels in both cleanup
 orders; eight `kill` cases cover lethal hits/death effects, and eight `chain`
 cases cover two surviving targets. Levels51..53 create two beams in the latter
-cases; level50 is the one-beam control. Canonical linked lists
+cases; level50 is the one-beam control. Sixteen `calc` cases add one ordinary
+world pass to every weapon/cleanup pair; beam entity bytes remain unchanged,
+enemy script215 advances to line2, and player clocks advance. The original
+diagnostic counter includes both actor visits and collision scans (6/8 here). Canonical linked lists
 and payload lengths pass `world_trace.py` validation.
 
 * Beam allocation is world entity 3, linked before its three entity clocks;
@@ -54,12 +60,12 @@ and payload lengths pass `world_trace.py` validation.
 
 The production host uses real kind999 world entities. The original four
 captured scenarios matched byte-for-byte (121 state records,23 clock observations).
-The expanded gate additionally compares all32 scenarios (1905 state records,255
-clock observations). Run `bash tests/beam_world_host.sh` on the Intel reference Mac.
+The expanded gate compares all48 scenarios (2501 state records,559 clock
+observations), including one ordinary CALC pass in16 cases. Run `bash tests/beam_world_host.sh` on the Intel reference Mac.
 The driver uses production creation, hit, rendering lifecycle and cleanup;
 only drawing/audio output is observed. It additionally asserts that an AppKit
 redraw does not mutate RNG, constructor clocks, births or persistent effects.
-The captures do not establish edge coordinates, an intervening ordinary CALC pass,
+The captures do not establish edge coordinates, long repeated CALC sequences,
 nested specials or allocator reuse; this is not whole-game equality proof.
 Importantly, native FIREWEAPON chains only when the first target remains alive
 (remove flag0); killing it prevents the second beam. Lethal-hit fixtures are
@@ -72,3 +78,12 @@ allocations retain storage to avoid pointer reuse. Sound channels are idle.
 Initial harness failures were missing sound-channel storage and unloaded texture
 0; both were diagnosed before capturing the successful fixture set. Neither
 failure was evidence of a game bug or host mismatch.
+
+CALC fixtures initialize viewport/camera left -0.0, with native rendering offset
++0.0, matching original stage initialization. Using +0.0 for both independent
+native viewport and rendering offset was an inconsistent synthetic initial state
+and produced a sign-only mismatch after CALC; no production math change was
+needed. Host trace tick columns identify the scenario (0), independently of
+its advancing game clock; dumping preserves/restores the actual simulationTick.
+Script215 resource SHA256:
+459cfbdf030f815238f9081239052591924958aeed1532962829159b4b923e93.
