@@ -1,6 +1,8 @@
 #import "audio.h"
 #include <math.h>
 
+static float soundGain(float value){return (int)(255*(double)value)/255.0f;}
+
 static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
 
 @implementation AstroAudio {
@@ -8,7 +10,7 @@ static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
     NSMutableDictionary *samples;
     NSArray *tracks;
     NSMutableArray *voices;
-    NSMapTable *cueNames;
+    NSMapTable *cueNames,*voiceGains;
     AVAudioPlayer *_music;
     BOOL paused;
     BOOL musicStarted;
@@ -24,7 +26,7 @@ static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
     manifest=[NSJSONSerialization JSONObjectWithData:data options:0 error:error];
     if (![manifest isKindOfClass:[NSDictionary class]]) return nil;
     samples=[NSMutableDictionary dictionary]; voices=[NSMutableArray array];
-    cueNames=[NSMapTable weakToStrongObjectsMapTable];
+    cueNames=[NSMapTable weakToStrongObjectsMapTable];voiceGains=[NSMapTable weakToStrongObjectsMapTable];
     _soundVolume=1; _musicVolume=1; _stereo=YES;
     for (NSString *name in manifest[@"sounds"]) {
         NSString *file=manifest[@"sounds"][name][@"file"];
@@ -46,7 +48,11 @@ static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
     }
     tracks=[musicTracks copy];return self;
 }
-- (void)setSoundVolume:(float)value { _soundVolume=fmaxf(0,fminf(1,value)); }
+- (void)setSoundVolume:(float)value {
+    _soundVolume=fmaxf(0,fminf(1,value));
+    for(NSArray *pair in voices)for(AVAudioPlayer *player in pair)
+        player.volume=soundGain(_soundVolume)*[[voiceGains objectForKey:player] doubleValue];
+}
 - (void)setMusicVolume:(float)value {
     _musicVolume=fmaxf(0,fminf(1,value));
     // Original settings update Music1/2; Music3 retains MIDWorld default volume.
@@ -54,7 +60,7 @@ static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
 }
 - (BOOL)playCue:(NSString *)name { return [self playCue:name position:NAN]; }
 - (BOOL)playCue:(NSString *)name position:(double)position {
-    if (!samples[name] || paused || _soundVolume<=0) return NO;
+    if (!samples[name] || paused) return NO;
     NSIndexSet *finished=[voices indexesOfObjectsPassingTest:^BOOL(NSArray *pair,NSUInteger i,BOOL *stop) {
         return ![pair[0] isPlaying] && ![pair[1] isPlaying];
     }];
@@ -67,12 +73,13 @@ static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
     left.pan=-1;right.pan=1;
     double p=fmax(0,fmin(1,position));
     BOOL pan=_stereo && isfinite(position);
-    left.volume=_soundVolume*(pan?floor(sqrt(1-p)*256)/256:1);
-    right.volume=_soundVolume*(pan?floor(sqrt(p)*256)/256:1);
+    double leftGain=pan?floor(sqrt(1-p)*256)/256:1,rightGain=pan?floor(sqrt(p)*256)/256:1;
+    left.volume=soundGain(_soundVolume)*leftGain;right.volume=soundGain(_soundVolume)*rightGain;
     [left prepareToPlay];[right prepareToPlay];
     NSTimeInterval time=left.deviceCurrentTime+0.005;
     BOOL ok=[left playAtTime:time] && [right playAtTime:time];
     if (!ok) { [left stop];[right stop];return NO; }
+    [voiceGains setObject:@(leftGain) forKey:left];[voiceGains setObject:@(rightGain) forKey:right];
     [cueNames setObject:name forKey:left];
     [voices addObject:@[left,right]];return YES;
 }
