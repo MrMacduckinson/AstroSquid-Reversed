@@ -2291,7 +2291,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)mouseDown:(NSEvent *)event {
     if(!menuVisible||splashVisible||editingKey>=0)return;NSPoint p=[self menuPoint:event];
-    if([ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0&&p.x>=223&&p.x<423&&p.y>=254&&p.y<277) {
+    if([ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0&&p.x>=223&&p.x<423&&p.y>=255&&p.y<277) {
         scoreEditor.cursor=[ui scoreCursorAtX:p.x];[self refreshScoreEditor];return;
     }
     [self performMenuAction:[ui mouseDownX:p.x y:p.y]];

@@ -16,6 +16,17 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- `tests/text_cursor_host.sh` compares3027 original/host records:390 integer
+  GETSTRINGWIDTH measurements,2385 SETCURSORPOS positions and252 DOMOUSE/root
+  mouseDown routes. Cases include empty/space/MacRoman strings, long names,
+  five sizes and field edges. Font advances still accumulate as doubles;
+  metrics return the original truncated integer. Selection uses strict prefix
+  widths from field origin223, including original cursor-1 at the left edge.
+  Whole native DOMOUSE confirms hit bounds223<=x<423 and255<=y<277 after its
+  70-pixel overlay translation. Other sprite hits and raw mouse acquisition
+  are observers, as is the host Cocoa-to-menu transform. Widget glyph geometry,
+  long-name scrolling/clipping and cross-GPU pixels remain outside this proof.
+
 - `tests/card_text_host.sh` matches52 original GETREADY/ENDDIALOG/credits text
   commands: all16 ready briefings and all4 ending pages under two key-poll
   schedules, plus4 startup credits lines. MacRoman bytes, order and IEEE coordinates, sizes and RGBA

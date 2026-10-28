@@ -147,7 +147,7 @@
     NSData *bytes=[text dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:YES];
     const unsigned char *chars=bytes.bytes;NSArray *advance=_data[@"font"][@"advance"];double width=0;
     for(NSUInteger i=0;i<bytes.length;i++)width+=size*[advance[chars[i]] doubleValue];
-    return width;
+    return (int)width;
 }
 - (void)drawText:(NSString *)text x:(double)x baseline:(double)y size:(double)size texture:(AstroUITextureLoader)texture {
     NSData *bytes=[text dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:YES];
@@ -268,15 +268,10 @@
 }
 - (NSInteger)scoreCursorAtX:(double)x {
     NSString *name=self.editingName?:@"";
-    NSUInteger cursor=MIN((NSUInteger)MAX(self.editingCursor,0),name.length);
-    double offset=MAX(0,[self textWidth:[name substringToIndex:cursor] size:20]-196);
-    double position=x-225+offset;
-    for(NSUInteger i=0;i<name.length;i++) {
-        double left=[self textWidth:[name substringToIndex:i] size:20];
-        double right=[self textWidth:[name substringToIndex:i+1] size:20];
-        if(position<(left+right)/2)return i;
-    }
-    return name.length;
+    int position=(int)(x-223);NSInteger cursor=-1;
+    for(NSUInteger i=0;i<=name.length;i++)
+        if([self textWidth:[name substringToIndex:i] size:20]<position)cursor++;
+    return cursor;
 }
 - (NSString *)nameForKeyCode:(NSInteger)code {
     NSArray *names=_data[@"key_names"];NSInteger bit=code^7;

@@ -24,7 +24,7 @@ int main(int argc,const char **argv){@autoreleasepool{
     [ui animateTicks:120];assert(!ui.transitioning);
     assert([[ui mouseDownX:394 y:268] isEqual:@"New Game"]);[ui mouseUpX:0 y:0];
     [ui mouseDownX:394 y:268];assert(![ui mouseUpX:0 y:0]);
-    assert([ui textWidth:@" " size:16]==3.2);
+    assert([ui textWidth:@" " size:16]==3);
     assert((int)[ui textWidth:@" 12345" size:18]==59);
     assert([[ui briefingForStage:1 list:400] hasPrefix:@"Just another dull"]);
     assert([[ui briefingForStage:8 list:402] hasPrefix:@"That last bit"]);
