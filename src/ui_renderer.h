@@ -21,6 +21,8 @@ typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
 - (void)finishGameOverExit;
 @property(nonatomic) BOOL registered;
 @property(nonatomic,copy) NSString *registeredName;
+/* Root owns the original Pascal overflow and Stop/Continue policy. */
+@property(nonatomic,copy) NSString *(^registrationFooterText)(NSString *prefix,NSString *name);
 @property(nonatomic) NSInteger activeRegistrationField;
 - (AstroScoreEditor *)registrationFields;
 - (NSRect)registrationFieldBounds:(unsigned)index;

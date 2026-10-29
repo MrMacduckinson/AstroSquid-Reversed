@@ -132,7 +132,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     BOOL panelTransitionRender;
     int32_t visualSprites;
     double visualRate;
-    BOOL visualDebug,wallClockPoll,nestedWorldRender;
+    BOOL visualDebug,wallClockPoll,nestedWorldRender,stringOverflowActive;
     BOOL engineDebug,fullscreenRequested,graphicsReleased,spriteMapsPreloaded;
     NSString *screenshotBase;
     uint32_t simulationTick,lastSpawnTick;
@@ -339,6 +339,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     ui=[[AstroUIRenderer alloc] initWithAssets:path error:&error];
     if(!ui) {NSLog(@"Cannot load original interface: %@",error);return nil;}
     __weak AstroView *weakView=self;ui.readTick=^{return [weakView currentGameTick];};
+    ui.registrationFooterText=^NSString *(NSString *prefix,NSString *name){return [weakView registrationFooterWithPrefix:prefix name:name];};
     ui.registered=YES;ui.registeredName=@"MACSPB";registeredSerial=@"UACHCUFD";editingKey=-1;
     ui.unlockedLevel=MAX(1,MIN(16,[[NSUserDefaults standardUserDefaults] integerForKey:@"AstroSquidUnlockedLevel"]));
     int defaults[6]={55,58,126,125,123,124};memcpy(controlKeys,defaults,sizeof(defaults));
@@ -492,7 +493,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(consume)hudRedraws--;
 }
 - (void)drawRect:(NSRect)dirty {
-    if(graphicsReleased)return;
+    if(graphicsReleased||stringOverflowActive)return;
     [[self openGLContext] makeCurrentContext];
     NSRect bounds = [self convertRectToBacking:self.bounds];
     if(!spriteMapsPreloaded){
@@ -1883,7 +1884,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self advanceFlowWithKey:anyKey];
 }
 - (void)tickWallClock {
-    if(pauseLoopRunning||editingKey>=0)return;
+    if(stringOverflowActive||pauseLoopRunning||editingKey>=0)return;
     wallClockPoll=YES;@try {
         if(gameEndRequested){[self pollGame];return;}
         if(!menuVisible&&!paused&&!gameOver&&flow.phase==ASTRO_FLOW_PLAY){
@@ -1910,7 +1911,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
 }
 - (void)tick:(NSTimer *)sender {
-    if(pauseLoopRunning||editingKey>=0)return;
+    if(stringOverflowActive||pauseLoopRunning||editingKey>=0)return;
     if(campaignTestPath){[self driveCampaignTest];return;}
     if(!selftestPath){[self tickWallClock];return;}
     double now=[NSDate timeIntervalSinceReferenceDate];
@@ -2195,12 +2196,29 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     NSString *text=[[NSString alloc] initWithData:shown encoding:NSMacOSRomanStringEncoding];
     return [NSString stringWithFormat:@"\"%@\" (length %lu)",text,(unsigned long)operand.length];
 }
+- (void)stopForTextOverflow {terminationAllowed=YES;[self terminateApplication];}
+- (NSString *)registrationFooterWithPrefix:(NSString *)prefix name:(NSString *)name {
+    NSData *left=[prefix dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:YES];
+    NSData *right=[name dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:YES];
+    NSMutableData *joined=[left mutableCopy];[joined appendData:right];
+    if(joined.length>255){
+        if(![self continueScoreOverflow:left right:right]){[self stopForTextOverflow];return nil;}
+        // FBAddStrings copies backwards across its two overlapping 256-byte string slots.
+        NSMutableData *slots=[NSMutableData dataWithLength:MAX(257+right.length,1+left.length+right.length)];
+        unsigned char *bytes=slots.mutableBytes;memcpy(bytes+1,left.bytes,left.length);memcpy(bytes+257,right.bytes,right.length);
+        for(NSUInteger i=right.length;i>0;i--)bytes[left.length+i]=bytes[256+i];
+        joined.length=255;memcpy(joined.mutableBytes,bytes+1,255);
+    }
+    return [[NSString alloc]initWithData:joined encoding:NSMacOSRomanStringEncoding];
+}
 - (BOOL)continueScoreOverflow:(NSData *)left right:(NSData *)right {
+    BOOL previous=stringOverflowActive;stringOverflowActive=YES;@try {
     NSAlert *alert=[NSAlert new];alert.alertStyle=NSAlertStyleCritical;
     alert.messageText=@"Length >255 while adding strings:";
     alert.informativeText=[NSString stringWithFormat:@"%@ +\n%@",[self scoreOperandDescription:left],[self scoreOperandDescription:right]];
     [alert addButtonWithTitle:@"Stop"];[alert addButtonWithTitle:@"Continue"];
-    return [alert runModal]==NSAlertSecondButtonReturn;
+    return [alert runModal]!=NSAlertFirstButtonReturn;
+    } @finally {stringOverflowActive=previous;[[self openGLContext]makeCurrentContext];}
 }
 - (BOOL)resolveTextOverflow:(AstroScoreEditor *)editor byte:(unsigned)ch {
     size_t length=strlen(editor->name);
@@ -2212,7 +2230,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(left==255)second=[NSData dataWithBytes:&character length:1];
     else{[first appendBytes:&character length:1];second=[NSData dataWithBytes:editor->name+length-right length:right];}
     BOOL proceed=[self continueScoreOverflow:first right:second];
-    if(astro_score_editor_resolve_alert(editor,proceed)==ASTRO_SCORE_EDIT_STOP){terminationAllowed=YES;[NSApp terminate:nil];return NO;}
+    if(astro_score_editor_resolve_alert(editor,proceed)==ASTRO_SCORE_EDIT_STOP){[self stopForTextOverflow];return NO;}
     return YES;
 }
 - (BOOL)editScoreByte:(unsigned)ch {

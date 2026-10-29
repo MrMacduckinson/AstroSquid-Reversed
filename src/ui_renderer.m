@@ -331,7 +331,12 @@
     if(mainMenu){
         // DRAWGLMENU footer follows the menu anchor while its camera pans.
         NSRect r=[self bounds:mainMenu];double x=(int)(NSMidX(r)-310);
-        NSString *registration=self.registered?[(_data[@"labels"][@"223"]?:@"Registered to: ") stringByAppendingString:self.registeredName?:@""]:_data[@"labels"][@"165"];
+        NSString *registration=_data[@"labels"][@"165"];
+        if(self.registered){
+            NSString *prefix=_data[@"labels"][@"223"]?:@"Registered to: ",*name=self.registeredName?:@"";
+            registration=self.registrationFooterText?self.registrationFooterText(prefix,name):[prefix stringByAppendingString:name];
+            if(!registration)return;
+        }
         glColor4d(.8,.8,.8,1);
         [self drawText:registration x:x baseline:(int)(NSMidY(r)+215) size:10 texture:texture];
         [self drawText:_data[@"labels"][@"224"] x:x baseline:(int)(NSMidY(r)+230) size:10 texture:texture];
