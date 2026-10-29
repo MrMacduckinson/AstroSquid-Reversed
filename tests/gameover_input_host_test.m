@@ -71,16 +71,16 @@ static void event(char code){eventValue(code,0);}
         if(exit_case>=3)assert(highscores[0].score==100&&!strcmp(highscores[0].name,"ACB"));
     }
     [ui show:@"GameOver"];[ui animateTicks:60];ui.editingHighscore=1;ui.frameInterval=1;
-    menuVisible=gameOver=YES;gameEndRequested=NO;scoreKeyEvents=nil;astro_score_editor_begin(&scoreEditor);
+    menuVisible=gameOver=YES;gameEndRequested=NO;queuedKeyEvents=nil;astro_score_editor_begin(&scoreEditor);
     memset(scoreEditor.name,'A',255);scoreEditor.name[255]=0;scoreEditor.cursor=255;[self refreshScoreEditor];
     NSEvent *overflow=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:0 windowNumber:0 context:nil characters:@"BC" charactersIgnoringModifiers:@"BC" isARepeat:NO keyCode:0];
-    [self keyDown:overflow];[self keyDown:overflow];assert(!alerts&&scoreEditor.cursor==255);observedWallTick=1000;[self pollMenu];assert(!alerts&&scoreKeyEvents.count==2);
-    for(unsigned i=1;i<=2;i++){observedWallTick=999;[self pollMenu];assert(alerts==i&&scoreKeyEvents.count==2-i&&scoreEditor.cursor==255+(int)i&&strlen(scoreEditor.name)==255&&!scoreEditor.alert);}
+    [self keyDown:overflow];[self keyDown:overflow];assert(!alerts&&scoreEditor.cursor==255);observedWallTick=1000;[self pollMenu];assert(!alerts&&queuedKeyEvents.count==2);
+    for(unsigned i=1;i<=2;i++){observedWallTick=999;[self pollMenu];assert(alerts==i&&queuedKeyEvents.count==2-i&&scoreEditor.cursor==255+(int)i&&strlen(scoreEditor.name)==255&&!scoreEditor.alert);}
     fputs("PASS queued overflow waits for eligible frame and resolves once per event\n",stderr);
-    astro_score_editor_begin(&scoreEditor);[self refreshScoreEditor];scoreKeyEvents=[NSMutableArray arrayWithObject:[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:0 windowNumber:0 context:nil characters:@"X" charactersIgnoringModifiers:@"X" isARepeat:NO keyCode:7]];
+    astro_score_editor_begin(&scoreEditor);[self refreshScoreEditor];queuedKeyEvents=[NSMutableArray arrayWithObject:[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:0 windowNumber:0 context:nil characters:@"X" charactersIgnoringModifiers:@"X" isARepeat:NO keyCode:7]];
     [NSApp discardEventsMatchingMask:NSEventMaskAny beforeEvent:nil];
     for(unsigned i=0;i<2;i++)[NSApp postEvent:[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:i windowNumber:0 context:nil characters:i?@"B":@"A" charactersIgnoringModifiers:i?@"B":@"A" isARepeat:i!=0 keyCode:i?11:0] atStart:NO];
-    observedWallTick=1000;[self pollMenu];assert(!scoreEditor.name[0]&&scoreKeyEvents.count==1);
+    observedWallTick=1000;[self pollMenu];assert(!scoreEditor.name[0]&&queuedKeyEvents.count==1);
     observedWallTick=999;[self pollMenu];assert(!strcmp(scoreEditor.name,"X"));
     assert([NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO].keyCode==0);
     observedWallTick=999;[self pollMenu];assert(!strcmp(scoreEditor.name,"XA"));
@@ -88,6 +88,12 @@ static void event(char code){eventValue(code,0);}
     observedWallTick=999;[self pollMenu];assert(!strcmp(scoreEditor.name,"XAB"));
     assert(![NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO]);
     fputs("PASS GameOver pending Cocoa keys/repeat consumed at eligible field phase after earlier delivered events\n",stderr);
+    NSEvent *remaining=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:9 windowNumber:0 context:nil characters:@"Z" charactersIgnoringModifiers:@"Z" isARepeat:NO keyCode:6];
+    [self keyDown:remaining];assert(queuedKeyEvents.count==1);
+    [self finishGameOver];assert(queuedKeyEvents.count==1&&queuedKeyEvents[0]==remaining);
+    [NSApp postEvent:remaining atStart:NO];[self flushGameEvents];assert(!queuedKeyEvents.count);
+    assert(![NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO]);
+    fputs("PASS GameOver return retains unconsumed events until the game-loop flush clears delivered and pending keys\n",stderr);
     glDeleteFramebuffersEXT(1,&framebuffer);glDeleteTextures(1,&color);
 }
 @end
