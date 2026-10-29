@@ -2665,6 +2665,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 @property(strong) AstroView *view;
 @end
 @implementation AstroDelegate
+- (void)quitFromMenu:(id)sender {[self.view stopRuntime];}
 - (void)presentGameWindow {
     [self.window center];[NSApp activateIgnoringOtherApps:YES];
     if(![self.view startFullscreen])[self.window makeKeyAndOrderFront:nil];
@@ -2717,7 +2718,7 @@ int main(int argc,const char **argv) {
         AstroDelegate *delegate=[AstroDelegate new]; app.delegate=delegate;
         NSMenu *menu=[NSMenu new]; NSMenuItem *root=[NSMenuItem new]; [menu addItem:root];
         NSMenu *application=[NSMenu new];
-        [application addItemWithTitle:@"Quit AstroSquid" action:@selector(terminate:) keyEquivalent:@"q"];
+        NSMenuItem *quit=[application addItemWithTitle:@"Quit AstroSquid" action:@selector(quitFromMenu:) keyEquivalent:@"q"];quit.target=delegate;
         root.submenu=application; app.mainMenu=menu;
         [app run];
     }

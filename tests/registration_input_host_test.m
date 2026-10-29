@@ -174,6 +174,17 @@ static NSModalResponse commandModal(NSAlert *alert,SEL selector){
         assert(commandDialogs==beforeDialogs+1&&commandExits==beforeExits+!choice&&commandBeeps==beforeBeeps+(choice&&i!=0));
         assert(!commandSaves&&!quitRequested&&!stringOverflowActive&&!queuedKeyEvents.count&&!memcmp(beforeFields,fields,sizeof(beforeFields)));
     }
+    AstroDelegate *quitDelegate=[AstroDelegate new];quitDelegate.view=self;
+    NSMenu *quitMenu=[NSMenu new],*quitSubmenu=[NSMenu new];NSMenuItem *quitRoot=[NSMenuItem new];quitRoot.submenu=quitSubmenu;[quitMenu addItem:quitRoot];
+    NSMenuItem *quitItem=[quitSubmenu addItemWithTitle:@"Quit AstroSquid" action:@selector(quitFromMenu:) keyEquivalent:@"q"];quitItem.target=quitDelegate;NSApp.mainMenu=quitMenu;
+    for(unsigned repeat=0;repeat<2;repeat++){
+        unsigned beforeExits=commandExits,beforeDialogs=commandDialogs,beforeBeeps=commandBeeps;
+        [self keyDown:[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:NSEventModifierFlagCommand timestamp:0 windowNumber:0 context:nil characters:@"q" charactersIgnoringModifiers:@"q" isARepeat:repeat keyCode:12]];
+        serviceTick+=60;terminationAllowed=NO;quitRequested=NO;
+        @try {[self pollMainMenu];assert(0);}@catch(NSException *e){assert([e.name isEqual:@"CommandStopped"]);}
+        assert(commandExits==beforeExits+1&&commandDialogs==beforeDialogs&&commandBeeps==beforeBeeps&&!commandSaves&&!quitRequested&&!queuedKeyEvents.count);
+    }
+    puts("PASS matched menu Command-Q/repeat uses runtime exit without settings save, dialog, beep or game quit flag");
     method_setImplementation(modal,previousModal);commandChecking=NO;terminationAllowed=NO;
     puts("PASS 12 actual Root Stop/Continue command routes, no settings save, unchanged fields, and modal timer/draw freeze");
     NSApp.mainMenu=savedMenu;
