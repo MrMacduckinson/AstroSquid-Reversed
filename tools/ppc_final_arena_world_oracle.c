@@ -8,7 +8,7 @@ static FILE *input_file;static long input_size;static const char *data_directory
 static unsigned clock_reads,opens,records,map_records,scene_records;
 static int advancing,load_mode,start_mode,run_mode,chain_mode,loop_mode,resume_mode,mid_mode,mid_full,end_mode,end_full,resume_long,gameover_entry,gameover_reached,warm_mode;
 static unsigned warm_frames,panel_world_birth;
-static int real_hud,panel_mode,input_mode,panel_active;
+static int real_hud,panel_mode,input_mode,panel_active,cleanup_mode;
 static unsigned input_index;
 static const unsigned char panel_input[]={65,66,28,67,13};
 static Boolean panel_event(EventMask mask,EventRecord *event){assert(panel_active&&mask==0x28&&input_index<sizeof(panel_input));memset(event,0,sizeof(*event));event->what=keyDown;event->message=panel_input[input_index++];return true;}
@@ -32,7 +32,8 @@ void panel_ready(void){
  printf("F");for(unsigned i=0;i<4;i++){double v=*(double *)(g+0x5b2+i*8);if(i<2)v+=*(double *)(g+0xea2+i*8);printf("\t%016llx",(unsigned long long)ieee_word(v));}printf("\t%u\n",*(unsigned *)(g+0x5d2));
  printf("K\tpanel\t%u\t%u\t%u\n",clock_reads,*(unsigned *)(g+0xa4a),*(unsigned *)(g+0xa4e));gameover_reached=1;puts("W\tpanel-complete");if(input_mode){panel_active=1;return;}longjmp(loop_done,1);
 }
-void panel_save(void){assert(input_mode&&input_index==5);phase="panel-submit";snapshot();printf("V\t%u\t%u\t",clock_reads,*(unsigned *)(world_globals+0xa4a));hex(world_globals+0x6db,world_globals[0x6da]);putchar('\n');printf("Q\t%d\n",*(short *)(world_globals+0xa6c));for(unsigned i=1;i<=10;i++){unsigned char *name=*(unsigned char **)(world_globals+0xa6e)+i*256;printf("H\t%u\t%d\t",i,(*(int **)(world_globals+0xa72))[i]);hex(name+1,name[0]);putchar('\n');}puts("W\tinput-complete");longjmp(loop_done,1);}
+void panel_save(void){assert(input_mode&&input_index==5);phase="panel-submit";snapshot();printf("V\t%u\t%u\t",clock_reads,*(unsigned *)(world_globals+0xa4a));hex(world_globals+0x6db,world_globals[0x6da]);putchar('\n');printf("Q\t%d\n",*(short *)(world_globals+0xa6c));for(unsigned i=1;i<=10;i++){unsigned char *name=*(unsigned char **)(world_globals+0xa6e)+i*256;printf("H\t%u\t%d\t",i,(*(int **)(world_globals+0xa72))[i]);hex(name+1,name[0]);putchar('\n');}puts("W\tinput-complete");if(cleanup_mode)return;longjmp(loop_done,1);}
+static void panel_dispose(void *pointer){unsigned char *node=pointer;int done=cleanup_mode&&panel_active&&allocation(pointer)&&allocation(pointer)->size==308&&node[40]==12&&!memcmp(node+41,"GameOverFade",12);world_dispose(pointer);if(done){phase="panel-cleanup";snapshot();printf("Z\t%u\t%u\n",clock_reads,*(unsigned *)(world_globals+0xa4a));puts("W\tcleanup-complete");longjmp(loop_done,1);}}
 void gameover_enter(void){gameover_reached=1;phase="gameover-entry";snapshot();printf("K\tentry\t%u\t%u\t%u\n",clock_reads,*(unsigned *)(world_globals+0xa4a),*(unsigned *)(world_globals+0xa4e));longjmp(loop_done,1);}
 void end_sound(unsigned char *name){double pan=NAN;world_sound(name,&pan);}
 void loop_keys(void){unsigned k=(loop_step/8)%16;unsigned char *g=world_globals;set_short(g,0xaac,k&1?-1:0);set_short(g,0xaae,k&2?-1:0);set_short(g,0xaa8,k&4?-1:0);set_short(g,0xaaa,k&8?-1:0);set_short(g,0xab2,loop_step%7==0?-1:0);}
@@ -72,7 +73,7 @@ WRAP(panel_save) WRAP(panel_ready) WRAP(gameover_enter) WRAP(end_sound) WRAP(mid
 WRAP(arena_ready) WRAP(arena_system) WRAP(arena_folder) WRAP(arena_open) WRAP(arena_read) WRAP(arena_readfile)
 WRAP(arena_eof) WRAP(arena_length) WRAP(arena_close) WRAP(arena_stop) WRAP(arena_play)
 int main(int argc,char **argv){
-    real_hud=getenv("ASTRO_WORLD_REAL_HUD")!=NULL;panel_mode=getenv("ASTRO_WORLD_PANEL")!=NULL;input_mode=getenv("ASTRO_WORLD_PANEL_INPUT")!=NULL;assert(!input_mode||panel_mode);assert(!panel_mode||real_hud);
+    real_hud=getenv("ASTRO_WORLD_REAL_HUD")!=NULL;panel_mode=getenv("ASTRO_WORLD_PANEL")!=NULL;input_mode=getenv("ASTRO_WORLD_PANEL_INPUT")!=NULL;cleanup_mode=getenv("ASTRO_WORLD_PANEL_CLEANUP")!=NULL;assert(!cleanup_mode||input_mode);assert(!input_mode||panel_mode);assert(!panel_mode||real_hud);
     if(argc<6||argc>9)return 2;alarm(30);data_directory=argv[5];advancing=argc>=7;if(advancing)assert(!strcmp(argv[6],"advancing"));
     warm_mode=argc>=8&&!strncmp(argv[7],"resumewarm",10);gameover_entry=warm_mode||(argc>=8&&!strncmp(argv[7],"resumegameover",14));resume_long=gameover_entry||(argc>=8&&!strncmp(argv[7],"resumelong",10));end_full=argc>=8&&!strncmp(argv[7],"endfull",7);end_mode=argc>=8&&!strncmp(argv[7],"end",3);mid_full=argc>=8&&!strncmp(argv[7],"midfull",7);mid_mode=end_mode||(argc>=8&&!strncmp(argv[7],"mid",3));resume_mode=argc>=8&&!strncmp(argv[7],"resume",6);loop_mode=resume_mode||(argc>=8&&!strncmp(argv[7],"loop",4));chain_mode=argc>=8&&!strcmp(argv[7],"chain");run_mode=argc>=8&&!strncmp(argv[7],"run",3);start_mode=mid_mode||loop_mode||chain_mode||run_mode||(argc>=8&&!strncmp(argv[7],"start",5));load_mode=argc>=8&&(!strncmp(argv[7],"load",4)||start_mode);
     if(resume_long)alarm(180);if(panel_mode)assert(warm_mode);
@@ -86,7 +87,7 @@ int main(int argc,char **argv){
         if(warm_mode&&!strcmp(import_names[i],"Delay"))fn=warm_delay;
         if(warm_mode&&!strcmp(import_names[i],"ShowCursor"))fn=warm_cursor;
         if(!strcmp(import_names[i],"NewPtrClear"))fn=world_alloc;
-        if(!strcmp(import_names[i],"DisposePtr"))fn=world_dispose;
+        if(!strcmp(import_names[i],"DisposePtr"))fn=cleanup_mode?panel_dispose:world_dispose;
         descriptors[i][0]=(uint32_t)(uintptr_t)(fn?fn:missing_import);toc[i]=(uint32_t)(uintptr_t)descriptors[i];
     }toc[0]=(uint32_t)(uintptr_t)g;
     char path[2048];const struct {const char *name;int offset;} tables[]={{"Attr.bin",0xa94},{"sprt.bin",0xe82},{"Wpns.bin",0xa98}};
