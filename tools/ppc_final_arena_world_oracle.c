@@ -127,6 +127,12 @@ int main(int argc,char **argv){
         }
         unsigned char *stars=*(unsigned char **)(g+0xa54)+32;
         for(index=0;index<3000;index++){printf("T\t%u\t",index);hex(stars+index*32,32);putchar('\n');}
+        if(run_mode||(mid_mode&&getenv("ASTRO_WORLD_PRELUDE")))for(unsigned step=0;step<(run_mode?256u:64u);step++){
+            char label[32];snprintf(label,sizeof label,"run%u",step);phase=label;
+            unsigned keys=(step/8)%16;set_short(g,0xaac,keys&1?-1:0);set_short(g,0xaae,keys&2?-1:0);set_short(g,0xaa8,keys&4?-1:0);set_short(g,0xaaa,keys&8?-1:0);set_short(g,0xab2,step%7==0?-1:0);
+            invoke_fb(code+0x539b8,g,toc,NULL,NULL,NULL);invoke_fb(code+0x54c64,g,toc,NULL,NULL,NULL);
+            invoke_fb(code+0x3b55c,g,toc,NULL,NULL,NULL);invoke_fb(code+0x4c854,g,toc,NULL,NULL,NULL);snapshot();
+        }
         if(mid_mode){
             const struct {unsigned at;void *fn;} mh[]={{0x57afc,loop_noop_fb},{0x35eb8,loop_noop_fb},{0x43134,loop_noop_fb},{0x334bc,mid_observe_fb},{0x4cb28,loop_noop_fb},{0x4de74,loop_noop_fb}};
             for(unsigned j=0;j<sizeof(mh)/sizeof(mh[0]);j++)if(!real_hud||mh[j].at!=0x43134)jump_to(code+mh[j].at,mh[j].fn);MakeDataExecutable(code,433284);
@@ -140,12 +146,6 @@ int main(int argc,char **argv){
             for(unsigned j=0;j<sizeof(lh)/sizeof(lh[0]);j++)if(!real_hud||lh[j].at!=0x43134)jump_to(code+lh[j].at,lh[j].fn);MakeDataExecutable(code,433284);
             if(gameover_entry&&!warm_mode){jump_to(code+0x4cef0,gameover_enter_fb);MakeDataExecutable(code+0x4cef0,16);}
             strcpy(loop_label,"loop0");phase=loop_label;if(!setjmp(loop_done))invoke_fb(code+0x51a68,g,toc,NULL,NULL,NULL);if(gameover_entry)assert(gameover_reached);
-        }
-        if(run_mode)for(unsigned step=0;step<256;step++){
-            char label[32];snprintf(label,sizeof label,"run%u",step);phase=label;
-            unsigned keys=(step/8)%16;set_short(g,0xaac,keys&1?-1:0);set_short(g,0xaae,keys&2?-1:0);set_short(g,0xaa8,keys&4?-1:0);set_short(g,0xaaa,keys&8?-1:0);set_short(g,0xab2,step%7==0?-1:0);
-            invoke_fb(code+0x539b8,g,toc,NULL,NULL,NULL);invoke_fb(code+0x54c64,g,toc,NULL,NULL,NULL);
-            invoke_fb(code+0x3b55c,g,toc,NULL,NULL,NULL);invoke_fb(code+0x4c854,g,toc,NULL,NULL,NULL);snapshot();
         }
         fprintf(stderr,"LOAD %u%c maps%u scenes%u clocks%u RNG%08x\n",level,half,map_records,scene_records,clock_reads,*(unsigned *)(g+0x244));}return 0;
     }

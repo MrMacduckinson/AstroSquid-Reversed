@@ -107,6 +107,12 @@ static __weak AstroView *midView;
         unsigned index=0;unsigned char bytes[38];
         for(NSDictionary *m in mapPlacements){be64(bytes,number(m,@"x"));be64(bytes+8,number(m,@"y"));be64(bytes+16,number(m,@"width"));be64(bytes+24,number(m,@"height"));be16(bytes+32,[m[@"attribute"] intValue]);be32(bytes+34,[m[@"tag"] intValue]);printf("P\t%u\t",index++);dump(bytes,38);putchar('\n');}
         for(index=0;index<3000;index++){be64(bytes,stars[index].brightness);be64(bytes+8,stars[index].x);be64(bytes+16,stars[index].y);be64(bytes+24,stars[index].speed);printf("T\t%u\t",index);dump(bytes,32);putchar('\n');}
+        if(runMode||(midMode&&getenv("ASTRO_WORLD_PRELUDE"))){tickedScroll=1;for(unsigned step=0;step<(runMode?256u:64u);step++){
+            char label[32];snprintf(label,sizeof label,"run%u",step);tracePhase=label;
+            unsigned input=(step/8)%16;int controls[6]={55,58,126,125,123,124};memcpy(controlKeys,controls,sizeof controls);memset(keys,0,sizeof keys);keys[126]=(input&1)!=0;keys[125]=(input&2)!=0;keys[123]=(input&4)!=0;keys[124]=(input&8)!=0;keys[55]=step%7==0;
+            [self cleanupWorld];[self calculateActors];[self handleVisualEffects];[self makeNewSprites];
+            [self dumpWorldTrace:[NSString stringWithUTF8String:label]];
+        }}
         if(midMode){
             ui.musicVolume=1;menuVisible=paused=gameOver=NO;flow.phase=ASTRO_FLOW_PLAY;automatic=YES;tracePhase="mid0";[self beginGameLoop];
             if(endMode){campaign.level++;campaign.half=1;}else campaign.half=2;tickedScroll=0;[self beginStageTransition];
@@ -123,12 +129,6 @@ static __weak AstroView *midView;
                 printf("K\t%u\t%u\t%u\t%u\n",loopStep,compositeClocks,observedWallTick,worldRenderTick);if(respawnPending||gameEndRequested||campaignAction!=ASTRO_CAMPAIGN_NONE){printf("B\t%u\t%d\t%d\n",loopStep,gameEndRequested?1:(respawnPending||gameOverPending)?-1:0,campaignAction!=ASTRO_CAMPAIGN_NONE);break;}}
         }
         if(gameoverEntry)assert(gameoverReached);
-        if(runMode){tickedScroll=1;for(unsigned step=0;step<256;step++){
-            char label[32];snprintf(label,sizeof label,"run%u",step);tracePhase=label;
-            unsigned input=(step/8)%16;int controls[6]={55,58,126,125,123,124};memcpy(controlKeys,controls,sizeof controls);memset(keys,0,sizeof keys);keys[126]=(input&1)!=0;keys[125]=(input&2)!=0;keys[123]=(input&4)!=0;keys[124]=(input&8)!=0;keys[55]=step%7==0;
-            [self cleanupWorld];[self calculateActors];[self handleVisualEffects];[self makeNewSprites];
-            [self dumpWorldTrace:[NSString stringWithUTF8String:label]];
-        }}
         fprintf(stderr,"LOAD %u%c maps%lu scenes%lu clocks%u RNG%08x\n",level,half,(unsigned long)mapPlacements.count,(unsigned long)backgrounds.count,compositeClocks,randomSeed);}return;
     }
     randomSeed=123;camera=0;tickedScroll=0;[self createPlayerAtX:1400 y:180];playerCombat=(AstroCombatState){.kind=1,.hit_points=73};playerState.frame=1;
