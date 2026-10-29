@@ -16,6 +16,7 @@ static unsigned compositeClocks;static BOOL advancing,outerFrame;
 @end
 @implementation AstroView(CompositeArena)
 - (void)runCompositeArena:(const char *)phaseOutput {
+    BOOL inputs=phaseOutput&&!strcmp(phaseOutput,"outer-input256");
     [timer invalidate];timer=nil;[audio stop];audio=[[CompositeArenaAudio alloc]initWithAssets:assetPath error:NULL];assert(audio);
     entityIDs=[NSMapTable strongToStrongObjectsMapTable];nextEntityID=1;playerTraceID=1;
     world=[NSMutableArray array];enemies=[NSMutableArray array];visualEffects=[NSMutableArray array];mapPlacements=[NSMutableArray array];
@@ -29,14 +30,15 @@ static unsigned compositeClocks;static BOOL advancing,outerFrame;
         e->active=YES;if(!i)e->state.remove=-1;else e->hitPoints=71;[self prependEnemy:e];
     }
     camera=1234.25;ui.musicVolume=1;traceTick=100;tracePhase="before";[self dumpWorldTrace:@"before"];
-    outerFrame=phaseOutput&&(!strcmp(phaseOutput,"outer")||!strcmp(phaseOutput,"outer64")||!strcmp(phaseOutput,"outer-map256"));
+    outerFrame=phaseOutput&&(!strcmp(phaseOutput,"outer")||!strcmp(phaseOutput,"outer64")||!strcmp(phaseOutput,"outer-map256")||inputs);
     if(outerFrame){
         campaign.arena=1;observedWallTick=100;compositeClocks=0;tracePhase="outer";[self advanceWorldForWait:NO];[self dumpWorldTrace:@"outer"];
         assert(compositeClocks==211&&camera==1&&randomSeed==0xf8ce7428&&nextEntityID==33&&renderClock==52);
-        fprintf(stderr,"HOST outerbody camera%.17g clocks%u RNG%08x entities%u images%llu\n",camera,compositeClocks,randomSeed,nextEntityID,(unsigned long long)renderClock);if(strcmp(phaseOutput,"outer"))for(unsigned step=1;step<(!strcmp(phaseOutput,"outer-map256")?256u:64u);step++){
+        fprintf(stderr,"HOST outerbody camera%.17g clocks%u RNG%08x entities%u images%llu\n",camera,compositeClocks,randomSeed,nextEntityID,(unsigned long long)renderClock);if(strcmp(phaseOutput,"outer"))for(unsigned step=1;step<((!strcmp(phaseOutput,"outer-map256")||inputs)?256u:64u);step++){
             char label[32];snprintf(label,sizeof label,"follow%u",step);tracePhase=label;
+            if(inputs){unsigned input=(step/8)%16;int controls[6]={55,58,126,125,123,124};memcpy(controlKeys,controls,sizeof controls);inventory.weapon=playerWeapon=10;memset(keys,0,sizeof keys);keys[126]=(input&1)!=0;keys[125]=(input&2)!=0;keys[123]=(input&4)!=0;keys[124]=(input&8)!=0;keys[55]=step%7==0;}
             [self cleanupWorld];[self calculateActors];[self handleVisualEffects];
-            if(!strcmp(phaseOutput,"outer-map256"))[self makeNewSprites];
+            if(!strcmp(phaseOutput,"outer-map256")||inputs)[self makeNewSprites];
             [self dumpWorldTrace:[NSString stringWithUTF8String:label]];
         }
         return;
