@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 #include <setjmp.h>
 static jmp_buf credits_finished;
-static int reminder;
+static int reminder,endcards;
 static unsigned buttons;
 static unsigned char *card_globals;
 static unsigned card_case,texts,delays,polls,music_calls,swaps,gameovers,stops,plays;
@@ -30,7 +30,7 @@ static void card_delay(unsigned ticks,unsigned *final){assert(ticks==(reminder?3
 BRIDGE(card_text) BRIDGE(card_hud) BRIDGE(card_picture) BRIDGE(card_swap) BRIDGE(card_keys)
 BRIDGE(card_music) BRIDGE(card_stop) BRIDGE(card_play) BRIDGE(card_gameover)
 int main(int argc,char **argv){
-    if(argc!=4&&argc!=5)return 2;reminder=argc==5;assert(!reminder||!strcmp(argv[4],"reminder"));alarm(15);struct stat input;
+    if(argc!=4&&argc!=5)return 2;reminder=argc==5&&!strcmp(argv[4],"reminder");endcards=argc==5&&!strcmp(argv[4],"endcards");assert(argc==4||reminder||endcards);alarm(15);struct stat input;
     assert(!stat(argv[1],&input)&&input.st_size==455780&&!stat(argv[2],&input)&&input.st_size==11812);
     unsigned char *code=read_file(argv[1])+128,*lit=read_file(argv[2]),*g=calloc(1,0x1300),*heap=calloc(1,0x100000);assert(g&&heap);card_globals=g;
     uint32_t toc[489]={0};for(unsigned i=0;i<484;i++){
@@ -52,13 +52,25 @@ int main(int argc,char **argv){
     // Keep the real startup frame, skip services, stop at the credits' first swap.
     assert(*(uint32_t *)(code+0x654a0)==0x3be00001);
     *(uint32_t *)(code+0x654a0)=0x48000000|(0x65950-0x654a0);
+    if(endcards){
+        // Keep ENDOFLEVEL prologue; isolate card drawing from the separately tested animation.
+        assert(*(uint32_t *)(code+0x4edb4)==0x38600002&&*(uint32_t *)(code+0x4f6d8)==0x3be00be2);
+        *(uint32_t *)(code+0x4edb4)=0x48000000|(0x4f6d8-0x4edb4);
+        jump_to(code+0x529f8,card_hud_fb);jump_to(code+0x3e66c,card_hud_fb);jump_to(code+0x34edc,card_hud_fb);
+    }
     MakeDataExecutable(code,433284);
-    for(card_case=0;card_case<(reminder?6u:19u);card_case++){
+    for(card_case=0;card_case<(reminder?6u:endcards?8u:19u);card_case++){
         memset(g,0,0x1300);texts=delays=polls=music_calls=swaps=gameovers=stops=plays=0;
         *(void **)(g+0x21c)=lit;*(void **)(g+0x388)=heap;*(void **)(g+0x38c)=heap;*(void **)(g+0xeb6)=font_widths;
         *(double *)(g+0x378)=4503601774854144.;*(uint32_t *)(g+0x380)=0x43300000;
         *(int16_t *)(g+0xed6)=640;*(int16_t *)(g+0xed8)=480;
         *(int16_t *)(g+0xa82)=card_case<16?card_case/2+1:8;*(int16_t *)(g+0xa84)=card_case<16?card_case%2+1:2;*(int16_t *)(g+0xa0c)=1;*(int16_t *)(g+0xabc)=card_case%2;
+        if(endcards){
+            *(int16_t *)(g+0xa82)=card_case+1;*(int16_t *)(g+0xa84)=2;
+            invoke_fb(code+0x4eda0,g,toc,NULL,NULL,NULL);
+            assert(texts==2&&swaps==1&&!delays&&polls==card_case%3+1&&music_calls==polls);
+            assert(*(int16_t *)(g+0xa82)==card_case+2&&*(int16_t *)(g+0xa84)==1);continue;
+        }
         if(reminder){
             buttons=0;*(int16_t *)(g+0xa68)=7;
             invoke_fb(code+0x3e924,g,toc,NULL,NULL,NULL);
@@ -74,5 +86,5 @@ int main(int argc,char **argv){
         assert(texts==2*pages&&delays==pages&&swaps==pages&&polls==pages*(card_case%3+1)&&music_calls==polls);
         assert(gameovers==(card_case>=16)&&stops==(card_case<16)&&plays==(card_case<16&&card_case%2));
     }
-    CloseResFile(rf);fputs(reminder?"PASS6 original registration reminder schedules\n":"PASS19 original cards/credits:52 text commands, Delay60 per page, key/music polling and accepted-key music/GameOver boundary\n",stderr);return 0;
+    CloseResFile(rf);fputs(endcards?"PASS8 isolated original end cards:16 text commands\n":reminder?"PASS6 original registration reminder schedules\n":"PASS19 original cards/credits:52 text commands, Delay60 per page, key/music polling and accepted-key music/GameOver boundary\n",stderr);return 0;
 }

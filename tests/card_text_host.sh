@@ -11,3 +11,7 @@ trap 'rm "$scratch"' EXIT
 build/card_text_host_test assets > "$scratch"
 cmp tests/card_text_native.csv "$scratch"
 echo 'PASS52 original card/credits text commands: MacRoman bytes, order and exact IEEE coordinates/sizes/colors'
+
+build/card_text_host_test assets endcards > "$scratch"
+cmp tests/endcard_text_native.csv "$scratch"
+echo 'PASS16 original end-card text commands across eight stages'
