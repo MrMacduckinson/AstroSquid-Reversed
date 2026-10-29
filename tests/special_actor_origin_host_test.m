@@ -32,7 +32,8 @@ static AstroEnemy *origin;
     [timer invalidate];timer=nil;[audio stop];audio.soundVolume=audio.musicVolume=0;
     world=[NSMutableArray array];worldLeft=0;worldRight=640;worldTop=0;worldBottom=380;playerCombat.kind=1;playerBounds=(AstroRect){500,200,571,220};
     origin=[AstroEnemy new];ui.frameInterval=3;observing=YES;
-    for(int weapon=40;weapon<=50;weapon+=10){
+    for(int ending=0;ending<2;ending++)for(int weapon=40;weapon<=50;weapon+=10){
+        changingStage=ending;transition.allow_input=0;
         special=(AstroSpecial){0};specialReturnPending=specialLoopRunning=NO;reads=calculations=0;
         simulationTick=observedWallTick=worldRenderTick=100;lastPlayerShot=77;hudRedraws=0;inventory.specials=2;playerWeapon=weapon;
         origin->kind=1;origin->bounds=(AstroRect){20,30,91,50};origin->state.action_tick=9;
