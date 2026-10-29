@@ -55,6 +55,7 @@ int main(int argc,char **argv){
     set_pointer(g,0x21c,read_file(argv[2]));set_pointer(g,0x388,heap);set_pointer(g,0x38c,heap);
     set_double(g,0x368,3.14159265358979323846);set_double(g,0x378,4503601774854144.0);*(uint32_t *)(g+0x380)=0x43300000;
     set_short(g,0xed6,640);set_short(g,0xed8,480);set_short(g,0xa52,1);set_short(g,0xa82,8);set_short(g,0xa84,2);
+    set_pointer(g,0x1004,calloc(7,0x108)); /* FIREWEAPON scans six idle sound-channel names. */
     set_pointer(g,0xa54,calloc(3001*4,sizeof(double)));*(uint32_t *)(g+0x244)=123;set_short(g,0xabc,1);*(unsigned *)(g+0xa42)=0x1234;
     const struct {unsigned at;void *fn;} hooks[]={
         {0x24450,arena_system_fb},{0xce40,arena_folder_fb},{0xf064,arena_open_fb},{0x7160,arena_read_fb},

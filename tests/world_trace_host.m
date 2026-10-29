@@ -26,6 +26,10 @@ static unsigned entityID(id object){return object==[NSNull null]?playerTraceID:[
 @interface AstroTraceView : AstroView
 @end
 @implementation AstroTraceView
+- (void)prependEnemy:(AstroEnemy *)enemy {
+    if(entityIDs&&![entityIDs objectForKey:enemy])[entityIDs setObject:@(++nextEntityID) forKey:enemy];
+    [super prependEnemy:enemy];
+}
 - (uint32_t)currentGameTick {return simulationTick;}
 - (AstroEnemy *)entityForPlacement:(NSDictionary *)placement {
     AstroEnemy *e=[super entityForPlacement:placement];
