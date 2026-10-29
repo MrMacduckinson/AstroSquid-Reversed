@@ -96,6 +96,7 @@ int main(int argc,char **argv){
         set_short(g,0xa82,level);set_short(g,0xa84,half=='A'?1:2);tick=100;char load_label[24];snprintf(load_label,sizeof load_label,"load%u%c",level,half);phase=chain_mode?load_label:"load";
         invoke_fb(code+0x510c8,g,toc,(void *)(uintptr_t)level,NULL,NULL);
         if(start_mode){jump_to(code+0x4e004,arena_ready_fb);MakeDataExecutable(code+0x4e004,16);*(int32_t *)(g+0xa86)=1;invoke_fb(code+0x50bfc,g,toc,(void *)(uintptr_t)(chain?2:1),NULL,NULL);}
+        if(getenv("ASTRO_WORLD_FRACTIONAL_CAMERA")){set_double(g,0xea2,-.25);set_double(g,0xa1e,.25);set_double(g,0xa26,640.25);}
         snapshot();
         unsigned index=0;for(unsigned char *m=*(void **)(g+0x5ae);m;m=*(void **)(m+42)){
             assert(index<10000);printf("P\t%u\t",index++);hex(m,34);hex(m+38,4);putchar('\n');

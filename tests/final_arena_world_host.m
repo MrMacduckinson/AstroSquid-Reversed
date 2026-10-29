@@ -84,6 +84,7 @@ static __weak AstroView *midView;
             for(unsigned i=0;i<12000;i++){uint64_t v=0;for(unsigned j=0;j<8;j++)v=(v<<8)|b[i*8+j];memcpy((unsigned char *)stars+i*8,&v,8);}randomSeed=((uint32_t)b[96000]<<24)|((uint32_t)b[96001]<<16)|((uint32_t)b[96002]<<8)|b[96003];}
         [self resetLevelWorld];
         if(startMode){inventory.lives=1;playerTraceID=++nextEntityID;[self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;inventory.specials=1;}
+        if(getenv("ASTRO_WORLD_FRACTIONAL_CAMERA")){camera=worldLeft=.25;worldRight=640.25;}
         [self dumpWorldTrace:[NSString stringWithUTF8String:tracePhase]];
         unsigned index=0;unsigned char bytes[38];
         for(NSDictionary *m in mapPlacements){be64(bytes,number(m,@"x"));be64(bytes+8,number(m,@"y"));be64(bytes+16,number(m,@"width"));be64(bytes+24,number(m,@"height"));be16(bytes+32,[m[@"attribute"] intValue]);be32(bytes+34,[m[@"tag"] intValue]);printf("P\t%u\t",index++);dump(bytes,38);putchar('\n');}
