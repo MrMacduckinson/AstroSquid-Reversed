@@ -4,6 +4,7 @@
 #import <objc/runtime.h>
 static uint32_t serviceTick=1000;static unsigned serviceClockReads,serviceTickStep,commandBeeps;
 static NSMutableString *events;static BOOL observing,checkRegisterFocus,autoTest,autoHeld;
+static BOOL injectNestedMenu;
 static NSWindow *dispatchModalWindow;
 static BOOL observeIdleWait;static NSTimeInterval idleWait;
 @interface MainWaitApplication:AstroApplication @end
@@ -41,6 +42,10 @@ static NSModalResponse commandModal(NSAlert *alert,SEL selector){
 @end
 @interface RegistrationInputView:AstroView @end
 @implementation RegistrationInputView
+- (void)stepMenu {
+    if(injectNestedMenu){injectNestedMenu=NO;observedWallTick=999;[self pollMenu];}
+    [super stepMenu];
+}
 - (uint32_t)currentGameTick {return 1000;}
 - (void)signalUnhandledCommand {commandBeeps++;}
 - (void)checkCommandModalFreeze {
@@ -134,24 +139,31 @@ static NSModalResponse commandModal(NSAlert *alert,SEL selector){
     puts("PASS pending Cocoa key events retained while unfocused/closed gate and consumed one per eligible field frame, including repeat");
     [ui resetRegistrationFields];ui.activeRegistrationField=0;[self flushGameEvents];lastMainEventTick=0;
     for(NSString *ch in @[@"A",@"B",@"C"])[self queueCharacter:ch code:0 repeat:NO];
+    mainMenuFrames=mainMenuRate=0;
     observedWallTick=999;serviceTick=1000;serviceClockReads=0;[self pollMainMenu];
+    assert(mainMenuRate==1&&!mainMenuFrames);
     assert(!strcmp(fields[0].name,"A")&&queuedKeyEvents.count==1&&lastMainEventTick==1000&&serviceClockReads==3);
     observedWallTick=999;serviceTick=1059;serviceClockReads=0;[self pollMainMenu];
+    assert(mainMenuRate==1&&mainMenuFrames==1);
     assert(!strcmp(fields[0].name,"AC")&&!queuedKeyEvents.count&&lastMainEventTick==1000&&serviceClockReads==1);
     [self queueCharacter:@"D" code:2 repeat:NO];observedWallTick=1000;serviceTick=1060;serviceClockReads=0;[self pollMainMenu];
     assert(!strcmp(fields[0].name,"AC")&&!queuedKeyEvents.count&&lastMainEventTick==1060&&serviceClockReads==3);
+    assert(mainMenuRate==1&&!mainMenuFrames);
     [self queueCharacter:@"E" code:14 repeat:NO];serviceTick=2000;serviceClockReads=0;[self pollMenu];
     assert(queuedKeyEvents.count==1&&lastMainEventTick==1060&&!serviceClockReads);
-    paused=YES;[self pollMainMenu];paused=NO;assert(queuedKeyEvents.count==1&&!serviceClockReads);
+    paused=YES;[self pollMainMenu];paused=NO;assert(queuedKeyEvents.count==1&&!serviceClockReads&&!mainMenuFrames);
     [self flushGameEvents];ui.activeRegistrationField=-1;serviceTick=2000;serviceClockReads=0;serviceTickStep=1;
     NSEvent *pending=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:0 windowNumber:0 context:nil characters:@"P" charactersIgnoringModifiers:@"P" isARepeat:YES keyCode:35];
     [NSApp postEvent:pending atStart:YES];[self pollMainMenu];
     assert(lastMainEventTick==2002&&serviceClockReads==3&&!queuedKeyEvents.count);
     assert(![NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO]);
-    serviceTickStep=0;serviceTick=3000;
+    serviceTickStep=0;serviceTick=3000;mainMenuFrames=65535;observedWallTick=999;
     Class appClass=object_setClass(NSApp,[MainWaitApplication class]);observeIdleWait=YES;
     [self pollMainMenu];observeIdleWait=NO;object_setClass(NSApp,appClass);
-    assert(idleWait>0.02&&idleWait<=2.0/60.0&&lastMainEventTick==3000);
+    assert(idleWait>0.02&&idleWait<=2.0/60.0&&lastMainEventTick==3000&&!mainMenuFrames&&!mainMenuRate);
+    injectNestedMenu=YES;observedWallTick=999;serviceTick=3059;[self pollMainMenu];
+    assert(!injectNestedMenu&&mainMenuFrames==1&&mainMenuRate==0);
+    observedWallTick=1000;puts("PASS Main frame count: eligible/closed gates, 59/60 publication, nested/pause exclusion and low16 wrap");
     NSMenu *savedMenu=NSApp.mainMenu;NSApp.mainMenu=nil;[self flushGameEvents];
     for(unsigned i=0;i<2;i++){
         NSString *text=i?[NSString stringWithFormat:@"%C",(unichar)NSF1FunctionKey]:@"x";

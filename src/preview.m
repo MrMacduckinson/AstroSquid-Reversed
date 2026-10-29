@@ -146,7 +146,9 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     AstroUIRenderer *ui;
     NSString *navigationButton,*registeredSerial;
     NSMutableArray<NSEvent *> *queuedKeyEvents;
-    uint32_t lastMainEventTick;
+    uint32_t lastMainEventTick,mainMenuFrames;
+    uint16_t mainMenuRate;
+    BOOL countMainMenuFrame;
     AstroHUDRenderer *hud;
     BOOL menuVisible,splashVisible;
     uint64_t renderClock,playerRenderBirth;
@@ -1842,6 +1844,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [ui setButton:navigationButton pressed:NO];navigationButton=nil;menuMouseLatched=YES;
 }
 - (void)pollMenu {
+    BOOL countFrame=countMainMenuFrame;countMainMenuFrame=NO;
     if(splashVisible){[self pollSplash];return;}
     BOOL gameOverPanel=[ui.anchor isEqual:@"GameOver"];
     if(gameOverPanel)[self readKeyMap];
@@ -1867,6 +1870,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     BOOL moving=ui.transitioning||navigationButton!=nil;
     [self stepMenu];
     if(![ui.anchor isEqual:@"Pause"])[audio serviceMusic];
+    if(countFrame)mainMenuFrames++;
     if(overlay)observedWallTick=[self currentGameTick];
     AstroScoreEditor *fields=[ui registrationFields];
     if(!overlay&&!moving&&(fields[0].submitted||fields[1].submitted))[self handleMenuAction:@"RegOK" atPoint:[self currentMenuMousePoint]];
@@ -1879,7 +1883,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)pollMainMenu {
     BOOL outer=!splashVisible&&!paused&&!gameOver&&!gameLoopActive;
-    [self pollMenu];
+    BOOL previous=countMainMenuFrame;countMainMenuFrame=outer;
+    @try {[self pollMenu];}@finally {countMainMenuFrame=previous;}
     if(!outer||!menuVisible||gameLoopActive)return;
     uint32_t now=[self cardDelayClockTick];
     if((int32_t)(now-lastMainEventTick)<=59)return;
@@ -1903,6 +1908,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         }
     }else if(event)[NSApp sendEvent:event];
     lastMainEventTick=[self cardDelayClockTick];
+    mainMenuRate=(uint16_t)mainMenuFrames;mainMenuFrames=0;
 }
 - (void)signalUnhandledCommand {NSBeep();}
 - (void)consumePendingFieldEvent {
