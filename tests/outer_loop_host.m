@@ -5,7 +5,7 @@
 #undef main
 #include "outer_loop_cases.h"
 static unsigned scenario,reads,initialHUD;
-static BOOL observing,repeated;
+static BOOL observing,repeated,entryEnd;
 static void loopEvent(char name,uint32_t value,uint32_t cpu,uint32_t render){
     printf("%u,%c,%u,%u,%u,%u\n",scenario,name,reads,value,cpu,render);
 }
@@ -45,6 +45,7 @@ static __weak LoopView *loopView;
     for(scenario=0;scenario<sizeof(loop_cases)/sizeof(loop_cases[0]);scenario++){
         reads=0;hudRedraws=initialHUD;observedWallTick=worldRenderTick=lastSpawnTick=simulationTick=0;
         menuVisible=paused=gameOver=changingStage=respawnPending=gameEndRequested=gameLoopActive=NO;
+        gameEndRequested=entryEnd;
         flow.phase=ASTRO_FLOW_PLAY;respawnTick=invulnerableUntil=0;automatic=NO;
         campaignAction=ASTRO_CAMPAIGN_NONE;ui.frameInterval=loop_cases[scenario].interval;
         observing=YES;[self beginGameLoop];for(unsigned i=0;i<(repeated?64u:1u);i++)[self pollGame];assert(repeated||reads==loop_cases[scenario].count);[self loopEvent:'Z' value:(uint16_t)hudRedraws];observing=NO;
@@ -52,7 +53,7 @@ static __weak LoopView *loopView;
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
-    assert(argc>=2&&argc<=4);repeated=argc==4;assert(!repeated||!strcmp(argv[3],"repeat"));initialHUD=argc>=3?(unsigned)strtoul(argv[2],NULL,10):0;assert(initialHUD<=2);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
+    assert(argc>=2&&argc<=4);repeated=argc==4&&!strcmp(argv[3],"repeat");entryEnd=argc==4&&!strcmp(argv[3],"end");assert(argc<4||repeated||entryEnd);initialHUD=argc>=3?(unsigned)strtoul(argv[2],NULL,10):0;assert(initialHUD<=2);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
     [[NSUserDefaults standardUserDefaults] setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}} forName:NSArgumentDomain];
     LoopView *view=[[LoopView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(view);[view checkLoop];
 }}

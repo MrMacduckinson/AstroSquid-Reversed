@@ -13,7 +13,7 @@
 #include "imports.h"
 #include "../tests/outer_loop_cases.h"
 static unsigned char *globals;
-static unsigned scenario,reads,iterations;static int repeated;
+static unsigned scenario,reads,iterations;static int repeated,entry_end;
 static jmp_buf finished;
 static uint32_t descriptors[484][2];
 static void event(char name,uint32_t value){
@@ -47,7 +47,7 @@ static void jump_to(unsigned char *at,void *destination){
     w[0]=0x3d800000|(uint32_t)(p>>16);w[1]=0x618c0000|(p&65535);w[2]=0x7d8903a6;w[3]=0x4e800420;
 }
 int main(int argc,char **argv){
-    if(argc<3||argc>5)return 2;repeated=argc==5;assert(!repeated||!strcmp(argv[4],"repeat"));
+    if(argc<3||argc>5)return 2;repeated=argc==5&&!strcmp(argv[4],"repeat");entry_end=argc==5&&!strcmp(argv[4],"end");assert(argc<5||repeated||entry_end);
     unsigned overlay=argc>=4?(unsigned)strtoul(argv[3],NULL,10):0;assert(overlay<=2);alarm(15);
     unsigned char *code=read_file(argv[1],455780)+128,*literals=read_file(argv[2],11812),*heap=calloc(1,65536);
     globals=calloc(1,0x1300);assert(globals&&heap);uint32_t toc[489]={0};
@@ -65,6 +65,7 @@ int main(int argc,char **argv){
         *(void **)(globals+0x21c)=literals;*(void **)(globals+0x388)=heap;*(void **)(globals+0x38c)=heap;
         *(int16_t *)(globals+0xa52)=loop_cases[scenario].interval;
         *(int16_t *)(globals+0xa6a)=overlay;
+        *(int16_t *)(globals+0x58c)=entry_end;
         if(!setjmp(finished))invoke_fb(code+0x51a68,globals,toc,NULL,NULL,NULL);
         assert(repeated||reads==loop_cases[scenario].count);event('Z',*(uint16_t *)(globals+0xa6a));
     }

@@ -180,7 +180,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     double playerX,playerY,playerEntityX,playerEntityY;
     double previousTime,clockOrigin;
     uint32_t observedWallTick;
-    BOOL initialReadyCard,readyLoadPending;
+    BOOL initialReadyCard,readyLoadPending,firstGameLoopPoll;
     BOOL cardClockStarted;
     uint32_t cardDelayStartTick;
     double tickRemainder;
@@ -1630,6 +1630,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
 }
 - (void)beginGameLoop {
+    firstGameLoopPoll=YES;
     lastSpawnTick=[self playerClockTick];observedWallTick=[self playerClockTick];worldRenderTick=[self playerClockTick];
 }
 - (void)pollMapSpawns {
@@ -1642,7 +1643,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)pollGame {
     if(respawnTick){[self pollRespawnWaitFrame];return;}
     if(invulnerableUntil){[self pollNestedWorld];[self pollMapSpawns];if(!invulnerableUntil){[audio serviceMusic];[self readGameKeys];[self completeGameLoopIfRequested];}specialReturnPending=NO;return;}
-    if(gameEndRequested){[audio serviceMusic];[self pollMapSpawns];[self readGameKeys];[self completeGameLoopIfRequested];return;}
+    if(gameEndRequested&&!firstGameLoopPoll){[audio serviceMusic];[self pollMapSpawns];[self readGameKeys];[self completeGameLoopIfRequested];return;}
+    firstGameLoopPoll=NO;
     uint32_t comparison=[self playerClockTick];
     if((int32_t)(comparison-observedWallTick)>0){
         observedWallTick=[self playerClockTick];simulationTick=observedWallTick;
