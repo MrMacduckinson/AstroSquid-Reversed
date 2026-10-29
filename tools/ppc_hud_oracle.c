@@ -9,6 +9,7 @@
 #include "imports.h"
 #include "hud.h"
 #include <math.h>
+#include <assert.h>
 static uint32_t descriptors[484][2];
 static double color[4]={1,1,1,1};
 static unsigned char *sprites;
@@ -64,7 +65,11 @@ int main(int argc,char **argv){
         unsigned char player[128]={0};*(void **)(globals+0xa7a)=present?player:NULL;*(int16_t *)(player+88)=hp;
         *(int16_t *)(globals+0xa8a)=weapon;*(int16_t *)(globals+0xa8c)=upgrade;*(int16_t *)(globals+0xa8e)=ammo;*(int *)(globals+0xa86)=4;*(int *)(globals+0xa7e)=12345;
         sequence=0;*(void **)(globals+0x38c)=heap;
+        double camera_x=cases%2?-1234.25:1234.75,camera_y=cases%4<2?19.5:-19.5;
+        *(double *)(globals+0xea2)=camera_x;*(double *)(globals+0xeaa)=camera_y;
         invoke_fb(code+0x43134,globals,toc,NULL,NULL,NULL);
+        assert(*(double *)(globals+0xea2)==(double)(int32_t)camera_x);
+        assert(*(double *)(globals+0xeaa)==(double)(int32_t)camera_y);
         AstroHUDState state={present,hp,weapon,upgrade,ammo,4,12345};AstroHUDCommand ported[32];size_t n=astro_hud_commands(&state,ported,32);
         if(n!=sequence){fprintf(stderr,"Command count differs %lu %u\n",(unsigned long)n,sequence);return 1;}
         for(unsigned i=0;i<n;i++){
