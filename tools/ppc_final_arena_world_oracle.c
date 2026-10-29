@@ -3,9 +3,14 @@
 #include "ppc_world_oracle.c"
 #include <assert.h>
 #include <unistd.h>
+#include <setjmp.h>
 static FILE *input_file;static long input_size;static const char *data_directory;
 static unsigned clock_reads,opens,records,map_records,scene_records;
-static int advancing,load_mode,start_mode,run_mode,chain_mode;
+static int advancing,load_mode,start_mode,run_mode,chain_mode,loop_mode;
+static jmp_buf loop_done;static unsigned loop_step;static char loop_label[32];
+void loop_noop(void){}
+void loop_keys(void){unsigned k=(loop_step/8)%16;unsigned char *g=world_globals;set_short(g,0xaac,k&1?-1:0);set_short(g,0xaae,k&2?-1:0);set_short(g,0xaa8,k&4?-1:0);set_short(g,0xaaa,k&8?-1:0);set_short(g,0xab2,loop_step%7==0?-1:0);}
+void loop_misc(void){snapshot();printf("K\t%u\t%u\t%u\t%u\n",loop_step,clock_reads,*(unsigned *)(world_globals+0xa4a),*(unsigned *)(world_globals+0xa4e));if(*(short *)(world_globals+0x58c)||*(short *)(world_globals+0x5ac)){printf("B\t%u\t%d\t%d\n",loop_step,*(short *)(world_globals+0x58c),*(short *)(world_globals+0x5ac));longjmp(loop_done,1);}if(++loop_step==256)longjmp(loop_done,1);snprintf(loop_label,sizeof loop_label,"loop%u",loop_step);phase=loop_label;}
 void arena_ready(void){}
 static uint32_t arena_tick(void){unsigned index=clock_reads++;return tick+(advancing&&phase&&strcmp(phase,"before")?index:0);}
 int arena_system(int selector){assert(selector==1);return 123;}
@@ -36,11 +41,12 @@ void arena_close(int number){assert(number==1&&input_file&&!fclose(input_file));
 void arena_stop(void){puts("A\tstop");}
 void arena_play(unsigned handle){assert(handle==0x1234);puts("A\tplay2");}
 #define WRAP(name) extern void name##_fb(void); __asm__(".text\n.align 2\n.globl _" #name "_fb\n_" #name "_fb:\nmflr r0\nstw r0,8(r1)\nstwu r1,-64(r1)\nstw r2,20(r1)\nbl _" #name "\nlwz r2,20(r1)\naddi r1,r1,64\nlwz r0,8(r1)\nmtlr r0\nblr\n");
+WRAP(loop_noop) WRAP(loop_keys) WRAP(loop_misc)
 WRAP(arena_ready) WRAP(arena_system) WRAP(arena_folder) WRAP(arena_open) WRAP(arena_read) WRAP(arena_readfile)
 WRAP(arena_eof) WRAP(arena_length) WRAP(arena_close) WRAP(arena_stop) WRAP(arena_play)
 int main(int argc,char **argv){
     if(argc<6||argc>9)return 2;alarm(30);data_directory=argv[5];advancing=argc>=7;if(advancing)assert(!strcmp(argv[6],"advancing"));
-    chain_mode=argc>=8&&!strcmp(argv[7],"chain");run_mode=argc>=8&&!strncmp(argv[7],"run",3);start_mode=chain_mode||run_mode||(argc>=8&&!strncmp(argv[7],"start",5));load_mode=argc>=8&&(!strncmp(argv[7],"load",4)||start_mode);
+    loop_mode=argc>=8&&!strncmp(argv[7],"loop",4);chain_mode=argc>=8&&!strcmp(argv[7],"chain");run_mode=argc>=8&&!strncmp(argv[7],"run",3);start_mode=loop_mode||chain_mode||run_mode||(argc>=8&&!strncmp(argv[7],"start",5));load_mode=argc>=8&&(!strncmp(argv[7],"load",4)||start_mode);
     int inputs=argc==8&&!strcmp(argv[7],"outer-input256");
     unsigned char *code=read_file(argv[1])+128,*g=calloc(1,0x1300),*heap=calloc(1,0x100000);assert(g&&heap);world_globals=g;
     uint32_t toc[489]={0};for(int i=0;i<484;i++){
@@ -65,7 +71,7 @@ int main(int argc,char **argv){
     FSRef ref;ResFileRefNum rf;HFSUniStr255 fork;assert(!FSPathMakeRef((const UInt8 *)argv[3],&ref,NULL));assert(!FSGetResourceForkName(&fork));assert(!FSOpenResourceFile(&ref,fork.length,fork.unicode,fsRdPerm,&rf));UseResFile(rf);
     if(load_mode){for(unsigned chain=0;chain<(chain_mode?17u:1u);chain++){
         if(chain){invoke_fb(code+0x529f8,g,toc,NULL,NULL,NULL);invoke_fb(code+0x3e66c,g,toc,NULL,NULL,NULL);invoke_fb(code+0x34edc,g,toc,NULL,NULL,NULL);entity_birth=render_birth=0;}
-        unsigned level=0;char half=0,extra=0;if(chain_mode){level=chain/2+1;half=chain==16?'B':chain%2?'B':'A';}else assert(sscanf(argv[7]+(run_mode?3:start_mode?5:4),"%u%c%c",&level,&half,&extra)==2&&level>=1&&level<=9&&(half=='A'||half=='B'));
+        unsigned level=0;char half=0,extra=0;if(chain_mode){level=chain/2+1;half=chain==16?'B':chain%2?'B':'A';}else assert(sscanf(argv[7]+(loop_mode?4:run_mode?3:start_mode?5:4),"%u%c%c",&level,&half,&extra)==2&&level>=1&&level<=9&&(half=='A'||half=='B'));
         if(argc==9&&!chain){FILE *in=fopen(argv[8],"rb");assert(in);assert(fread(*(unsigned char **)(g+0xa54)+32,1,96000,in)==96000);assert(fread(g+0x244,1,4,in)==4&&fgetc(in)==EOF&&!fclose(in));}
         set_short(g,0xa82,level);set_short(g,0xa84,half=='A'?1:2);tick=100;char load_label[24];snprintf(load_label,sizeof load_label,"load%u%c",level,half);phase=chain_mode?load_label:"load";
         invoke_fb(code+0x510c8,g,toc,(void *)(uintptr_t)level,NULL,NULL);
@@ -76,6 +82,11 @@ int main(int argc,char **argv){
         }
         unsigned char *stars=*(unsigned char **)(g+0xa54)+32;
         for(index=0;index<3000;index++){printf("T\t%u\t",index);hex(stars+index*32,32);putchar('\n');}
+        if(loop_mode){
+            const struct {unsigned at;void *fn;} lh[]={{0x57afc,loop_noop_fb},{0x35eb8,loop_noop_fb},{0x43134,loop_noop_fb},{0x334bc,loop_noop_fb},{0x4cb28,loop_keys_fb},{0x4de74,loop_misc_fb}};
+            for(unsigned j=0;j<sizeof(lh)/sizeof(lh[0]);j++)jump_to(code+lh[j].at,lh[j].fn);MakeDataExecutable(code,433284);
+            strcpy(loop_label,"loop0");phase=loop_label;if(!setjmp(loop_done))invoke_fb(code+0x51a68,g,toc,NULL,NULL,NULL);
+        }
         if(run_mode)for(unsigned step=0;step<256;step++){
             char label[32];snprintf(label,sizeof label,"run%u",step);phase=label;
             unsigned keys=(step/8)%16;set_short(g,0xaac,keys&1?-1:0);set_short(g,0xaae,keys&2?-1:0);set_short(g,0xaa8,keys&4?-1:0);set_short(g,0xaaa,keys&8?-1:0);set_short(g,0xab2,step%7==0?-1:0);
