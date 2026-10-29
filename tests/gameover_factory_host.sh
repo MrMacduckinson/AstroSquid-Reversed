@@ -15,3 +15,7 @@ echo 'PASS80 original/host actual DataB1 field records: constructor clocks, geom
 build/gameover_factory_host_test assets advancing > "$scratch"
 cmp tests/gameover_factory_advancing_native.csv "$scratch"
 echo 'PASS80 original advancing-clock GameOver factory records'
+
+ASTRO_WORLD_REAL_HUD=1 build/gameover_factory_host_test assets advancing > "$scratch"
+cmp tests/gameover_factory_hud_native.csv "$scratch"
+echo "PASS2120 original/host GameOver factory records with real HUD lifecycle"
