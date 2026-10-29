@@ -32,7 +32,9 @@ def compare(native_path, host_path):
     for rows in (native, host):
         assert sum(r.startswith('U\t') for r in rows) == 3
         assert sum(r.startswith('F\t') for r in rows) == 1
-        required = PHASES if any(r.startswith('Q\t') for r in rows) else PHASES - {'panel-submit'}
+        qualified = any(r.startswith('Q\t') for r in rows)
+        assert ('F\tinactive' in rows) == (not qualified), 'field activation differs from score insertion'
+        required = PHASES if qualified else PHASES - {'panel-submit'}
         for phase in required:
             assert any(r.startswith('G\t') and r.split('\t')[2] == phase for r in rows)
     a, b = canonical(native, panel_ids), canonical(host)
