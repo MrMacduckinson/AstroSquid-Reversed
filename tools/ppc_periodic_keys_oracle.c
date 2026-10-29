@@ -6,9 +6,12 @@
 #include <unistd.h>
 #include <sys/stat.h>
 static unsigned char *g;static unsigned character,kind,reads,waits,ports,restores,fronts;static uint32_t now;
+static unsigned combined,queued;
+static void queued_event(EventRecord *event){assert(queued<6);memset(event,0,sizeof(*event));event->what=kind;event->message='A'+queued++;}
+static Boolean next_event(uint32_t mask,EventRecord *event){assert(combined&&mask==0x28u&&event==(void *)(g+0x168));queued_event(event);return true;}
 static uint32_t tick(void){reads++;return now;}
 /* CFM passes everyEvent sign-extended in r3; keep the full register here. */
-static Boolean wait_event(uint32_t mask,EventRecord *event,UInt32 sleep,RgnHandle region){assert(mask==0xffffffffu);assert(event==(void *)(g+0x168));assert(!sleep);assert(!region);waits++;memset(event,0,sizeof(*event));event->what=kind;event->message=character;return true;}
+static Boolean wait_event(uint32_t mask,EventRecord *event,UInt32 sleep,RgnHandle region){assert(mask==0xffffffffu);assert(event==(void *)(g+0x168));assert(!sleep);assert(!region);waits++;memset(event,0,sizeof(*event));event->what=kind;event->message=character;if(combined)queued_event(event);return true;}
 static Boolean dialog_event(const EventRecord *event){assert(event==(void *)(g+0x168));return false;}
 static void get_port(GrafPtr *p){ports++;*p=(void *)0x12345678;}
 static void set_port(GrafPtr p){assert(p==(void *)0x12345678);restores++;}
@@ -20,6 +23,7 @@ int main(int argc,char **argv){
   void *fn=missing_import;
   if(!strcmp(import_names[i],"TickCount"))fn=tick;
   if(!strcmp(import_names[i],"WaitNextEvent"))fn=wait_event;
+  if(!strcmp(import_names[i],"GetNextEvent"))fn=next_event;
   if(!strcmp(import_names[i],"IsDialogEvent"))fn=dialog_event;
   if(!strcmp(import_names[i],"GetPort"))fn=get_port;
   if(!strcmp(import_names[i],"SetPort"))fn=set_port;
@@ -37,5 +41,19 @@ int main(int argc,char **argv){
   assert(!memcmp(before,g+0x5b2,sizeof(before))&&*(void **)(g+0xa06)==(focus?g+0x5b2+(focus-1)*0x22a:NULL));
   assert(!*(uint32_t *)(g+0x184)&&!*(uint32_t *)(g+0x2c0));cases++;
  }
+ unsigned char *heap=calloc(1,0x100000);assert(heap);unsigned coupled=0;combined=1;
+ for(unsigned focus=0;focus<3;focus++)for(unsigned pre=0;pre<3;pre++)for(unsigned post=0;post<3;post++)for(unsigned repeat=0;repeat<2;repeat++){
+  memset(g,0,0x1400);*(void **)(g+0x21c)=lit;*(void **)(g+0x388)=heap;*(void **)(g+0x38c)=heap;
+  *(double *)(g+0x378)=4503601774854144.;*(uint32_t *)(g+0x380)=0x43300000;
+  unsigned char *field=focus?g+0x5b2+(focus-1)*0x22a:NULL;*(void **)(g+0xa06)=field;
+  now=1000;kind=repeat?5:3;queued=reads=waits=ports=restores=fronts=0;
+  for(unsigned i=0;i<pre&&field;i++){*(void **)(g+0x38c)=heap;invoke_fb(code+0x3ecf4,g,toc,NULL,NULL,NULL);}
+  unsigned dropped=queued;invoke_fb(code+0x24064,g,toc,NULL,NULL,NULL);
+  for(unsigned i=0;i<post&&field;i++){*(void **)(g+0x38c)=heap;invoke_fb(code+0x3ecf4,g,toc,NULL,NULL,NULL);}
+  assert(queued==1+(field?pre+post:0)&&reads==1&&waits==1);
+  if(field){assert(field[296]==pre+post&&*(short *)(field+36)==(int)(pre+post));for(unsigned i=0;i<pre+post;i++)assert((unsigned)field[297+i]=='A'+i+(i>=dropped));}
+  else assert(!g[0x6da]&&!g[0x904]);coupled++;
+ }
+ printf("PASS %u coupled field/periodic/field sequences: shared queue, one dropped event, preserved order, keyDown/autoKey; explicit call schedule\n",coupled);
  printf("PASS %u actual periodic key services: keyDown/autoKey bytes0..255, three custom-field focuses, tick wrap; event consumed and custom fields untouched; no TE/helper/Command/dialog\n",cases);return 0;
 }
