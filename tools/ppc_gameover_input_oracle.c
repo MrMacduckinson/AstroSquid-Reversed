@@ -24,7 +24,7 @@ static Handle input_resource(ResType type,short id){assert(type=='STR#'&&id==250
 static Boolean input_event(EventMask mask,EventRecord *record){
     assert(mask==0x28&&queued<sizeof(input));memset(record,0,sizeof(*record));record->what=keyDown;record->message=input[queued++];event_value('E',record->message);return true;
 }
-void exit_flush(void){assert(setup_reads==1+(exit_case>=3));if(exit_case<3)assert(!memcmp(exit_globals+0x5b2,saved_fields,sizeof(saved_fields)));recording=1;clock_reads=key_polls=queued=0;*(uint32_t *)(exit_globals+0xa4a)=1000;}
+void exit_flush(void){assert(setup_reads==1+(exit_case>=3));assert(*(void **)(exit_globals+0xa06)==(exit_case>=3?exit_globals+0x5b2:NULL));if(exit_case>=3)assert(*(double *)(exit_globals+0x7ec)==0);if(exit_case<3)assert(!memcmp(exit_globals+0x5b2,saved_fields,sizeof(saved_fields)));recording=1;clock_reads=key_polls=queued=0;*(uint32_t *)(exit_globals+0xa4a)=1000;}
 void exit_keys(void){unsigned any=exit_case>=3||++key_polls>=2;*(int16_t *)(exit_globals+0xab6)=any;event_value('K',any);}
 void exit_animate(void){event('A');}void exit_music(void){event('S');}
 void exit_world(void){event('R');}void exit_panel(void){event('O');}void exit_hud(void){event('H');}void exit_swap(void){event('W');}
@@ -54,8 +54,9 @@ int main(int argc,char **argv){
         *(void **)(g+0x21c)=lit;*(void **)(g+0x388)=heap;*(void **)(g+0x38c)=heap;*(double *)(g+0x378)=4503601774854144.;*(uint32_t *)(g+0x380)=0x43300000;
         if(exit_case<3)for(unsigned i=0;i<sizeof(saved_fields);i++)g[0x5b2+i]=(i*17+exit_case+31)&255;
         if(exit_case<3){g[0x6da]=0;*(short *)(g+0x5d6)=0;*(short *)(g+0x7da)=0;}
+        *(void **)(g+0xa06)=exit_case%3?g+0x5b2+(exit_case%3-1)*0x22a:NULL;
         memcpy(saved_fields,g+0x5b2,sizeof(saved_fields));setup_reads=0;
         *(int16_t *)(button_node+38)=900;recording=records=0;invoke_fb(code+0x4cef0,g,toc,NULL,NULL,NULL);event('Z');assert(clock_reads>1&&queued==(exit_case>=3?sizeof(input):0));
     }
-    DisposeHandle(strings);fputs("PASS6 actual GAMEOVER frame/input schedules; real GetNextEvent and field editing at intervals1/2/3; nonqualifying fields unchanged and no field initialization clock\n",stderr);return 0;
+    DisposeHandle(strings);fputs("PASS6 actual GAMEOVER frame/input schedules; real GetNextEvent and field editing at intervals1/2/3; incoming focus replaced by qualification, second width zero iff initialized; nonqualifying fields unchanged and no field initialization clock\n",stderr);return 0;
 }
