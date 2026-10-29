@@ -1705,7 +1705,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     lastSpawnTick=[self playerClockTick];observedWallTick=[self playerClockTick];worldRenderTick=[self playerClockTick];
 }
 - (void)pollMapSpawns {
-    if(menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY||changingStage)return;
+    if(menuVisible||paused||(gameOver&&!gameOverPending)||flow.phase!=ASTRO_FLOW_PLAY||changingStage)return;
     if(respawnTick){[self pollRespawnWait];return;}
     if(invulnerableUntil){[self pollRespawnBlink];if(invulnerableUntil)return;}
     uint32_t comparison=[self playerClockTick];
