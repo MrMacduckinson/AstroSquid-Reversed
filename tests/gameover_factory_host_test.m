@@ -4,6 +4,7 @@
 #undef main
 static NSPoint point;
 static unsigned factoryCase,reads;
+static BOOL advancing;
 static uint64_t word(double x){uint64_t b;memcpy(&b,&x,8);return b;}
 @interface FactoryView:AstroView
 - (void)checkFactory;
@@ -16,7 +17,7 @@ static uint64_t word(double x){uint64_t b;memcpy(&b,&x,8);return b;}
     [timer invalidate];timer=nil;[audio stop];splashVisible=NO;editingKey=-1;
     for(unsigned c=0;c<2;c++){
         factoryCase=c;reads=0;uint32_t tick=c?UINT32_MAX-10:1000;
-        ui.readTick=^uint32_t{printf("T,%u,%u,%u\n",factoryCase,reads++,tick);return tick;};
+        ui.readTick=^uint32_t{uint32_t value=tick+(advancing?reads:0);printf("T,%u,%u,%u\n",factoryCase,reads++,value);return value;};
         (void)ui.readTick();[ui show:@"GameOver"];[ui animateTicks:60];[ui prepareScoreField];
         [ui beginScoreClock:ui.readTick()];assert(reads==5);
         NSDictionary *states=[ui valueForKey:@"orbStates"],*deadlines=[ui valueForKey:@"hoverDeadlines"];
@@ -26,7 +27,7 @@ static uint64_t word(double x){uint64_t b;memcpy(&b,&x,8);return b;}
             const unsigned char *bytes=label.bytes;for(NSUInteger i=0;i<label.length;i++)printf("%02x",bytes[i]);
             printf(",%d,%d,%u,%d,%016llx,%016llx,%016llx,%016llx\n",[object[@"kind"] intValue],state->sprite,[deadlines[name] unsignedIntValue],state->counter,word(state->x),word(state->y),word(state->width),word(state->height));
         }assert(index==3);
-        NSRect r=ui.scoreField;AstroScoreCaret caret;[[ui valueForKey:@"caret"] getValue:&caret];assert(caret.deadline==tick+20u);
+        NSRect r=ui.scoreField;AstroScoreCaret caret;[[ui valueForKey:@"caret"] getValue:&caret];assert(caret.deadline==tick+20u+(advancing?4u:0u));
         printf("F,%u,%016llx,%016llx,%016llx,%016llx,%u\n",c,word(r.origin.x),word(r.origin.y),word(r.size.width),word(r.size.height),caret.deadline);
         assert(r.origin.y<184&&(int)r.origin.y==183);
         gameOver=menuVisible=YES;menuMouseLatched=YES;ui.editingHighscore=1;
@@ -42,7 +43,7 @@ static uint64_t word(double x){uint64_t b;memcpy(&b,&x,8);return b;}
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
-    assert(argc==2);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
+    assert(argc==2||argc==3);advancing=argc==3;assert(!advancing||!strcmp(argv[2],"advancing"));[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
     [[NSUserDefaults standardUserDefaults]setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}} forName:NSArgumentDomain];
     FactoryView *view=[[FactoryView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(view);[view checkFactory];
 }}

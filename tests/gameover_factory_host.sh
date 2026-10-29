@@ -11,3 +11,7 @@ trap 'rm "$scratch"' EXIT
 build/gameover_factory_host_test assets > "$scratch"
 cmp tests/gameover_factory_native.csv "$scratch"
 echo 'PASS80 original/host actual DataB1 field records: constructor clocks, geometry, wraparound and 62 mouse edges'
+
+build/gameover_factory_host_test assets advancing > "$scratch"
+cmp tests/gameover_factory_advancing_native.csv "$scratch"
+echo 'PASS80 original advancing-clock GameOver factory records'
