@@ -78,6 +78,17 @@ Current bounded evidence:
   origin. Pause/GameOver actual projection tests pass at 1x and 2x. This route
   still uses initial HP30000/Laser4 and stops before name submission/menu return.
 
+- The same controlled final route now continues through A/B/Left/C/Enter,
+  score insertion (ACB, 59007), panel cleanup, world destruction and menu
+  return: 2,741,184 canonical records match (ENDING_RETURN_VERIFIED).
+  Each repeated UI snapshot is mapped independently; native R fields are
+  checked against host P fields, including IEEE coordinates and deadlines.
+  A redundant native arena_play end-pre-card diagnostic on menu music is
+  checked against all 52 already-recorded menu objects before omission.
+  The final return clock is 2133871; menu RNG, 3000 stars, 52 UI objects,
+  registration carets and return protocol match. This remains an independent
+  high-health final-stage test, not a continuous ordinary-health campaign.
+
 - `tests/gameover_held_host.sh` matches171 records from three original GAMEOVER
   schedules with held mouse and queued A/B/Enter at intervals1/2/3. The original
   TRANS and DOMOUSE body execute; a validated PC-independent prologue trampoline
