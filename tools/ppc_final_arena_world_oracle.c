@@ -5,7 +5,7 @@
 #include <unistd.h>
 static FILE *input_file;static long input_size;static const char *data_directory;
 static unsigned clock_reads,opens,records,map_records,scene_records;
-static int advancing,load_mode,start_mode;
+static int advancing,load_mode,start_mode,run_mode;
 void arena_ready(void){}
 static uint32_t arena_tick(void){unsigned index=clock_reads++;return tick+(advancing&&phase&&strcmp(phase,"before")?index:0);}
 int arena_system(int selector){assert(selector==1);return 123;}
@@ -40,7 +40,7 @@ WRAP(arena_ready) WRAP(arena_system) WRAP(arena_folder) WRAP(arena_open) WRAP(ar
 WRAP(arena_eof) WRAP(arena_length) WRAP(arena_close) WRAP(arena_stop) WRAP(arena_play)
 int main(int argc,char **argv){
     if(argc<6||argc>9)return 2;alarm(30);data_directory=argv[5];advancing=argc>=7;if(advancing)assert(!strcmp(argv[6],"advancing"));
-    start_mode=argc>=8&&!strncmp(argv[7],"start",5);load_mode=argc>=8&&(!strncmp(argv[7],"load",4)||start_mode);
+    run_mode=argc>=8&&!strncmp(argv[7],"run",3);start_mode=run_mode||(argc>=8&&!strncmp(argv[7],"start",5));load_mode=argc>=8&&(!strncmp(argv[7],"load",4)||start_mode);
     int inputs=argc==8&&!strcmp(argv[7],"outer-input256");
     unsigned char *code=read_file(argv[1])+128,*g=calloc(1,0x1300),*heap=calloc(1,0x100000);assert(g&&heap);world_globals=g;
     uint32_t toc[489]={0};for(int i=0;i<484;i++){
@@ -63,7 +63,7 @@ int main(int argc,char **argv){
     for(unsigned i=0;i<sizeof(hooks)/sizeof(hooks[0]);i++)jump_to(code+hooks[i].at,hooks[i].fn);MakeDataExecutable(code,433284);
     FSRef ref;ResFileRefNum rf;HFSUniStr255 fork;assert(!FSPathMakeRef((const UInt8 *)argv[3],&ref,NULL));assert(!FSGetResourceForkName(&fork));assert(!FSOpenResourceFile(&ref,fork.length,fork.unicode,fsRdPerm,&rf));UseResFile(rf);
     if(load_mode){
-        unsigned level=0;char half=0,extra=0;assert(sscanf(argv[7]+(start_mode?5:4),"%u%c%c",&level,&half,&extra)==2&&level>=1&&level<=9&&(half=='A'||half=='B'));
+        unsigned level=0;char half=0,extra=0;assert(sscanf(argv[7]+(run_mode?3:start_mode?5:4),"%u%c%c",&level,&half,&extra)==2&&level>=1&&level<=9&&(half=='A'||half=='B'));
         if(argc==9){FILE *in=fopen(argv[8],"rb");assert(in);assert(fread(*(unsigned char **)(g+0xa54)+32,1,96000,in)==96000);assert(fread(g+0x244,1,4,in)==4&&fgetc(in)==EOF&&!fclose(in));}
         set_short(g,0xa82,level);set_short(g,0xa84,half=='A'?1:2);tick=100;phase="load";
         invoke_fb(code+0x510c8,g,toc,(void *)(uintptr_t)level,NULL,NULL);
@@ -74,6 +74,12 @@ int main(int argc,char **argv){
         }
         unsigned char *stars=*(unsigned char **)(g+0xa54)+32;
         for(index=0;index<3000;index++){printf("T\t%u\t",index);hex(stars+index*32,32);putchar('\n');}
+        if(run_mode)for(unsigned step=0;step<256;step++){
+            char label[32];snprintf(label,sizeof label,"run%u",step);phase=label;
+            unsigned keys=(step/8)%16;set_short(g,0xaac,keys&1?-1:0);set_short(g,0xaae,keys&2?-1:0);set_short(g,0xaa8,keys&4?-1:0);set_short(g,0xaaa,keys&8?-1:0);set_short(g,0xab2,step%7==0?-1:0);
+            invoke_fb(code+0x539b8,g,toc,NULL,NULL,NULL);invoke_fb(code+0x54c64,g,toc,NULL,NULL,NULL);
+            invoke_fb(code+0x3b55c,g,toc,NULL,NULL,NULL);invoke_fb(code+0x4c854,g,toc,NULL,NULL,NULL);snapshot();
+        }
         fprintf(stderr,"LOAD %u%c maps%u scenes%u clocks%u RNG%08x\n",level,half,map_records,scene_records,clock_reads,*(unsigned *)(g+0x244));return 0;
     }
     tick=100;phase="before";unsigned char *player=spawn(code,toc,1,1,1400,180);set_pointer(g,0xa7a,player);set_short(player,88,73);

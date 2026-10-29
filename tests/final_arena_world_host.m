@@ -17,7 +17,8 @@ static unsigned compositeClocks;static BOOL advancing,outerFrame;
 @end
 @implementation AstroView(CompositeArena)
 - (void)runCompositeArena:(const char *)phaseOutput {
-    BOOL startMode=phaseOutput&&!strncmp(phaseOutput,"start",5);
+    BOOL runMode=phaseOutput&&!strncmp(phaseOutput,"run",3);
+    BOOL startMode=runMode||(phaseOutput&&!strncmp(phaseOutput,"start",5));
     BOOL inputs=phaseOutput&&!strcmp(phaseOutput,"outer-input256");
     [timer invalidate];timer=nil;[audio stop];audio=[[CompositeArenaAudio alloc]initWithAssets:assetPath error:NULL];assert(audio);
     entityIDs=[NSMapTable strongToStrongObjectsMapTable];nextEntityID=1;playerTraceID=1;
@@ -25,7 +26,7 @@ static unsigned compositeClocks;static BOOL advancing,outerFrame;
     backgrounds=@[];parallaxData=[NSMutableData data];starsInitialized=YES;renderClock=0;simulationTick=100;
     campaign=(AstroCampaign){8,2,0,0};inventory=(AstroInventory){0};selectedLevel=[levels indexOfObject:@"Data 8B"];
     if(phaseOutput&&(!strncmp(phaseOutput,"load",4)||startMode)){
-        unsigned level=0;char half=0,extra=0;assert(sscanf(phaseOutput+(startMode?5:4),"%u%c%c",&level,&half,&extra)==2&&level>=1&&level<=9&&(half=='A'||half=='B'));
+        unsigned level=0;char half=0,extra=0;assert(sscanf(phaseOutput+(runMode?3:startMode?5:4),"%u%c%c",&level,&half,&extra)==2&&level>=1&&level<=9&&(half=='A'||half=='B'));
         selectedLevel=[levels indexOfObject:[NSString stringWithFormat:@"Data %u%c",level,half]];assert(selectedLevel!=NSNotFound);
         randomSeed=123;camera=-0.0;traceTick=100;tracePhase="load";compositeClocks=0;nextEntityID=playerTraceID=0;
         if(retainedStarPath){NSData *d=[NSData dataWithContentsOfFile:[NSString stringWithUTF8String:retainedStarPath]];assert(d.length==96004);const unsigned char *b=d.bytes;
@@ -36,6 +37,12 @@ static unsigned compositeClocks;static BOOL advancing,outerFrame;
         unsigned index=0;unsigned char bytes[38];
         for(NSDictionary *m in mapPlacements){be64(bytes,number(m,@"x"));be64(bytes+8,number(m,@"y"));be64(bytes+16,number(m,@"width"));be64(bytes+24,number(m,@"height"));be16(bytes+32,[m[@"attribute"] intValue]);be32(bytes+34,[m[@"tag"] intValue]);printf("P\t%u\t",index++);dump(bytes,38);putchar('\n');}
         for(index=0;index<3000;index++){be64(bytes,stars[index].brightness);be64(bytes+8,stars[index].x);be64(bytes+16,stars[index].y);be64(bytes+24,stars[index].speed);printf("T\t%u\t",index);dump(bytes,32);putchar('\n');}
+        if(runMode){tickedScroll=1;for(unsigned step=0;step<256;step++){
+            char label[32];snprintf(label,sizeof label,"run%u",step);tracePhase=label;
+            unsigned input=(step/8)%16;int controls[6]={55,58,126,125,123,124};memcpy(controlKeys,controls,sizeof controls);memset(keys,0,sizeof keys);keys[126]=(input&1)!=0;keys[125]=(input&2)!=0;keys[123]=(input&4)!=0;keys[124]=(input&8)!=0;keys[55]=step%7==0;
+            [self cleanupWorld];[self calculateActors];[self handleVisualEffects];[self makeNewSprites];
+            [self dumpWorldTrace:[NSString stringWithUTF8String:label]];
+        }}
         fprintf(stderr,"LOAD %u%c maps%lu scenes%lu clocks%u RNG%08x\n",level,half,(unsigned long)mapPlacements.count,(unsigned long)backgrounds.count,compositeClocks,randomSeed);return;
     }
     randomSeed=123;camera=0;tickedScroll=0;[self createPlayerAtX:1400 y:180];playerCombat=(AstroCombatState){.kind=1,.hit_points=73};playerState.frame=1;
