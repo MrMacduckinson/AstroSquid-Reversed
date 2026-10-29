@@ -106,6 +106,7 @@ int main(int argc,char **argv){
     for(unsigned i=0;i<3;i++){snprintf(path,sizeof(path),"%s/%s",argv[4],tables[i].name);set_pointer(g,tables[i].offset,read_file(path));}
     set_pointer(g,0x21c,read_file(argv[2]));set_pointer(g,0x388,heap);set_pointer(g,0x38c,heap);
     set_double(g,0x368,3.14159265358979323846);set_double(g,0x378,4503601774854144.0);*(uint32_t *)(g+0x380)=0x43300000;
+    if(getenv("ASTRO_WORLD_REGISTERED"))set_short(g,0xa0c,1);
     set_short(g,0xed6,640);set_short(g,0xed8,480);set_short(g,0xa52,1);set_short(g,0xa82,8);set_short(g,0xa84,2);
     set_pointer(g,0x1004,calloc(7,0x108)); /* FIREWEAPON scans six idle sound-channel names. */
     set_pointer(g,0xa54,calloc(3001*4,sizeof(double)));*(uint32_t *)(g+0x244)=123;set_short(g,0xabc,1);*(unsigned *)(g+0xa42)=0x1234;*(unsigned *)(g+0xa46)=0x5678;
