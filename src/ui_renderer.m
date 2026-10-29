@@ -225,7 +225,10 @@
     NSDictionary *anchor=[self object:@"Register Menu"];
     double x=[anchor[@"x"] doubleValue]-320,y=[anchor[@"y"] doubleValue];
     for(unsigned i=0;i<2;i++){
+        int submitted=_registrationFields[i].submitted;
         astro_score_editor_begin(&_registrationFields[i]);
+        // PUTCONTROLS clears only the first field's submit flag.
+        if(i)_registrationFields[i].submitted=submitted;
         _registrationBounds[i]=NSMakeRect(x,y+(i?250:195),200,22);
         astro_score_caret_begin(&_registrationCarets[i],self.readTick?self.readTick():0);
     }

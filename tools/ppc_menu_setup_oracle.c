@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 static unsigned profile,reads,allocs,file_records;
-static int visibility;
+static int visibility,lifecycle;
 static FILE *scene_file;static const char *scene_path;
 static unsigned char *allocated[52],*globals;static Handle strings;
 static uint64_t bits(double x){uint64_t b;memcpy(&b,&x,8);return b;}
@@ -29,7 +29,7 @@ int setup_eof(int number){assert(number==1&&scene_file);return ftell(scene_file)
 void setup_close(int number){assert(number==1&&scene_file&&!fclose(scene_file));scene_file=NULL;}
 BRIDGE(setup_system) BRIDGE(setup_folder) BRIDGE(setup_open) BRIDGE(setup_read) BRIDGE(setup_length) BRIDGE(setup_eof) BRIDGE(setup_close)
 int main(int argc,char **argv){
-    if(argc!=6&&argc!=7)return 2;visibility=argc==7;assert(!visibility||!strcmp(argv[6],"visibility"));alarm(60);struct stat st;
+    if(argc!=6&&argc!=7)return 2;visibility=argc==7&&!strcmp(argv[6],"visibility");lifecycle=argc==7&&!strcmp(argv[6],"lifecycle");assert(argc==6||visibility||lifecycle);alarm(60);struct stat st;
     const long sizes[]={455780,11812,6884,14014,52*308};for(unsigned i=1;i<6;i++)assert(!stat(argv[i],&st)&&st.st_size==sizes[i-1]);scene_path=argv[5];
     unsigned char *code=read_file(argv[1])+128,*lit=read_file(argv[2]),*raw=read_file(argv[3]),*table=read_file(argv[4]),*scene=read_file(argv[5]);
     unsigned char *heap=calloc(1,0x100000),*g=calloc(1,0x1400);double *stars=calloc(3001*4,8);assert(heap&&g&&stars);globals=g;
@@ -44,7 +44,20 @@ int main(int argc,char **argv){
         *(double *)(g+0x378)=4503601774854144.;*(uint32_t *)(g+0x380)=0x43300000;*(short *)(g+0xed6)=640;*(short *)(g+0xed8)=480;*(short *)(g+0xa52)=profile%3+1;*(short *)(g+0xcce)=16;*(uint32_t *)(g+0x244)=seeds[visibility?1:profile/3];
         *(double *)(g+0xea2)=profile/3==1?-1234.25:profile/3==2?33.25:0;*(double *)(g+0xeaa)=profile/3==1?19.5:profile/3==2?-44.5:0;
         if(visibility){*(short *)(g+0xa52)=1;*(short *)(g+0xcce)=profile%16+1;*(uint32_t *)(g+0x244)=0x12345678;*(double *)(g+0xea2)=*(double *)(g+0xeaa)=0;if(profile>=16)dummy_registration(g);printf("V,%u,%u,%u\n",profile,profile>=16,profile%16+1);}else printf("P,%u,%u,%u\n",profile,profile%3+1,seeds[profile/3]);
+        if(lifecycle){
+            memset(g+0x5b2,0xa5,0x454);
+            for(unsigned f=0;f<2;f++){unsigned char *field=g+0x5b2+f*0x22a;field[296]=3;memcpy(field+297,"ABC",3);*(short *)(field+36)=2;*(short *)(field+552)=9;}
+            *(void **)(g+0xa06)=profile%3?g+0x5b2+(profile%3-1)*0x22a:NULL;
+        }
         invoke_fb(code+0x64154,g,toc,NULL,NULL,NULL);assert(allocs==52&&file_records==52&&!scene_file);
+        if(lifecycle){
+            void *expected=profile%3?g+0x5b2+(profile%3-1)*0x22a:NULL;assert(*(void **)(g+0xa06)==expected);
+            for(unsigned f=0;f<2;f++){
+                unsigned char *field=g+0x5b2+f*0x22a;unsigned changed=0;for(unsigned j=0;j<255;j++)if(field[297+j]!=(j<3?"ABC"[j]:0xa5))changed++;
+                printf("L,%u,%u,%u,%d,%d,%d,%u,%u\n",profile,f,field[296],*(short *)(field+36),*(short *)(field+552),*(short *)(field+38),*(uint32_t *)(field+32),changed);
+                assert(!field[296]&&!*(short *)(field+36)&&*(short *)(field+552)==(f?9:0)&&*(short *)(field+38)==1);
+            }
+        }
         unsigned index=0;for(unsigned char *n=*(void **)(g+0xe86);n;n=*(void **)(n+300)){
             unsigned raw=0;while(raw<52&&allocated[raw]!=n)raw++;assert(raw<52);index++;printf("N,%u,%u,%d,%d,%u",profile,raw,*(short *)(n+38),*(int *)(n+296),*(uint32_t *)(n+34));for(unsigned a=0;a<4;a++)printf(",%016llx",bits(*(double *)(n+a*8)));putchar('\n');
         }assert(index==(visibility?52-(16-(profile%16+1))-(profile>=16):52));if(visibility)assert((*(short *)(g+0xa0c)!=0)==(profile>=16));

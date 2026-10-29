@@ -81,6 +81,14 @@ static NSModalResponse commandModal(NSAlert *alert,SEL selector){
     menuVisible=YES;splashVisible=paused=gameOver=NO;editingKey=-1;
     [ui show:@"Register Menu"];while(ui.transitioning)[ui advanceMenuCamera];ui.activeRegistrationField=0;
     observing=YES;AstroScoreEditor *fields=[ui registrationFields];
+    for(int focus=-1;focus<2;focus++){
+        ui.activeRegistrationField=focus;
+        for(unsigned i=0;i<2;i++){strcpy(fields[i].name,"ABC");fields[i].cursor=2;fields[i].submitted=9;}
+        [ui resetRegistrationFields];
+        assert(ui.activeRegistrationField==focus&&!fields[0].name[0]&&!fields[1].name[0]&&!fields[0].cursor&&!fields[1].cursor&&!fields[0].submitted&&fields[1].submitted==9);
+    }
+    fields[1].submitted=0;ui.activeRegistrationField=0;
+    puts("PASS registration reset preserves focus and second submit flag, clears names/cursors and first submit flag");
     [self queueCharacter:@"A" code:0 repeat:NO];[self queueCharacter:@"\t" code:48 repeat:NO];[self queueCharacter:@"B" code:11 repeat:NO];
     assert(!fields[0].name[0]&&!fields[1].name[0]&&queuedKeyEvents.count==3);
     [events setString:@""];observedWallTick=1000;[self pollMenu];assert(!events.length&&queuedKeyEvents.count==3);
