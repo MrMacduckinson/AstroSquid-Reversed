@@ -5,7 +5,7 @@ actual=gzip.open(sys.argv[1],"rb").read().decode("ascii").splitlines()
 expected=[]
 for profile,(seed,focus,interval,step) in enumerate(itertools.product((1000,940,0),range(3),(1,2,3,1000),range(3))):
     state={"reads":0,"frames":0,"queued":0,"stop":False}
-    text=[];last_frame=1000;last_service=seed;counter=0
+    text=[];last_frame=1000;last_service=seed;counter=0;published=0
     def record(kind,value):
         expected.append(",".join(str(x) for x in (profile,kind,value,state["reads"],state["frames"],state["queued"])))
     def tick():
@@ -21,9 +21,9 @@ for profile,(seed,focus,interval,step) in enumerate(itertools.product((1000,940,
             last_frame=tick();state["frames"]+=1;record("W",0);counter+=1
             if focus:event("F")
         if tick()-last_service>59:
-            tick();event("P");last_service=tick();counter=0
+            tick();event("P");last_service=tick();published=counter&65535;counter=0
         if state["stop"]:break
-    expected.append(",".join(str(x) for x in (profile,"Z",state["reads"],state["frames"],state["queued"],last_frame,last_service,counter,"".join(text))))
+    expected.append(",".join(str(x) for x in (profile,"Z",state["reads"],state["frames"],state["queued"],last_frame,last_service,counter,published,"".join(text))))
 assert len(actual)==len(expected),(len(actual),len(expected))
 for i,(a,b) in enumerate(zip(actual,expected)):
     assert a==b,"record%d: native %s / model %s"%(i,a,b)

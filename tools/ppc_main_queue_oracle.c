@@ -58,7 +58,7 @@ int main(int argc,char **argv){
   *(double *)(g+0x5c2)=*(double *)(g+0x7ec)=200;
   for(unsigned i=1;i<=3000;i++){stars[i*4]=80;stars[i*4+1]=(i*17)%640;stars[i*4+2]=(i*29)%480;stars[i*4+3]=i%5+1;}
   invoke_loop(code+0x66ce4,g,toc,service_ticks[seed]);
-  assert(reads>=80&&reads<86);printf("%u,Z,%u,%u,%u,%u,%u,%u,",profile,reads,frames,queued,*(uint32_t *)(g+0xa4a),*(uint32_t *)(g+0x1300),*(uint32_t *)(g+0x1304));
+  assert(reads>=80&&reads<86);printf("%u,Z,%u,%u,%u,%u,%u,%u,%u,",profile,reads,frames,queued,*(uint32_t *)(g+0xa4a),*(uint32_t *)(g+0x1300),*(uint32_t *)(g+0x1304),*(uint16_t *)(g+0x5a2));
   unsigned char *field=focus?g+0x5b2+(focus-1)*0x22a:NULL;if(field)for(unsigned i=0;i<field[296];i++)printf("%02x",field[297+i]);putchar('\n');profile++;
  }
  fprintf(stderr,"PASS %u actual Main queue schedules; frame and periodic gates retained, original consumers and MOVESTARS; renderer/window imports observed\n",profile);return 0;
