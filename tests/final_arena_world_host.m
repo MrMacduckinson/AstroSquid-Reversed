@@ -68,7 +68,7 @@ static __weak AstroView *midView;
             printf("B\t%u\t%d\t%d\n",loopStep,gameEndRequested?1:(respawnPending||gameOverPending)?-1:0,campaignAction!=ASTRO_CAMPAIGN_NONE);
             @throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];
         }
-        if(++loopStep==(resumeLong?1024:256))@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];
+        if(++loopStep==(gameoverEntry?4096:resumeLong?1024:256))@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];
         snprintf(resumeLabel,sizeof resumeLabel,"loop%u",loopStep);tracePhase=resumeLabel;
     }
 }
@@ -118,7 +118,7 @@ static __weak AstroView *midView;
             gameLoopActive=YES;menuVisible=paused=gameOver=changingStage=NO;flow.phase=ASTRO_FLOW_PLAY;automatic=YES;campaign.arena=0;
             int controls[6]={55,58,126,125,123,124};memcpy(controlKeys,controls,sizeof controls);memset(keys,0,sizeof keys);
             tracePhase="loop0";[self beginGameLoop];
-            if(resumeMode){loopStep=0;@try {while(loopStep<(resumeLong?1024:256))[self pollGame];}@catch(NSException *e){assert([e.name isEqual:@"TraceFinished"]);}}
+            if(resumeMode){loopStep=0;@try {while(loopStep<(gameoverEntry?4096:resumeLong?1024:256))[self pollGame];}@catch(NSException *e){assert([e.name isEqual:@"TraceFinished"]);}}
             else for(loopStep=0;loopStep<256;loopStep++){char label[32];snprintf(label,sizeof label,"loop%u",loopStep);tracePhase=label;[self pollGame];[self dumpWorldTrace:[NSString stringWithUTF8String:label]];
                 printf("K\t%u\t%u\t%u\t%u\n",loopStep,compositeClocks,observedWallTick,worldRenderTick);if(respawnPending||gameEndRequested||campaignAction!=ASTRO_CAMPAIGN_NONE){printf("B\t%u\t%d\t%d\n",loopStep,gameEndRequested?1:(respawnPending||gameOverPending)?-1:0,campaignAction!=ASTRO_CAMPAIGN_NONE);break;}}
         }
