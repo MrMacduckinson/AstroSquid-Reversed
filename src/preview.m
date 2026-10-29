@@ -1519,7 +1519,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         do {speed*=1.4;transition.scroll_x=speed;[self waitForTransitionTicks:10];transition.scale-=.005;}
         while(speed<=200);
         transition.phase=ASTRO_TRANSITION_CRUISE;[self waitForTransitionTicks:20];
-        departureTrail=YES;playerState.frame=15;
+        departureTrail=YES;
         astro_visual_change(&playerVisual,15,spriteInfo,1001,[self playerClockTick]);
         departureGlow=astro_transition_departure_glow(playerVisual.x,playerVisual.y,playerVisual.width,playerVisual.height);
         departureTrailBirth=++renderClock;departureTrailTick=[self playerClockTick]+(uint32_t)spriteInfo[116].delay;
@@ -1565,7 +1565,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(transition.events&ASTRO_TRANSITION_HYPER_SOUND)[audio playCue:@"Hyper"];
     if(transition.events&ASTRO_TRANSITION_BANG_SOUND)[audio playCue:@"Bang3"];
     if(transition.events&ASTRO_TRANSITION_TRAIL_SPRITE) {
-        departureTrail=YES;playerState.frame=15;
+        departureTrail=YES;
         astro_visual_change(&playerVisual,15,spriteInfo,1001,[self playerClockTick]);
         departureGlow=astro_transition_departure_glow(playerVisual.x,playerVisual.y,playerVisual.width,playerVisual.height);
         departureTrailBirth=++renderClock;departureTrailTick=[self playerClockTick]+(uint32_t)spriteInfo[116].delay;
