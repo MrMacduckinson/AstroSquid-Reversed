@@ -137,6 +137,11 @@ int main(int argc,char **argv){
             invoke_fb(code+0x539b8,g,toc,NULL,NULL,NULL);invoke_fb(code+0x54c64,g,toc,NULL,NULL,NULL);
             invoke_fb(code+0x3b55c,g,toc,NULL,NULL,NULL);invoke_fb(code+0x4c854,g,toc,NULL,NULL,NULL);snapshot();
         }
+        if(mid_mode&&getenv("ASTRO_WORLD_MARKER")){
+            assert(level==1&&half=='A');set_double(g,0xea2,-10700);set_double(g,0xa1e,10700);set_double(g,0xa26,11340);
+            invoke_fb(code+0x4c854,g,toc,NULL,NULL,NULL);invoke_fb(code+0x54c64,g,toc,NULL,NULL,NULL);
+            assert(*(short *)(g+0x5ac)==1);phase="marker-trigger";snapshot();return 0;
+        }
         if(mid_mode){
             const struct {unsigned at;void *fn;} mh[]={{0x57afc,loop_noop_fb},{0x35eb8,loop_noop_fb},{0x43134,loop_noop_fb},{0x334bc,mid_observe_fb},{0x4cb28,loop_noop_fb},{0x4de74,loop_noop_fb}};
             for(unsigned j=0;j<sizeof(mh)/sizeof(mh[0]);j++)if(!real_hud||mh[j].at!=0x43134)jump_to(code+mh[j].at,mh[j].fn);MakeDataExecutable(code,433284);

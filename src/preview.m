@@ -1306,6 +1306,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     previousPlayerBounds=playerBounds;
     playerBounds=(AstroRect){(int16_t)(int)playerVisual.x,(int16_t)(int)playerVisual.y,
         (int16_t)(int)(playerVisual.x+playerVisual.width),(int16_t)(int)(playerVisual.y+playerVisual.height)};
+    if(playerBounds.left>worldRight+100||playerBounds.right<worldLeft-10)playerCombat.remove=1;
     playerCombat.velocity=playerVelocity;
     [self checkCollisionsFor:[NSNull null]];
     if(![self updatePlayerMotion:&playerState velocity:&playerVelocity bounds:playerBounds width:playerVisual.width height:playerVisual.height])return;
@@ -1326,7 +1327,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if((int32_t)(comparison-actor->update_tick)<=0)return NO;
     actor->velocity=*velocity;
     astro_player_move(actor,controls,1,bounds,width,height,
-        (AstroViewport){worldLeft,worldTop,worldRight,worldBottom},changingStage);
+        (AstroViewport){worldLeft,worldTop,worldRight,worldBottom},changingStage||campaignAction!=ASTRO_CAMPAIGN_NONE);
     *velocity=actor->velocity;return YES;
 }
 - (void)firePlayerWeapons {
