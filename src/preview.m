@@ -2506,13 +2506,18 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)beginGameOver {
     gameOver=YES;gameOverPending=NO;menuVisible=NO;ui.editingHighscore=0;
     AstroFlowPhase savedPhase=flow.phase;flow.phase=ASTRO_FLOW_PLAY;
+    BOOL previousClockLoop=transitionLoopRunning;
+    if((selftestPath||campaignTestPath)&&!previousClockLoop){transitionSimulationOrigin=simulationTick;transitionRealOrigin=[self currentGameTick];}
+    transitionLoopRunning=YES;@try {
+    (void)[self playerClockTick];
     for(int milliseconds=10;milliseconds<=100;milliseconds+=10){
-        simulationTick=[self currentGameTick];[self cleanupWorld];
+        [self cleanupWorld];
         [self calculateActors];[self handleVisualEffects];
         simulationRender=YES;[self display];simulationRender=NO;
         [self delayGameTicks:(uint32_t)(milliseconds*60/1000)];
     }
-    flow.phase=savedPhase;simulationTick=[self currentGameTick];
+    } @finally {transitionLoopRunning=previousClockLoop;}
+    flow.phase=savedPhase;
     [self setGameCursorHidden:NO];menuVisible=YES;[ui show:@"GameOver"];[self drawPanelTransition];
     ui.editingHighscore=astro_scores_qualifies(highscores,score)?1:0;
     if(ui.editingHighscore>0){
