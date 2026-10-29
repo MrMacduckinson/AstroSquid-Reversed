@@ -6,7 +6,7 @@
 #include <setjmp.h>
 static FILE *input_file;static long input_size;static const char *data_directory;
 static unsigned clock_reads,opens,records,map_records,scene_records;
-static int advancing,load_mode,start_mode,run_mode,chain_mode,loop_mode,resume_mode,mid_mode,mid_full;
+static int advancing,load_mode,start_mode,run_mode,chain_mode,loop_mode,resume_mode,mid_mode,mid_full,end_mode;
 static jmp_buf loop_done;static unsigned loop_step;static char loop_label[32];
 void loop_noop(void){}
 void loop_keys(void){unsigned k=(loop_step/8)%16;unsigned char *g=world_globals;set_short(g,0xaac,k&1?-1:0);set_short(g,0xaae,k&2?-1:0);set_short(g,0xaa8,k&4?-1:0);set_short(g,0xaaa,k&8?-1:0);set_short(g,0xab2,loop_step%7==0?-1:0);}
@@ -47,7 +47,7 @@ WRAP(arena_ready) WRAP(arena_system) WRAP(arena_folder) WRAP(arena_open) WRAP(ar
 WRAP(arena_eof) WRAP(arena_length) WRAP(arena_close) WRAP(arena_stop) WRAP(arena_play)
 int main(int argc,char **argv){
     if(argc<6||argc>9)return 2;alarm(30);data_directory=argv[5];advancing=argc>=7;if(advancing)assert(!strcmp(argv[6],"advancing"));
-    mid_full=argc>=8&&!strncmp(argv[7],"midfull",7);mid_mode=argc>=8&&!strncmp(argv[7],"mid",3);resume_mode=argc>=8&&!strncmp(argv[7],"resume",6);loop_mode=resume_mode||(argc>=8&&!strncmp(argv[7],"loop",4));chain_mode=argc>=8&&!strcmp(argv[7],"chain");run_mode=argc>=8&&!strncmp(argv[7],"run",3);start_mode=mid_mode||loop_mode||chain_mode||run_mode||(argc>=8&&!strncmp(argv[7],"start",5));load_mode=argc>=8&&(!strncmp(argv[7],"load",4)||start_mode);
+    end_mode=argc>=8&&!strncmp(argv[7],"end",3);mid_full=argc>=8&&!strncmp(argv[7],"midfull",7);mid_mode=end_mode||(argc>=8&&!strncmp(argv[7],"mid",3));resume_mode=argc>=8&&!strncmp(argv[7],"resume",6);loop_mode=resume_mode||(argc>=8&&!strncmp(argv[7],"loop",4));chain_mode=argc>=8&&!strcmp(argv[7],"chain");run_mode=argc>=8&&!strncmp(argv[7],"run",3);start_mode=mid_mode||loop_mode||chain_mode||run_mode||(argc>=8&&!strncmp(argv[7],"start",5));load_mode=argc>=8&&(!strncmp(argv[7],"load",4)||start_mode);
     int inputs=argc==8&&!strcmp(argv[7],"outer-input256");
     unsigned char *code=read_file(argv[1])+128,*g=calloc(1,0x1300),*heap=calloc(1,0x100000);assert(g&&heap);world_globals=g;
     uint32_t toc[489]={0};for(int i=0;i<484;i++){
@@ -84,10 +84,10 @@ int main(int argc,char **argv){
         unsigned char *stars=*(unsigned char **)(g+0xa54)+32;
         for(index=0;index<3000;index++){printf("T\t%u\t",index);hex(stars+index*32,32);putchar('\n');}
         if(mid_mode){
-            const struct {unsigned at;void *fn;} mh[]={{0x57afc,loop_noop_fb},{0x35eb8,loop_noop_fb},{0x43134,loop_noop_fb},{0x334bc,mid_observe_fb}};
+            const struct {unsigned at;void *fn;} mh[]={{0x57afc,loop_noop_fb},{0x35eb8,loop_noop_fb},{0x43134,loop_noop_fb},{0x334bc,mid_observe_fb},{0x4cb28,loop_noop_fb},{0x4de74,loop_noop_fb}};
             for(unsigned j=0;j<sizeof(mh)/sizeof(mh[0]);j++)jump_to(code+mh[j].at,mh[j].fn);MakeDataExecutable(code,433284);
             strcpy(loop_label,"mid0");phase=loop_label;(void)arena_tick();*(unsigned *)(g+0xa4a)=arena_tick();*(unsigned *)(g+0xa4e)=arena_tick();set_double(g,0xa58,0);set_short(g,0x5ac,1);*(unsigned *)(g+0xa3e)=0x4321;
-            if(!setjmp(loop_done))invoke_fb(code+0x4e9c4,g,toc,NULL,NULL,NULL);
+            if(!setjmp(loop_done))invoke_fb(code+(end_mode?0x4eda0:0x4e9c4),g,toc,NULL,NULL,NULL);
             if(mid_full){set_short(g,0xa84,2);phase="mid-end";snapshot();printf("K\tend\t%u\t%u\t%u\n",clock_reads,*(unsigned *)(g+0xa4a),*(unsigned *)(g+0xa4e));}
         }
         if(loop_mode){

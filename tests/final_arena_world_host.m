@@ -2,7 +2,7 @@
 #define ASTRO_WORLD_TRACE_LIBRARY
 #include "world_trace_host.m"
 static const char *retainedStarPath;
-static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode,resumeMode,midMode,midFull;static unsigned loopStep;static char resumeLabel[32];
+static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode,resumeMode,midMode,midFull,endMode;static unsigned loopStep;static char resumeLabel[32];
 static __weak AstroView *midView;
 @interface AstroView(MidCapture)
 - (void)captureMidFrame;
@@ -43,7 +43,7 @@ static __weak AstroView *midView;
     snprintf(resumeLabel,sizeof resumeLabel,"mid%u",loopStep);tracePhase=resumeLabel;
 }
 - (void)runCompositeArena:(const char *)phaseOutput {
-    midFull=phaseOutput&&!strncmp(phaseOutput,"midfull",7);midMode=phaseOutput&&!strncmp(phaseOutput,"mid",3);resumeMode=phaseOutput&&!strncmp(phaseOutput,"resume",6);loopMode=resumeMode||(phaseOutput&&!strncmp(phaseOutput,"loop",4));
+    endMode=phaseOutput&&!strncmp(phaseOutput,"end",3);midFull=phaseOutput&&!strncmp(phaseOutput,"midfull",7);midMode=endMode||(phaseOutput&&!strncmp(phaseOutput,"mid",3));resumeMode=phaseOutput&&!strncmp(phaseOutput,"resume",6);loopMode=resumeMode||(phaseOutput&&!strncmp(phaseOutput,"loop",4));
     BOOL chainMode=phaseOutput&&!strcmp(phaseOutput,"chain");
     BOOL runMode=phaseOutput&&!strncmp(phaseOutput,"run",3);
     BOOL startMode=midMode||loopMode||chainMode||runMode||(phaseOutput&&!strncmp(phaseOutput,"start",5));
@@ -67,8 +67,8 @@ static __weak AstroView *midView;
         for(index=0;index<3000;index++){be64(bytes,stars[index].brightness);be64(bytes+8,stars[index].x);be64(bytes+16,stars[index].y);be64(bytes+24,stars[index].speed);printf("T\t%u\t",index);dump(bytes,32);putchar('\n');}
         if(midMode){
             ui.musicVolume=1;menuVisible=paused=gameOver=NO;flow.phase=ASTRO_FLOW_PLAY;automatic=YES;tracePhase="mid0";[self beginGameLoop];
-            campaign.half=2;tickedScroll=0;[self beginStageTransition];
-            midView=self;loopStep=0;@try {[self runMidlevelTransition];}@catch(NSException *e){assert([e.name isEqual:@"MidTraceFinished"]);}
+            if(endMode){campaign.level++;campaign.half=1;}else campaign.half=2;tickedScroll=0;[self beginStageTransition];
+            midView=self;loopStep=0;@try {if(endMode){while(loopStep<16)[self pollGame];}else [self runMidlevelTransition];}@catch(NSException *e){assert([e.name isEqual:@"MidTraceFinished"]);}
             if(midFull){[self dumpWorldTrace:@"mid-end"];printf("K\tend\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);}
         }
         if(loopMode){
