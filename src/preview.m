@@ -1887,7 +1887,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     (void)[self cardDelayClockTick];
     NSEvent *event=nil;
     if(queuedKeyEvents.count){event=queuedKeyEvents[0];[queuedKeyEvents removeObjectAtIndex:0];}
-    else event=[NSApp nextEventMatchingMask:NSEventMaskAny untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:YES];
+    else event=[NSApp nextEventMatchingMask:NSEventMaskAny untilDate:[NSDate dateWithTimeIntervalSinceNow:2.0/60.0] inMode:NSDefaultRunLoopMode dequeue:YES];
     // shortcut: Command/window dispatch still uses AppKit; verify mixed OS events before replacing it.
     if(event.type==NSEventTypeKeyDown){
         if(event.modifierFlags&NSEventModifierFlagCommand)[NSApp.mainMenu performKeyEquivalent:event];

@@ -4,6 +4,14 @@
 #import <objc/runtime.h>
 static uint32_t serviceTick=1000;static unsigned serviceClockReads,serviceTickStep;
 static NSMutableString *events;static BOOL observing,checkRegisterFocus,autoTest,autoHeld;
+static BOOL observeIdleWait;static NSTimeInterval idleWait;
+@interface MainWaitApplication:NSApplication @end
+@implementation MainWaitApplication
+- (NSEvent *)nextEventMatchingMask:(NSEventMask)mask untilDate:(NSDate *)expiration inMode:(NSRunLoopMode)mode dequeue:(BOOL)dequeue {
+    if(observeIdleWait){assert(mask==NSEventMaskAny&&dequeue&&[mode isEqual:NSDefaultRunLoopMode]);idleWait=[expiration timeIntervalSinceNow];return nil;}
+    return [super nextEventMatchingMask:mask untilDate:expiration inMode:mode dequeue:dequeue];
+}
+@end
 @interface RegistrationInputUI:AstroUIRenderer @end
 @implementation RegistrationInputUI
 - (void)setButton:(NSString *)name pressed:(BOOL)pressed {if(checkRegisterFocus&&pressed&&[name isEqual:@"Register"])assert(self.activeRegistrationField==-1);[super setButton:name pressed:pressed];}
@@ -93,7 +101,10 @@ static NSMutableString *events;static BOOL observing,checkRegisterFocus,autoTest
     [NSApp postEvent:pending atStart:YES];[self pollMainMenu];
     assert(lastMainEventTick==2002&&serviceClockReads==3&&!queuedKeyEvents.count);
     assert(![NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO]);
-    serviceTickStep=0;
+    serviceTickStep=0;serviceTick=3000;
+    Class appClass=object_setClass(NSApp,[MainWaitApplication class]);observeIdleWait=YES;
+    [self pollMainMenu];observeIdleWait=NO;object_setClass(NSApp,appClass);
+    assert(idleWait>0.02&&idleWait<=2.0/60.0&&lastMainEventTick==3000);
     [self flushGameEvents];puts("PASS outer Main field/periodic shared consumption AC,59/60 boundary,closed frame gate,and nested/pause exclusion");
     observing=NO;
     for(NSString *button in @[@"Back3",@"Back4",@"Back5",@"Back6",@"Back7"]){

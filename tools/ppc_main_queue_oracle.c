@@ -10,7 +10,7 @@ static void record(char type,unsigned value){printf("%u,%c,%u,%u,%u,%u\n",profil
 static uint32_t clock_tick(void){uint32_t value=start+reads++*step;if(reads>=80)*(short *)(g+0x58e)=1;record('T',value);return value;}
 static void fill_event(EventRecord *event){assert(event==(void *)(g+0x168)&&queued<128);memset(event,0,sizeof(*event));event->what=queued%2?5:3;event->message='A'+queued++%26;}
 static Boolean field_event(uint32_t mask,EventRecord *event){assert(mask==0x28);fill_event(event);record('F',event->message);return true;}
-static Boolean periodic_event(uint32_t mask,EventRecord *event,UInt32 sleep,RgnHandle region){assert(mask==0xffffffffu&&!sleep&&!region);fill_event(event);record('P',event->message);return true;}
+static Boolean periodic_event(uint32_t mask,EventRecord *event,UInt32 sleep,RgnHandle region){assert(mask==0xffffffffu&&sleep==2&&!region);fill_event(event);record('P',event->message);return true;}
 static Boolean no_dialog(const EventRecord *event){assert(event==(void *)(g+0x168));return false;}
 static void get_port(GrafPtr *p){*p=(void *)0x12345678;}
 static void set_port(GrafPtr p){assert(p==(void *)0x12345678);}
@@ -51,6 +51,7 @@ int main(int argc,char **argv){
  const uint32_t service_ticks[]={1000,940,0};
  for(unsigned seed=0;seed<3;seed++)for(unsigned focus=0;focus<3;focus++)for(unsigned interval=0;interval<4;interval++)for(step=0;step<3;step++){
   memset(g,0,0x1400);reads=frames=queued=0;start=1000;
+  *(uint32_t *)(g+0x160)=2; /* FB runtime initialization: WaitNextEvent sleep. */
   *(void **)(g+0x21c)=lit;*(void **)(g+0x388)=heap;*(void **)(g+0x38c)=heap;*(void **)(g+0xa54)=stars;
   *(double *)(g+0x378)=4503601774854144.;*(uint32_t *)(g+0x380)=0x43300000;*(short *)(g+0xa52)=intervals[interval];*(uint32_t *)(g+0xa4a)=1000;
   *(void **)(g+0xa06)=focus?g+0x5b2+(focus-1)*0x22a:NULL;
