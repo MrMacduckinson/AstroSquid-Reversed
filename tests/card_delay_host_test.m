@@ -4,7 +4,8 @@
 #undef main
 static BOOL injecting;
 static uint32_t now;
-static unsigned cardReads,gameReads,polls,displayRequests;
+static unsigned cardReads,gameReads,polls,displayRequests,endingGameOvers;
+static BOOL observingEnding;
 @interface DelayAudioProbe : AstroAudio
 @end
 @implementation DelayAudioProbe
@@ -15,6 +16,7 @@ static unsigned cardReads,gameReads,polls,displayRequests;
 @end
 @implementation CardDelayView
 - (void)display {}
+- (void)beginGameOver {if(observingEnding){endingGameOvers++;assert(flow.phase==ASTRO_FLOW_FINISHED);return;}[super beginGameOver];}
 - (void)copyKeyMap:(unsigned char *)bytes {memset(bytes,0,16);for(unsigned i=0;i<128;i++)if(keys[i])bytes[i>>3]|=1u<<(i&7);}
 - (void)setNeedsDisplay:(BOOL)value {if(injecting&&value)displayRequests++;[super setNeedsDisplay:value];}
 - (uint32_t)cardDelayClockTick {if(injecting){cardReads++;return now;}return [super cardDelayClockTick];}
@@ -49,6 +51,16 @@ static unsigned cardReads,gameReads,polls,displayRequests;
     [self tickWallClock];assert(displayRequests==stableRequests&&flow.ending_page==1);
     keys[0]=YES;[self tickWallClock];assert(polls==4&&flow.ending_page==2&&!cardClockStarted&&!gameReads);
     assert(displayRequests==stableRequests+1);
+    // ENDDIALOG has exactly four delayed pages, then calls GAMEOVER once.
+    observingEnding=YES;
+    for(unsigned page=2;page<4;page++){
+        assert(flow.phase==ASTRO_FLOW_ENDING&&flow.ending_page==page&&!cardClockStarted);
+        now=200+page*100;[self recordCardPresentation];unsigned start=now;
+        now=start+59;[self tickWallClock];assert(flow.ending_page==page&&!endingGameOvers);
+        now=start+60;[self tickWallClock];
+        assert(endingGameOvers==(page==3?1u:0u)&&!gameReads);
+    }
+    assert(flow.phase==ASTRO_FLOW_FINISHED&&endingGameOvers==1);observingEnding=NO;
     // ENDOFLEVEL cards have no _DODELAY: same-tick input after presentation is accepted.
     polls=0;changingStage=NO;flow=(AstroFlow){.phase=ASTRO_FLOW_END_CARD,.next_stage=2,.next_half=1};
     now=300;[self recordCardPresentation];[self tickWallClock];
