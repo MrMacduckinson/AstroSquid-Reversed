@@ -1661,6 +1661,23 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     BOOL previous=nestedWorldRender;nestedWorldRender=waiting;
     @try {[self renderTick];} @finally {nestedWorldRender=previous;}
 }
+- (void)drawRegistrationReminder {
+    [[self openGLContext] makeCurrentContext];
+    NSRect bounds=[self convertRectToBacking:self.bounds];
+    glMatrixMode(GL_PROJECTION);glLoadIdentity();
+    glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
+    glOrtho(0,640,480,0,-1,1);glMatrixMode(GL_MODELVIEW);glClear(GL_COLOR_BUFFER_BIT);
+    [ui drawPicture:70 x:0 y:0 width:640 height:480 texture:^GLuint(NSInteger n){return [self texture:n];}];
+    [self presentFrame];
+}
+- (void)showRegistrationReminder {
+    [self drawRegistrationReminder];[self delayGameTicks:300];
+    BOOL button;
+    do {
+        [audio serviceMusic];[self readKeyMap];button=[self menuMouseButtonPressed];
+    } while(!button&&![self controlPressed:0]);
+    paused=NO;gameEndRequested=YES;
+}
 - (void)advanceFlowWithKey:(BOOL)anyKey {
     AstroFlowPhase previous=flow.phase;int previousPage=flow.ending_page;astro_flow_step(&flow,anyKey);
     if(previous!=flow.phase||previousPage!=flow.ending_page)cardClockStarted=NO;
@@ -1671,6 +1688,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
     if(previous==ASTRO_FLOW_READY&&flow.phase==ASTRO_FLOW_PLAY){
         [audio stopMusic];if(ui.musicVolume>0)[audio playMusic:2];
+        if(!ui.registered&&(flow.stage-1)*2+flow.half>6)[self showRegistrationReminder];
         if(initialReadyCard)[self beginGameLoop];
         else {
             if(readyLoadPending)[self loadCampaignStage:pendingCampaign];
@@ -2642,7 +2660,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         NSString *stage=[NSString stringWithFormat:@"Data %d%c",command.stage,command.section==1?'A':'B'];
         NSUInteger index=[levels indexOfObject:stage];if(index==NSNotFound)return;
         if(!selftestPath&&!campaignTestPath)simulationTick=(uint32_t)floor((NSProcessInfo.processInfo.systemUptime-clockOrigin)*60);
-        initialReadyCard=YES;changingStage=NO;transition=(AstroTransition){0};pendingCampaign=(AstroCampaign){0};
+        initialReadyCard=YES;readyLoadPending=NO;changingStage=NO;transition=(AstroTransition){0};pendingCampaign=(AstroCampaign){0};
         ui.editingHighscore=0;selectedLevel=index;camera=-0.0;[self resetLevelWorld];
         score=0;[self presentFrame];inventory.lives=1;gameEndRequested=NO;
         [self setGameCursorHidden:YES];
