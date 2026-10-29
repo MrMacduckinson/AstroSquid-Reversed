@@ -2,7 +2,7 @@
 #define ASTRO_WORLD_TRACE_LIBRARY
 #include "world_trace_host.m"
 static const char *retainedStarPath;
-static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode,resumeMode,midMode,midFull,endMode,endFull;static unsigned loopStep;static char resumeLabel[32];
+static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode,resumeMode,midMode,midFull,endMode,endFull,resumeLong;static unsigned loopStep;static char resumeLabel[32];
 static __weak AstroView *midView;
 @interface AstroView(MidCapture)
 - (void)captureMidFrame;
@@ -29,7 +29,11 @@ static __weak AstroView *midView;
     if(!loopMode&&!midMode){[super handleMiscKeys];return;}
     if(resumeMode){[self dumpWorldTrace:[NSString stringWithUTF8String:tracePhase]];
         printf("K\t%u\t%u\t%u\t%u\n",loopStep,compositeClocks,observedWallTick,worldRenderTick);
-        if(++loopStep==256)@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];
+        if(resumeLong&&((respawnPending&&inventory.lives==0)||gameEndRequested||campaignAction!=ASTRO_CAMPAIGN_NONE)){
+            printf("B\t%u\t%d\t%d\n",loopStep,gameEndRequested?1:respawnPending?-1:0,campaignAction!=ASTRO_CAMPAIGN_NONE);
+            @throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];
+        }
+        if(++loopStep==(resumeLong?1024:256))@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];
         snprintf(resumeLabel,sizeof resumeLabel,"loop%u",loopStep);tracePhase=resumeLabel;
     }
 }
@@ -43,7 +47,7 @@ static __weak AstroView *midView;
     snprintf(resumeLabel,sizeof resumeLabel,"mid%u",loopStep);tracePhase=resumeLabel;
 }
 - (void)runCompositeArena:(const char *)phaseOutput {
-    endFull=phaseOutput&&!strncmp(phaseOutput,"endfull",7);endMode=phaseOutput&&!strncmp(phaseOutput,"end",3);midFull=phaseOutput&&!strncmp(phaseOutput,"midfull",7);midMode=endMode||(phaseOutput&&!strncmp(phaseOutput,"mid",3));resumeMode=phaseOutput&&!strncmp(phaseOutput,"resume",6);loopMode=resumeMode||(phaseOutput&&!strncmp(phaseOutput,"loop",4));
+    resumeLong=phaseOutput&&!strncmp(phaseOutput,"resumelong",10);endFull=phaseOutput&&!strncmp(phaseOutput,"endfull",7);endMode=phaseOutput&&!strncmp(phaseOutput,"end",3);midFull=phaseOutput&&!strncmp(phaseOutput,"midfull",7);midMode=endMode||(phaseOutput&&!strncmp(phaseOutput,"mid",3));resumeMode=phaseOutput&&!strncmp(phaseOutput,"resume",6);loopMode=resumeMode||(phaseOutput&&!strncmp(phaseOutput,"loop",4));
     BOOL chainMode=phaseOutput&&!strcmp(phaseOutput,"chain");
     BOOL runMode=phaseOutput&&!strncmp(phaseOutput,"run",3);
     BOOL startMode=midMode||loopMode||chainMode||runMode||(phaseOutput&&!strncmp(phaseOutput,"start",5));
@@ -54,7 +58,7 @@ static __weak AstroView *midView;
     backgrounds=@[];parallaxData=[NSMutableData data];starsInitialized=YES;renderClock=0;simulationTick=100;
     campaign=(AstroCampaign){8,2,0,0};inventory=(AstroInventory){0};selectedLevel=[levels indexOfObject:@"Data 8B"];
     if(phaseOutput&&(!strncmp(phaseOutput,"load",4)||startMode)){for(unsigned chain=0;chain<(chainMode?17u:1u);chain++){
-        unsigned level=0;char half=0,extra=0;if(chainMode){level=chain/2+1;half=chain==16?'B':chain%2?'B':'A';}else assert(sscanf(phaseOutput+((midFull||endFull)?7:midMode?3:resumeMode?6:loopMode?4:runMode?3:startMode?5:4),"%u%c%c",&level,&half,&extra)==2&&level>=1&&level<=9&&(half=='A'||half=='B'));
+        unsigned level=0;char half=0,extra=0;if(chainMode){level=chain/2+1;half=chain==16?'B':chain%2?'B':'A';}else assert(sscanf(phaseOutput+((midFull||endFull)?7:midMode?3:resumeLong?10:resumeMode?6:loopMode?4:runMode?3:startMode?5:4),"%u%c%c",&level,&half,&extra)==2&&level>=1&&level<=9&&(half=='A'||half=='B'));
         selectedLevel=[levels indexOfObject:[NSString stringWithFormat:@"Data %u%c",level,half]];assert(selectedLevel!=NSNotFound);
         if(!chain){randomSeed=123;compositeClocks=0;}camera=-0.0;traceTick=100;char label[24];snprintf(label,sizeof label,"load%u%c",level,half);tracePhase=chainMode?label:"load";nextEntityID=playerTraceID=0;entityIDs=[NSMapTable strongToStrongObjectsMapTable];
         if(retainedStarPath&&!chain){NSData *d=[NSData dataWithContentsOfFile:[NSString stringWithUTF8String:retainedStarPath]];assert(d.length==96004);const unsigned char *b=d.bytes;
@@ -76,7 +80,7 @@ static __weak AstroView *midView;
             menuVisible=paused=gameOver=changingStage=NO;flow.phase=ASTRO_FLOW_PLAY;automatic=YES;campaign.arena=0;
             int controls[6]={55,58,126,125,123,124};memcpy(controlKeys,controls,sizeof controls);memset(keys,0,sizeof keys);
             tracePhase="loop0";[self beginGameLoop];
-            if(resumeMode){loopStep=0;@try {while(loopStep<256)[self pollGame];}@catch(NSException *e){assert([e.name isEqual:@"TraceFinished"]);}}
+            if(resumeMode){loopStep=0;@try {while(loopStep<(resumeLong?1024:256))[self pollGame];}@catch(NSException *e){assert([e.name isEqual:@"TraceFinished"]);}}
             else for(loopStep=0;loopStep<256;loopStep++){char label[32];snprintf(label,sizeof label,"loop%u",loopStep);tracePhase=label;[self pollGame];[self dumpWorldTrace:[NSString stringWithUTF8String:label]];
                 printf("K\t%u\t%u\t%u\t%u\n",loopStep,compositeClocks,observedWallTick,worldRenderTick);if(respawnPending||gameEndRequested||campaignAction!=ASTRO_CAMPAIGN_NONE){printf("B\t%u\t%d\t%d\n",loopStep,gameEndRequested?1:respawnPending?-1:0,campaignAction!=ASTRO_CAMPAIGN_NONE);break;}}
         }
