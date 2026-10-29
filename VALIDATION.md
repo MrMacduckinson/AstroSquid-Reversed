@@ -29,6 +29,13 @@ Current bounded evidence:
   gameplay-state evidence, not ordinary-health or continuous-campaign proof,
   and does not establish pixel or audio-sample equality.
 
+- The independent 7B comparison additionally matches 1,889,889 records through
+  defeat of attribute155 (HP -14447, removal -1). It uses the same HP30000/Laser4
+  fixture with target Y95, enemy aiming, terrain avoidance and braking. The
+  original and host both retain 15474 player HP. This high-health outcome is
+  not evidence of an ordinary-health winning strategy. BOSS7_VERIFIED retains
+  the complete capture hashes; the same annotation-only normalization applies.
+
 - `tests/gameover_held_host.sh` matches171 records from three original GAMEOVER
   schedules with held mouse and queued A/B/Enter at intervals1/2/3. The original
   TRANS and DOMOUSE body execute; a validated PC-independent prologue trampoline
