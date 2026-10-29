@@ -63,6 +63,12 @@ Current bounded evidence:
   still a controlled high-health route and stops before the GameOver panel;
   text/glyph/pixel coverage remains as scoped in the separate card tests.
 
+- ENDING combined with GAMEOVER_WARM extends the same original/host route
+  through all ten GameOver warm frames: 2,738,085 records match, including
+  delays 0,1,1,2,3,3,4,4,5,6 and their exact clock counts. ENDING_WARM_VERIFIED
+  retains the captures. The real cleanup, actor and visual updates run after
+  the ending; the observer stops at ShowCursor before panel construction.
+
 - `tests/gameover_held_host.sh` matches171 records from three original GAMEOVER
   schedules with held mouse and queued A/B/Enter at intervals1/2/3. The original
   TRANS and DOMOUSE body execute; a validated PC-independent prologue trampoline

@@ -53,7 +53,7 @@ static __weak AstroView *midView;
 - (BOOL)menuMouseButtonPressed {return panelInput?NO:[super menuMouseButtonPressed];}
 - (void)pollMenuMouse {if(!panelInput)[super pollMenuMouse];}
 - (void)reloadMainMenu {if(destroyMode&&!menuMode&&cleanupDone){assert(!world.count&&!enemies.count&&!mapPlacements.count);printf("DEND\t%u\t0\t0\n",compositeClocks);puts("W\tdestroy-complete");@throw [NSException exceptionWithName:midMode?@"MidTraceFinished":@"TraceFinished" reason:nil userInfo:nil];}[super reloadMainMenu];}
-- (void)beginGameOver {if(getenv("ASTRO_WORLD_ENDING")||(gameoverEntry&&!warmMode)||(getenv("ASTRO_WORLD_GAMEOVER")&&!getenv("ASTRO_WORLD_GAMEOVER_WARM"))){gameoverReached=YES;[self dumpWorldTrace:@"gameover-entry"];printf("K\tentry\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);@throw [NSException exceptionWithName:midMode?@"MidTraceFinished":@"TraceFinished" reason:nil userInfo:nil];}[super beginGameOver];}
+- (void)beginGameOver {if((getenv("ASTRO_WORLD_ENDING")&&!getenv("ASTRO_WORLD_GAMEOVER_WARM"))||(gameoverEntry&&!warmMode)||(getenv("ASTRO_WORLD_GAMEOVER")&&!getenv("ASTRO_WORLD_GAMEOVER_WARM"))){gameoverReached=YES;[self dumpWorldTrace:@"gameover-entry"];printf("K\tentry\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);@throw [NSException exceptionWithName:midMode?@"MidTraceFinished":@"TraceFinished" reason:nil userInfo:nil];}if(getenv("ASTRO_WORLD_ENDING"))readyActive=NO;[super beginGameOver];}
 - (void)delayGameTicks:(uint32_t)ticks {
  if(!warmMode&&!getenv("ASTRO_WORLD_GAMEOVER_WARM")){[super delayGameTicks:ticks];return;}
  static const unsigned expected[]={0,1,1,2,3,3,4,4,5,6};assert(warmFrames<10&&ticks==expected[warmFrames]);
