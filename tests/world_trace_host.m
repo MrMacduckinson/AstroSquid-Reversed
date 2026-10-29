@@ -120,6 +120,9 @@ static unsigned entityID(id object){return object==[NSNull null]?playerTraceID:[
     for(AstroEnemy *e in enemies)if(!e->visualDeleted){LiveEffect item={e->visual,e->renderLayer,e->renderBirth};renders[@(item.birth)]=[NSData dataWithBytes:&item length:sizeof(item)];}
     for(NSData *item in visualEffects){const LiveEffect *effect=item.bytes;renders[@(effect->birth)]=item;}
     if(playerHitVisual.active){LiveEffect item={playerHitVisual.visual,playerHitLayer,playerHitBirth};renders[@(item.birth)]=[NSData dataWithBytes:&item length:sizeof(item)];}
+    if(engineGlow){AstroTransitionRect r=departureTrail?departureGlow:engineGlowRect;
+        LiveEffect item={{115,r.x,r.y,r.width,r.height,engineGlowTick},8,engineGlowBirth};renders[@(item.birth)]=[NSData dataWithBytes:&item length:sizeof(item)];}
+    if(departureTrail){LiveEffect item={{116,trailRect.x,trailRect.y,trailRect.width,trailRect.height,departureTrailTick},4,departureTrailBirth};renders[@(item.birth)]=[NSData dataWithBytes:&item length:sizeof(item)];}
     NSArray *order=[renders.allKeys sortedArrayUsingSelector:@selector(compare:)];
     for(NSUInteger i=0;i<order.count;i++){
         const LiveEffect *item=[renders[order[i]] bytes];AstroVisual v=item->visual;

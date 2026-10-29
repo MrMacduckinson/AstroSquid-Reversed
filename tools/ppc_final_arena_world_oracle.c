@@ -9,9 +9,10 @@ static unsigned clock_reads,opens,records,map_records,scene_records;
 static int advancing,load_mode,start_mode,run_mode,chain_mode,loop_mode,resume_mode,mid_mode,mid_full,end_mode;
 static jmp_buf loop_done;static unsigned loop_step;static char loop_label[32];
 void loop_noop(void){}
+void end_sound(unsigned char *name){double pan=NAN;world_sound(name,&pan);}
 void loop_keys(void){unsigned k=(loop_step/8)%16;unsigned char *g=world_globals;set_short(g,0xaac,k&1?-1:0);set_short(g,0xaae,k&2?-1:0);set_short(g,0xaa8,k&4?-1:0);set_short(g,0xaaa,k&8?-1:0);set_short(g,0xab2,loop_step%7==0?-1:0);}
 void loop_misc(void){snapshot();printf("K\t%u\t%u\t%u\t%u\n",loop_step,clock_reads,*(unsigned *)(world_globals+0xa4a),*(unsigned *)(world_globals+0xa4e));if((*(short *)(world_globals+0x58c)&&!resume_mode)||*(short *)(world_globals+0x5ac)){printf("B\t%u\t%d\t%d\n",loop_step,*(short *)(world_globals+0x58c),*(short *)(world_globals+0x5ac));longjmp(loop_done,1);}if(++loop_step==256)longjmp(loop_done,1);snprintf(loop_label,sizeof loop_label,"loop%u",loop_step);phase=loop_label;}
-void mid_observe(void){snapshot();printf("K\t%u\t%u\t%u\t%u\n",loop_step,clock_reads,*(unsigned *)(world_globals+0xa4a),*(unsigned *)(world_globals+0xa4e));if(++loop_step==16&&!mid_full)longjmp(loop_done,1);assert(loop_step<10000);snprintf(loop_label,sizeof loop_label,"mid%u",loop_step);phase=loop_label;}
+void mid_observe(void){snapshot();printf("K\t%u\t%u\t%u\t%u\n",loop_step,clock_reads,*(unsigned *)(world_globals+0xa4a),*(unsigned *)(world_globals+0xa4e));if(++loop_step==(end_mode?256:16)&&!mid_full)longjmp(loop_done,1);assert(loop_step<10000);snprintf(loop_label,sizeof loop_label,"mid%u",loop_step);phase=loop_label;}
 void arena_ready(void){}
 static uint32_t arena_tick(void){unsigned index=clock_reads++;return tick+(advancing&&phase&&strcmp(phase,"before")?index:0);}
 int arena_system(int selector){assert(selector==1);return 123;}
@@ -42,7 +43,7 @@ void arena_close(int number){assert(number==1&&input_file&&!fclose(input_file));
 void arena_stop(void){puts("A\tstop");}
 void arena_play(unsigned handle){if(mid_full&&handle==0x4321)puts("A\tplay1");else {assert(handle==0x1234);puts("A\tplay2");}}
 #define WRAP(name) extern void name##_fb(void); __asm__(".text\n.align 2\n.globl _" #name "_fb\n_" #name "_fb:\nmflr r0\nstw r0,8(r1)\nstwu r1,-64(r1)\nstw r2,20(r1)\nbl _" #name "\nlwz r2,20(r1)\naddi r1,r1,64\nlwz r0,8(r1)\nmtlr r0\nblr\n");
-WRAP(mid_observe) WRAP(loop_noop) WRAP(loop_keys) WRAP(loop_misc)
+WRAP(end_sound) WRAP(mid_observe) WRAP(loop_noop) WRAP(loop_keys) WRAP(loop_misc)
 WRAP(arena_ready) WRAP(arena_system) WRAP(arena_folder) WRAP(arena_open) WRAP(arena_read) WRAP(arena_readfile)
 WRAP(arena_eof) WRAP(arena_length) WRAP(arena_close) WRAP(arena_stop) WRAP(arena_play)
 int main(int argc,char **argv){
@@ -86,6 +87,7 @@ int main(int argc,char **argv){
         if(mid_mode){
             const struct {unsigned at;void *fn;} mh[]={{0x57afc,loop_noop_fb},{0x35eb8,loop_noop_fb},{0x43134,loop_noop_fb},{0x334bc,mid_observe_fb},{0x4cb28,loop_noop_fb},{0x4de74,loop_noop_fb}};
             for(unsigned j=0;j<sizeof(mh)/sizeof(mh[0]);j++)jump_to(code+mh[j].at,mh[j].fn);MakeDataExecutable(code,433284);
+            if(end_mode){jump_to(code+0x3ccd8,end_sound_fb);MakeDataExecutable(code+0x3ccd8,16);}
             strcpy(loop_label,"mid0");phase=loop_label;(void)arena_tick();*(unsigned *)(g+0xa4a)=arena_tick();*(unsigned *)(g+0xa4e)=arena_tick();set_double(g,0xa58,0);set_short(g,0x5ac,1);*(unsigned *)(g+0xa3e)=0x4321;
             if(!setjmp(loop_done))invoke_fb(code+(end_mode?0x4eda0:0x4e9c4),g,toc,NULL,NULL,NULL);
             if(mid_full){set_short(g,0xa84,2);phase="mid-end";snapshot();printf("K\tend\t%u\t%u\t%u\n",clock_reads,*(unsigned *)(g+0xa4a),*(unsigned *)(g+0xa4e));}

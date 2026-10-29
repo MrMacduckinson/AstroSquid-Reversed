@@ -39,7 +39,7 @@ static __weak AstroView *midView;
 @implementation AstroView(CompositeArena)
 - (void)captureMidFrame {
     [self dumpWorldTrace:[NSString stringWithUTF8String:tracePhase]];printf("K\t%u\t%u\t%u\t%u\n",loopStep,compositeClocks,observedWallTick,worldRenderTick);
-    if(++loopStep==16&&!midFull)@throw [NSException exceptionWithName:@"MidTraceFinished" reason:nil userInfo:nil];
+    if(++loopStep==(endMode?256:16)&&!midFull)@throw [NSException exceptionWithName:@"MidTraceFinished" reason:nil userInfo:nil];
     snprintf(resumeLabel,sizeof resumeLabel,"mid%u",loopStep);tracePhase=resumeLabel;
 }
 - (void)runCompositeArena:(const char *)phaseOutput {
@@ -68,7 +68,7 @@ static __weak AstroView *midView;
         if(midMode){
             ui.musicVolume=1;menuVisible=paused=gameOver=NO;flow.phase=ASTRO_FLOW_PLAY;automatic=YES;tracePhase="mid0";[self beginGameLoop];
             if(endMode){campaign.level++;campaign.half=1;}else campaign.half=2;tickedScroll=0;[self beginStageTransition];
-            midView=self;loopStep=0;@try {if(endMode){while(loopStep<16)[self pollGame];}else [self runMidlevelTransition];}@catch(NSException *e){assert([e.name isEqual:@"MidTraceFinished"]);}
+            midView=self;loopStep=0;@try {if(endMode){[self runEndlevelTransition];}else [self runMidlevelTransition];}@catch(NSException *e){assert([e.name isEqual:@"MidTraceFinished"]);}
             if(midFull){[self dumpWorldTrace:@"mid-end"];printf("K\tend\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);}
         }
         if(loopMode){

@@ -112,7 +112,8 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     AstroTransition transition;
     AstroCampaign pendingCampaign;
     BOOL changingStage,engineGlow,departureTrail,finalArena;
-    uint64_t engineGlowBirth;
+    uint64_t engineGlowBirth,departureTrailBirth;
+    uint32_t engineGlowTick,departureTrailTick;
     uint32_t playerSpawnTick;
     AstroTransitionRect departureGlow,trailRect,engineGlowRect;
     AstroScore highscores[10];
@@ -596,7 +597,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     NSMutableArray *effectsToDraw=[visualEffects mutableCopy];
     if(engineGlow) {
         AstroTransitionRect glow=departureTrail?departureGlow:engineGlowRect;
-        LiveEffect effect={{115,glow.x,glow.y,glow.width,glow.height,0},8,engineGlowBirth};
+        LiveEffect effect={{115,glow.x,glow.y,glow.width,glow.height,engineGlowTick},8,engineGlowBirth};
         [effectsToDraw addObject:[NSData dataWithBytes:&effect length:sizeof(effect)]];
     }
     if(playerHitVisual.active) {
@@ -1488,6 +1489,49 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     do {[self pollNestedWorld];[audio serviceMusic];}
     while((int32_t)([self playerClockTick]-start)<=(int32_t)ticks);
 }
+- (void)blowTransitionEnemies {
+    for(int pass=0;pass<2;pass++) {
+        for(AstroEnemy *enemy in enemies)enemy->state.remove=-1;
+        [self cleanupWorld];
+    }
+}
+- (void)runEndlevelTransition {
+    if(selftestPath||campaignTestPath){transitionSimulationOrigin=simulationTick;transitionRealOrigin=[self currentGameTick];}
+    transitionLoopRunning=YES;@try {
+        transition.pending=transition.events=0;
+        [self blowTransitionEnemies];
+        uint32_t start=[self playerClockTick];
+        do {[self pollNestedWorld];[audio serviceMusic];[self readGameKeys];}
+        while((int32_t)([self playerClockTick]-start)<=60);
+        transition.allow_input=0;transition.phase=ASTRO_TRANSITION_CENTER;
+        double targetX=camera+320,targetY=(worldTop+worldBottom)/2,x,y;
+        do {
+            x=playerBounds.left+playerVisual.width/2;y=playerBounds.top+playerVisual.height/2;
+            transition.controls=(x<targetX?ASTRO_KEY_RIGHT:0)|(x>targetX?ASTRO_KEY_LEFT:0)|
+                (y<targetY?ASTRO_KEY_DOWN:0)|(y>targetY?ASTRO_KEY_UP:0);
+            [self waitForTransitionTicks:1];
+        } while(fabs(x-targetX)>=20||fabs(y-targetY)>=20);
+        playerVelocity=(AstroVelocity){0,0};playerState.velocity=playerVelocity;transition.controls=0;
+        engineGlow=YES;engineGlowBirth=++renderClock;engineGlowTick=[self playerClockTick]+(uint32_t)spriteInfo[115].delay;
+        engineGlowRect=astro_transition_engine_glow(playerVisual.x,playerVisual.y,playerVisual.height,playerState.frame);
+        transition.scale=1;[audio playCue:@"Hyper"];
+        transition.phase=ASTRO_TRANSITION_ACCEL;double speed=1;
+        do {speed*=1.4;transition.scroll_x=speed;[self waitForTransitionTicks:10];transition.scale-=.005;}
+        while(speed<=200);
+        transition.phase=ASTRO_TRANSITION_CRUISE;[self waitForTransitionTicks:20];
+        departureTrail=YES;playerState.frame=15;
+        astro_visual_change(&playerVisual,15,spriteInfo,1001,[self playerClockTick]);
+        departureGlow=astro_transition_departure_glow(playerVisual.x,playerVisual.y,playerVisual.width,playerVisual.height);
+        departureTrailBirth=++renderClock;departureTrailTick=[self playerClockTick]+(uint32_t)spriteInfo[116].delay;
+        trailRect=astro_transition_departure_trail(departureGlow);[audio playCue:@"Bang3"];
+        transition.phase=ASTRO_TRANSITION_TRAIL;transition.simulate_world=0;
+        (void)[self playerClockTick];
+        do {[self renderTick];[audio serviceMusic];} while(transition.phase==ASTRO_TRANSITION_TRAIL);
+        [audio stopMusic];if(ui.musicVolume>0)[audio playMusic:1];
+        astro_flow_stage_end(&flow,campaign.level,campaign.half,pendingCampaign.level,pendingCampaign.half,pendingCampaign.complete);
+        cardClockStarted=NO;
+    } @finally {transitionLoopRunning=NO;}
+}
 - (void)runMidlevelTransition {
     if(selftestPath||campaignTestPath){transitionSimulationOrigin=simulationTick;transitionRealOrigin=[self currentGameTick];}
     transitionLoopRunning=YES;@try {
@@ -1513,20 +1557,18 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     astro_transition_step(&transition,simulationTick+1,playerBounds,playerVisual.width,playerVisual.height,
         (AstroRect){(int)camera,(int)worldTop,(int)(camera+640),(int)worldBottom},-camera,0);
     if(transition.events&ASTRO_TRANSITION_BLOW) {
-        for(int pass=0;pass<2;pass++) {
-            for(AstroEnemy *enemy in enemies)enemy->state.remove=-1;
-            [self cleanupWorld];
-        }
+        [self blowTransitionEnemies];
     }
     if(transition.zero_velocity){playerVelocity=(AstroVelocity){0,0};playerState.velocity=playerVelocity;}
-    if(transition.events&ASTRO_TRANSITION_ENGINE_GLOW){engineGlow=YES;engineGlowBirth=++renderClock;
+    if(transition.events&ASTRO_TRANSITION_ENGINE_GLOW){engineGlow=YES;engineGlowBirth=++renderClock;engineGlowTick=[self playerClockTick]+(uint32_t)spriteInfo[115].delay;
         engineGlowRect=astro_transition_engine_glow(playerVisual.x,playerVisual.y,playerVisual.height,playerState.frame);}
     if(transition.events&ASTRO_TRANSITION_HYPER_SOUND)[audio playCue:@"Hyper"];
     if(transition.events&ASTRO_TRANSITION_BANG_SOUND)[audio playCue:@"Bang3"];
     if(transition.events&ASTRO_TRANSITION_TRAIL_SPRITE) {
         departureTrail=YES;playerState.frame=15;
-        astro_visual_change(&playerVisual,15,spriteInfo,1001,simulationTick);
+        astro_visual_change(&playerVisual,15,spriteInfo,1001,[self playerClockTick]);
         departureGlow=astro_transition_departure_glow(playerVisual.x,playerVisual.y,playerVisual.width,playerVisual.height);
+        departureTrailBirth=++renderClock;departureTrailTick=[self playerClockTick]+(uint32_t)spriteInfo[116].delay;
         trailRect=astro_transition_departure_trail(departureGlow);
     }
     if(transition.events&ASTRO_TRANSITION_MENU_MUSIC)[audio playMusic:1];
@@ -1555,7 +1597,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             [self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;
         } else [self beginStageTransition];
     }
-    if(changingStage){if(transition.mode==ASTRO_TRANSITION_MID)[self runMidlevelTransition];else [self stepStageTransition];}
+    if(changingStage){if(transition.mode==ASTRO_TRANSITION_MID)[self runMidlevelTransition];else [self runEndlevelTransition];}
     if(flow.phase!=ASTRO_FLOW_PLAY)return;
     if(changingStage&&!transition.simulate_world){simulationTick++;tickedScroll=transition.scroll_x;return;}
     [self stepWorldWithoutFlow];
@@ -1647,7 +1689,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
                 parallaxData.mutableBytes,(respawnPending||gameOver||gameEndRequested)?0:backgrounds.count,0);
         }
         simulationRender=YES;[self display];simulationRender=NO;
-        if(trail&&transition.phase==ASTRO_TRANSITION_CARD){
+        if(trail&&transitionLoopRunning)[self readKeyMap];
+        if(trail&&!transitionLoopRunning&&transition.phase==ASTRO_TRANSITION_CARD){
             [audio playMusic:1];
             astro_flow_stage_end(&flow,campaign.level,campaign.half,pendingCampaign.level,pendingCampaign.half,pendingCampaign.complete);
             cardClockStarted=NO;
