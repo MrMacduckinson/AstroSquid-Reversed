@@ -81,7 +81,7 @@ static unsigned entityID(id object){return object==[NSNull null]?playerTraceID:[
     unsigned char viewport[32]={0},scroll[16]={0},inv[10]={0},stats[12]={0};
     be64(viewport,[phase isEqualToString:@"initial"]&&camera==0?0.0:camera);be64(viewport+8,camera+640);be64(viewport+16,worldTop?worldTop:[phase isEqualToString:@"initial"]?0.0:-0.0);be64(viewport+24,worldBottom);
     be64(scroll,tickedScroll);be64(scroll+8,0);be16(inv,inventory.weapon);be16(inv+2,inventory.upgrade);be16(inv+4,inventory.specials);be32(inv+6,actorVisits);be32(stats,score);
-    be16(stats+4,campaign.level);be16(stats+6,campaign.half);be16(stats+8,inventory.lives);
+    be16(stats+4,campaign.level);be16(stats+6,campaign.half);be32(stats+8,inventory.lives);
     printf("G\t%u\t%s\t%08x\t%u\t",simulationTick,phase.UTF8String,randomSeed,[world containsObject:[NSNull null]]?playerTraceID:0);dump(viewport,32);putchar('\t');dump(scroll,16);putchar('\t');dump(inv,10);putchar('\t');dump(stats,12);putchar('\n');
     for(NSUInteger i=0;i<world.count;i++){
         id object=world[i];BOOL player=object==[NSNull null];AstroEnemy *e=player?nil:object;
