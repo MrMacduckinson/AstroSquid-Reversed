@@ -7,7 +7,7 @@
 static FILE *input_file;static long input_size;static const char *data_directory;
 static unsigned clock_reads,opens,records,map_records,scene_records;
 static int advancing,load_mode,start_mode,run_mode,chain_mode,loop_mode,resume_mode,mid_mode,mid_full,end_mode,end_full,resume_long,gameover_entry,gameover_reached,warm_mode;
-static unsigned warm_frames;
+static unsigned warm_frames,panel_world_birth;
 static int real_hud,panel_mode;
 static double hud_font_widths[257];
 static jmp_buf loop_done;static unsigned loop_step;static char loop_label[32];
@@ -17,9 +17,17 @@ static void warm_delay(unsigned ticks,unsigned *final){
  snprintf(loop_label,sizeof loop_label,"warm%u",warm_frames);phase=loop_label;snapshot();
  printf("D\t%u\t%u\t%u\n",warm_frames++,ticks,clock_reads);clock_reads+=ticks;*final=100+clock_reads;
 }
-static void warm_cursor(void){assert(warm_frames==10);if(panel_mode){puts("W\twarm-complete");return;}gameover_reached=1;puts("W\tcomplete");longjmp(loop_done,1);}
+static void warm_cursor(void){assert(warm_frames==10);if(panel_mode){panel_world_birth=render_birth;puts("W\twarm-complete");return;}gameover_reached=1;puts("W\tcomplete");longjmp(loop_done,1);}
 
-void panel_ready(void){assert(panel_mode&&warm_frames==10);phase="panel-ready";snapshot();printf("K\tpanel\t%u\t%u\t%u\n",clock_reads,*(unsigned *)(world_globals+0xa4a),*(unsigned *)(world_globals+0xa4e));gameover_reached=1;puts("W\tpanel-complete");longjmp(loop_done,1);}
+void panel_ready(void){
+ assert(panel_mode&&warm_frames==10);unsigned char *g=world_globals;phase="panel-ready";snapshot();unsigned count=0;
+ for(unsigned char *node=*(void **)(g+0xe86);node;node=*(void **)(node+300))if(identity(node)>panel_world_birth){
+  printf("U\t%u\t",count++);hex(node+41,node[40]);printf("\t%d\t%d\t%u\t%d",*(short *)(node+32),*(short *)(node+38),*(unsigned *)(node+34),*(int *)(node+296));
+  for(unsigned i=0;i<4;i++){double v=*(double *)(node+i*8);if(i<2&&node[40]>=8&&!memcmp(node+41,"GameOver",8))v+=*(double *)(g+0xea2+i*8);printf("\t%016llx",(unsigned long long)ieee_word(v));}putchar('\n');
+ }assert(count==3);
+ printf("F");for(unsigned i=0;i<4;i++){double v=*(double *)(g+0x5b2+i*8);if(i<2)v+=*(double *)(g+0xea2+i*8);printf("\t%016llx",(unsigned long long)ieee_word(v));}printf("\t%u\n",*(unsigned *)(g+0x5d2));
+ printf("K\tpanel\t%u\t%u\t%u\n",clock_reads,*(unsigned *)(g+0xa4a),*(unsigned *)(g+0xa4e));gameover_reached=1;puts("W\tpanel-complete");longjmp(loop_done,1);
+}
 void gameover_enter(void){gameover_reached=1;phase="gameover-entry";snapshot();printf("K\tentry\t%u\t%u\t%u\n",clock_reads,*(unsigned *)(world_globals+0xa4a),*(unsigned *)(world_globals+0xa4e));longjmp(loop_done,1);}
 void end_sound(unsigned char *name){double pan=NAN;world_sound(name,&pan);}
 void loop_keys(void){unsigned k=(loop_step/8)%16;unsigned char *g=world_globals;set_short(g,0xaac,k&1?-1:0);set_short(g,0xaae,k&2?-1:0);set_short(g,0xaa8,k&4?-1:0);set_short(g,0xaaa,k&8?-1:0);set_short(g,0xab2,loop_step%7==0?-1:0);}

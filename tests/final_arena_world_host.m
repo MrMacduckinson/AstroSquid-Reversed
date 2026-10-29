@@ -28,7 +28,11 @@ static __weak AstroView *midView;
 @end
 @implementation CompositeArenaView
 - (uint32_t)currentGameTick {if(panelMode&&warmFrames==10)return [self playerClockTick];return [super currentGameTick];}
-- (void)flushGameEvents {if(panelMode&&warmFrames==10){[self dumpWorldTrace:@"panel-ready"];printf("K\tpanel\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);gameoverReached=YES;puts("W\tpanel-complete");@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super flushGameEvents];}
+- (void)flushGameEvents {if(panelMode&&warmFrames==10){[self dumpWorldTrace:@"panel-ready"];
+ NSDictionary *states=[ui valueForKey:@"orbStates"],*deadlines=[ui valueForKey:@"hoverDeadlines"];unsigned index=0;
+ for(NSDictionary *object in [ui valueForKey:@"objects"]){NSString *name=object[@"name"];AstroUIMotion *state=[states[name] mutableBytes];NSData *label=[name dataUsingEncoding:NSMacOSRomanStringEncoding];printf("U\t%u\t",index++);dump(label.bytes,label.length);printf("\t%d\t%d\t%u\t%d",[object[@"kind"]intValue],state->sprite,[deadlines[name]unsignedIntValue],state->counter);double values[]={state->x,state->y,state->width,state->height};for(unsigned i=0;i<4;i++){unsigned char bytes[8];be64(bytes,values[i]);putchar('\t');dump(bytes,8);}putchar('\n');}assert(index==3);
+ NSRect field=ui.scoreField;AstroScoreCaret caret;[[ui valueForKey:@"caret"]getValue:&caret];double values[]={field.origin.x,field.origin.y,field.size.width,field.size.height};printf("F");for(unsigned i=0;i<4;i++){unsigned char bytes[8];be64(bytes,values[i]);putchar('\t');dump(bytes,8);}printf("\t%u\n",caret.deadline);
+ printf("K\tpanel\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);gameoverReached=YES;puts("W\tpanel-complete");@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super flushGameEvents];}
 - (void)beginGameOver {if(gameoverEntry&&!warmMode){gameoverReached=YES;[self dumpWorldTrace:@"gameover-entry"];printf("K\tentry\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super beginGameOver];}
 - (void)delayGameTicks:(uint32_t)ticks {
  if(!warmMode){[super delayGameTicks:ticks];return;}
