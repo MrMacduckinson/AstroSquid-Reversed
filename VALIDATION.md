@@ -16,6 +16,19 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- On 2026-10-30, independent full-stage native G5/Intel comparisons matched
+  through victory on 4B (3,954,811 records), 5B (4,402,142 records), and 6B
+  (2,065,930 records). The actual targets were attribute153 (Drill-Killah),
+  attribute258 (station reactor), and attribute156 (laser tank); each reached
+  HP <= 0 and removal -1 before the terminal campaign-load marker. These runs
+  used initial HP30000, Laser4, terrain avoidance and braking, with target Y225,
+  Y190 and Y280 respectively. Only G/E/R/S diagnostic annotation ticks were
+  normalized; all other captured fields and record order matched. Full gzip
+  captures and SHA-256 manifests are retained in the internal fidelity audit
+  as BOSS4_VERIFIED, REACTOR5_VERIFIED and BOSS6_VERIFIED. This is controlled
+  gameplay-state evidence, not ordinary-health or continuous-campaign proof,
+  and does not establish pixel or audio-sample equality.
+
 - `tests/gameover_held_host.sh` matches171 records from three original GAMEOVER
   schedules with held mouse and queued A/B/Enter at intervals1/2/3. The original
   TRANS and DOMOUSE body execute; a validated PC-independent prologue trampoline
