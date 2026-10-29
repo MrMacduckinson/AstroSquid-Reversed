@@ -435,3 +435,37 @@ buffer bytes and the complete shared GameOver-field lifecycle remain unaudited.
 The complete application self-test passed again after this change (f7f8e1c),
 with normal process exit and native display restoration. This is not a new
 whole-campaign equivalence result.
+
+### Extended world and lifecycle checks (2026-10-29)
+
+The fixed coupled-world scenario was extended to 3600 updates on the original
+G5 executable and current Intel host: all 142089 canonical records matched
+exactly (22729649 bytes). This scenario uses controlled inputs and clocks; it
+is not a complete campaign comparison.
+
+The final-arena harness now supports `outer64` and `outer-map256`. The latter
+executes actual map spawning after each follow-up world update. It exposed a
+post-death parallax mismatch: original MOVESTARS stops background motion while
+the death/end flag is set. Commit 9872ad0 applies that gate, including resuming
+motion during the respawn wait after the original clears its death flag. All
+28856 state records then matched. Only the harness record timestamp is excluded
+in this comparison: the native recorder labels the base tick, while the host
+labels its latest sampled tick. Object timer bytes remain compared exactly.
+The G5 map and scene inputs match download #3 by MD5.
+
+New Game/Continue initialization order and cursor boundaries now follow the
+original. Intel tests cover retained state through level load, score reset and
+swap before player creation, pause show/hide order, GameOver and return-to-menu
+cursor placement, balanced real AppKit hide/unhide forwarding, and controlled
+Stop/Continue alert returns. These checks do not prove cursor appearance across
+real application focus changes. The full application self-test passed at
+production 5deed41; the later parallax fix has passed targeted GameOver,
+respawn, pause and quit tests and an Intel build. Whole-game equality remains
+unproven, and release archives have not been refreshed as final deliverables.
+
+The complete controlled campaign passed again at 9872ad0: all 17 stages,
+214271 ticks, ending reached, exit 0 and native display restoration. The pilot
+replenishes shield and uses weapon 53 without stage teleportation. Initial RNG
+is not fixed, so score/tick differences from prior runs are not a deterministic
+comparison. This establishes current route completion, not original campaign
+equivalence. See `validation/campaign.json`.
