@@ -512,7 +512,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [hud drawState:&overlay texture:^GLuint(NSInteger n){return [self texture:n];}
         framebufferWidth:(GLsizei)bounds.size.width height:(GLsizei)bounds.size.height];
     // DRAWOVERLAY restores render offsets through int32; CALC refreshes bounds later.
-    if(consume){camera=-(double)astro_ppc_i32(-camera);hudRedraws--;}
+    if(consume||simulationRender||panelTransitionRender||hudClockActive)camera=-(double)astro_ppc_i32(-camera);
+    if(consume)hudRedraws--;
 }
 - (void)drawRect:(NSRect)dirty {
     if(graphicsReleased||stringOverflowActive)return;

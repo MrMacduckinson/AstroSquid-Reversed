@@ -22,7 +22,14 @@
         [self calculateActors];assert(camera==astro_camera_advance(truncated,.375));
         assert(worldLeft==camera&&worldRight==camera+640&&worldTop==0&&signbit(worldTop)&&worldBottom==380);
     }
-    puts("PASS HUD truncates render camera only; cached viewport survives until actual CALC; repaint and zero-count HUD preserve state");
+    for(unsigned mode=0;mode<3;mode++){
+        simulationRender=mode==0;panelTransitionRender=mode==1;hudClockActive=mode==2;
+        camera=worldLeft=1234.75;worldRight=1874.75;hudRedraws=0;
+        [self drawHUD:NO];assert(camera==1234&&worldLeft==1234.75&&worldRight==1874.75&&!hudRedraws);
+        camera=1234.75;[self drawHUD:YES];assert(camera==1234.75);
+    }
+    simulationRender=panelTransitionRender=hudClockActive=NO;
+    puts("PASS unconditional simulation/panel/overlay HUD and consumed HUD truncate render camera only; cached bounds retained. HUD truncates render camera only; cached viewport survives until actual CALC; repaint and zero-count HUD preserve state");
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
