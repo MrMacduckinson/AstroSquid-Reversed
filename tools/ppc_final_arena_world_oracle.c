@@ -65,6 +65,11 @@ int main(int argc,char **argv){
         unsigned level=0;char half=0,extra=0;assert(sscanf(argv[7],"load%u%c%c",&level,&half,&extra)==2&&level>=1&&level<=9&&(half=='A'||half=='B'));
         set_short(g,0xa82,level);set_short(g,0xa84,half=='A'?1:2);tick=100;phase="load";
         invoke_fb(code+0x510c8,g,toc,(void *)(uintptr_t)level,NULL,NULL);snapshot();
+        unsigned index=0;for(unsigned char *m=*(void **)(g+0x5ae);m;m=*(void **)(m+42)){
+            assert(index<10000);printf("P\t%u\t",index++);hex(m,34);hex(m+38,4);putchar('\n');
+        }
+        unsigned char *stars=*(unsigned char **)(g+0xa54)+32;
+        for(index=0;index<3000;index++){printf("T\t%u\t",index);hex(stars+index*32,32);putchar('\n');}
         fprintf(stderr,"LOAD %u%c maps%u scenes%u clocks%u RNG%08x\n",level,half,map_records,scene_records,clock_reads,*(unsigned *)(g+0x244));return 0;
     }
     tick=100;phase="before";unsigned char *player=spawn(code,toc,1,1,1400,180);set_pointer(g,0xa7a,player);set_short(player,88,73);
