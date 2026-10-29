@@ -28,6 +28,15 @@ static __weak AstroView *midView;
 @interface CompositeArenaView:AstroTraceView
 @end
 @implementation CompositeArenaView
+- (void)dumpWorldTrace:(NSString *)phase {
+ [super dumpWorldTrace:phase];
+ if(!panelMode||warmFrames!=10)return;
+ NSDictionary *states=[ui valueForKey:@"orbStates"],*deadlines=[ui valueForKey:@"hoverDeadlines"];unsigned index=0;
+ for(NSDictionary *object in [ui valueForKey:@"objects"]){NSString *name=object[@"name"];AstroUIMotion *state=[states[name] mutableBytes];
+  printf("P\t%s\t%u\t%d\t%d\t%u\t%d",phase.UTF8String,index++,[object[@"kind"]intValue],state->sprite,[deadlines[name]unsignedIntValue],state->counter);
+  double values[]={state->x,state->y,state->width,state->height};for(unsigned i=0;i<4;i++){unsigned char bytes[8];be64(bytes,values[i]);putchar('\t');dump(bytes,8);}putchar('\n');
+ }
+}
 - (uint32_t)cardDelayClockTick {return readyActive?100+compositeClocks:[super cardDelayClockTick];}
 - (void)readKeyMap {if(readyActive){memset(keys,0,sizeof(keys));keys[0]=YES;return;}if(gameOver&&warmFrames==10&&ui.editingHighscore<=0){memset(keys,0,sizeof(keys));keys[0]=YES;return;}[super readKeyMap];}
 - (uint32_t)currentGameTick {if(readyActive||(panelMode&&warmFrames==10))return [self playerClockTick];return [super currentGameTick];}

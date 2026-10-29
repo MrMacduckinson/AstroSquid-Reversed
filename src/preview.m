@@ -2342,7 +2342,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)enterPause {
     [self setGameCursorHidden:NO];
     menuVisible=YES;paused=YES;[audio playCue:@"Menu"];
-    [ui show:@"Pause"];[self drawPanelTransition];
+    ui.panelWorldOriginX=camera;[ui show:@"Pause"];[self drawPanelTransition];
 }
 - (void)pumpPauseEvents {
     NSEvent *event;
@@ -2530,7 +2530,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
     } @finally {transitionLoopRunning=previousClockLoop;}
     flow.phase=savedPhase;
-    [self setGameCursorHidden:NO];menuVisible=YES;[ui show:@"GameOver"];[self drawPanelTransition];
+    [self setGameCursorHidden:NO];menuVisible=YES;ui.panelWorldOriginX=camera;[ui show:@"GameOver"];[self drawPanelTransition];
     ui.editingHighscore=astro_scores_qualifies(highscores,score)?1:0;
     if(ui.editingHighscore>0){
         [ui prepareScoreField];astro_score_editor_begin(&scoreEditor);

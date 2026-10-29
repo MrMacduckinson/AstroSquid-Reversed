@@ -11,6 +11,7 @@ typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
 /* Original signed16 global+a52; default corresponds to FPS60. */
 @property(nonatomic) int16_t frameInterval;
 @property(nonatomic,readonly) double panelOffset;
+@property(nonatomic) double panelWorldOriginX;
 @property(nonatomic,readonly) double cameraX,cameraY,cameraStepX,cameraStepY;
 - (void)advanceMenuCamera;
 - (void)finishMenuCameraMove;

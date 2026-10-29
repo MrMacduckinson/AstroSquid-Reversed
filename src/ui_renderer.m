@@ -17,7 +17,7 @@
     BOOL _transitioning;
     unsigned _panelFrames;
     double _panelOffset,_panelStep;
-    NSMutableDictionary *_orbStates,*_hoverDeadlines;
+    NSMutableDictionary *_orbStates,*_hoverDeadlines,*_panelWorldX;
 }
 @synthesize anchor=_anchor;
 @synthesize transitioning=_transitioning;
@@ -43,6 +43,7 @@
 }
 - (void)show:(NSString *)anchor {
     _panelFrames=0;_panelOffset=0;_gameOverClosing=NO;
+    _panelWorldX=[NSMutableDictionary dictionary];
     NSString *scene=[anchor isEqual:@"Pause"]?@"Data B3":[anchor isEqual:@"GameOver"]?@"Data B1":@"Data B2";
     BOOL sameScene=[scene isEqual:@"Data B2"]&&_objects==_data[@"scenes"][scene];
     _objects=_data[@"scenes"][scene];_anchor=[anchor copy];_hover=nil;_pressed=nil;
@@ -76,6 +77,10 @@
         for(NSDictionary *object in _objects){
             if([anchor isEqual:@"GameOver"]&&![object[@"name"] isEqual:@"GameOverOK"]&&![object[@"name"] isEqual:@"GameOverFade"])continue;
             AstroUIMotion *state=[_orbStates[object[@"name"]] mutableBytes];
+            if(self.panelWorldOriginX!=0){
+                _panelWorldX[object[@"name"]]=@(state->x+self.panelWorldOriginX);
+                state->x=[_panelWorldX[object[@"name"]] doubleValue]-self.panelWorldOriginX;
+            }
             state->y=(state->y-380)-70;
         }
     }
@@ -163,10 +168,12 @@
     if(!object)return;
     AstroUIMotion *state=[_orbStates[object[@"name"]] mutableBytes];
     uint32_t tick=self.readTick?self.readTick():0;
+    NSNumber *worldX=_panelWorldX[object[@"name"]];if(worldX)state->x=worldX.doubleValue;
     // Original900/901/902 all use222px images; preserve each centering operation.
     state->x=state->width/2+state->x;state->y=state->height/2+state->y;
     state->width=(state->width/222)*222;state->height=(state->height/222)*222;
     state->x=state->x-state->width/2;state->y=state->y-state->height/2;
+    if(worldX){_panelWorldX[object[@"name"]]=@(state->x);state->x-=self.panelWorldOriginX;}
     state->sprite=sprite;_hoverDeadlines[object[@"name"]]=@(tick+(sprite==902?1u:0u));
 }
 
@@ -198,7 +205,13 @@
     }
 }
 - (void)animateMenuObjects {
-    for(NSDictionary *object in _objects)astro_ui_animate([_orbStates[object[@"name"]] mutableBytes],_frameInterval);
+    for(NSDictionary *object in _objects){
+        NSString *name=object[@"name"];AstroUIMotion *state=[_orbStates[name] mutableBytes];
+        NSNumber *worldX=_panelWorldX[name];if(worldX)state->x=worldX.doubleValue;
+        astro_ui_animate(state,_frameInterval);
+        // Keep original world-space rounding while exposing screen-space UI bounds.
+        if(worldX){_panelWorldX[name]=@(state->x);state->x-=self.panelWorldOriginX;}
+    }
 }
 - (void)animateTicks:(unsigned)ticks {
     for(unsigned i=0;i<ticks;i++){
