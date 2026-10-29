@@ -42,6 +42,11 @@ Current bounded evidence:
   captured state and event order match except diagnostic annotation ticks.
   This is an independent stage carryover test, not ordinary campaign proof.
 
+- Independent 7B victory through 8A creation matches 1,895,487 records
+  (BOSS7_NEXT_VERIFIED), terminal clocks 1952192/1951742/1952125 and RNG63abc2bb.
+  Initial HP30000/Laser4/Y95 with aiming, avoidance and braking; only diagnostic
+  annotation ticks normalized. This does not prove ordinary-health campaign play.
+
 - On 2026-10-30, independent full-stage native G5/Intel comparisons matched
   through victory on 4B (3,954,811 records), 5B (4,402,142 records), and 6B
   (2,065,930 records). The actual targets were attribute153 (Drill-Killah),
