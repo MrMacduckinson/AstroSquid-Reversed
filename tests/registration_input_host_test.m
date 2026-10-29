@@ -2,6 +2,7 @@
 #include "../src/preview.m"
 #undef main
 #import <objc/runtime.h>
+static uint32_t serviceTick=1000;static unsigned serviceClockReads,serviceTickStep;
 static NSMutableString *events;static BOOL observing,checkRegisterFocus,autoTest,autoHeld;
 @interface RegistrationInputUI:AstroUIRenderer @end
 @implementation RegistrationInputUI
@@ -17,6 +18,7 @@ static NSMutableString *events;static BOOL observing,checkRegisterFocus,autoTest
 @interface RegistrationInputView:AstroView @end
 @implementation RegistrationInputView
 - (uint32_t)currentGameTick {return 1000;}
+- (uint32_t)cardDelayClockTick {serviceClockReads++;uint32_t tick=serviceTick;serviceTick+=serviceTickStep;return tick;}
 - (void)copyKeyMap:(unsigned char *)map {memset(map,0,16);}
 - (BOOL)menuMouseButtonPressed {return autoTest?autoHeld:NO;}
 - (NSPoint)currentMenuMousePoint {return NSMakePoint(-30000,-30000);}
@@ -75,6 +77,24 @@ static NSMutableString *events;static BOOL observing,checkRegisterFocus,autoTest
     [self frameExpect:@"DWSKE"];assert(!strcmp(fields[0].name,"XAB"));
     assert(![NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO]);
     puts("PASS pending Cocoa key events retained while unfocused/closed gate and consumed one per eligible field frame, including repeat");
+    [ui resetRegistrationFields];ui.activeRegistrationField=0;[self flushGameEvents];lastMainEventTick=0;
+    for(NSString *ch in @[@"A",@"B",@"C"])[self queueCharacter:ch code:0 repeat:NO];
+    observedWallTick=999;serviceTick=1000;serviceClockReads=0;[self pollMainMenu];
+    assert(!strcmp(fields[0].name,"A")&&queuedKeyEvents.count==1&&lastMainEventTick==1000&&serviceClockReads==3);
+    observedWallTick=999;serviceTick=1059;serviceClockReads=0;[self pollMainMenu];
+    assert(!strcmp(fields[0].name,"AC")&&!queuedKeyEvents.count&&lastMainEventTick==1000&&serviceClockReads==1);
+    [self queueCharacter:@"D" code:2 repeat:NO];observedWallTick=1000;serviceTick=1060;serviceClockReads=0;[self pollMainMenu];
+    assert(!strcmp(fields[0].name,"AC")&&!queuedKeyEvents.count&&lastMainEventTick==1060&&serviceClockReads==3);
+    [self queueCharacter:@"E" code:14 repeat:NO];serviceTick=2000;serviceClockReads=0;[self pollMenu];
+    assert(queuedKeyEvents.count==1&&lastMainEventTick==1060&&!serviceClockReads);
+    paused=YES;[self pollMainMenu];paused=NO;assert(queuedKeyEvents.count==1&&!serviceClockReads);
+    [self flushGameEvents];ui.activeRegistrationField=-1;serviceTick=2000;serviceClockReads=0;serviceTickStep=1;
+    NSEvent *pending=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:0 windowNumber:0 context:nil characters:@"P" charactersIgnoringModifiers:@"P" isARepeat:YES keyCode:35];
+    [NSApp postEvent:pending atStart:YES];[self pollMainMenu];
+    assert(lastMainEventTick==2002&&serviceClockReads==3&&!queuedKeyEvents.count);
+    assert(![NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO]);
+    serviceTickStep=0;
+    [self flushGameEvents];puts("PASS outer Main field/periodic shared consumption AC,59/60 boundary,closed frame gate,and nested/pause exclusion");
     observing=NO;
     for(NSString *button in @[@"Back3",@"Back4",@"Back5",@"Back6",@"Back7"]){
         ui.activeRegistrationField=0;[self performMenuAction:button];assert(ui.activeRegistrationField==-1);

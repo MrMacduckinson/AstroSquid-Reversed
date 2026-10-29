@@ -146,6 +146,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     AstroUIRenderer *ui;
     NSString *navigationButton,*registeredSerial;
     NSMutableArray<NSEvent *> *queuedKeyEvents;
+    uint32_t lastMainEventTick;
     AstroHUDRenderer *hud;
     BOOL menuVisible,splashVisible;
     uint64_t renderClock,playerRenderBirth;
@@ -1876,6 +1877,23 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(navigationButton&&!ui.transitioning)[self finishMenuNavigation];
     if(gameOverPanel&&finishGameOver)[self finishGameOver];
 }
+- (void)pollMainMenu {
+    BOOL outer=!splashVisible&&!paused&&!gameOver&&!gameLoopActive;
+    [self pollMenu];
+    if(!outer||!menuVisible||gameLoopActive)return;
+    uint32_t now=[self cardDelayClockTick];
+    if((int32_t)(now-lastMainEventTick)<=59)return;
+    // FBHANDLEEVENTS samples its own deadline clock before fetching an event.
+    (void)[self cardDelayClockTick];
+    NSEvent *event=nil;
+    if(queuedKeyEvents.count){event=queuedKeyEvents[0];[queuedKeyEvents removeObjectAtIndex:0];}
+    else event=[NSApp nextEventMatchingMask:NSEventMaskAny untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:YES];
+    // shortcut: Command/window dispatch still uses AppKit; verify mixed OS events before replacing it.
+    if(event.type==NSEventTypeKeyDown){
+        if(event.modifierFlags&NSEventModifierFlagCommand)[NSApp.mainMenu performKeyEquivalent:event];
+    }else if(event)[NSApp sendEvent:event];
+    lastMainEventTick=[self cardDelayClockTick];
+}
 - (void)consumePendingFieldEvent {
     NSEvent *event=[NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast]
         inMode:NSDefaultRunLoopMode dequeue:YES];
@@ -1923,7 +1941,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if(!menuVisible)observedWallTick=stamp;simulationTick=stamp;
         if(gameOverPending){gameOverPending=NO;[self beginGameOver];observedWallTick=[self currentGameTick];return;}
         BOOL idle=menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY;
-        if(menuVisible)[self pollMenu];
+        if(menuVisible)[self pollMainMenu];
         if(gameEndRequested){[self pollGame];return;}
         if(idle&&!menuVisible)[self setNeedsDisplay:YES];
         self.window.title=@"AstroSquid";
@@ -1942,7 +1960,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(!menuVisible&&flow.phase!=ASTRO_FLOW_PLAY) {
         BOOL anyKey=NO;for(int i=0;i<128;i++)anyKey|=keys[i];[self advanceFlowWithKey:anyKey];
     }
-    if(menuVisible) [self pollMenu];
+    if(menuVisible) [self pollMainMenu];
     if(paused||gameOver||menuVisible||flow.phase!=ASTRO_FLOW_PLAY) tickRemainder=0;
     while(tickRemainder>=1.0/60.0&&flow.phase==ASTRO_FLOW_PLAY&&!menuVisible&&!paused) {
         tickRemainder-=1.0/60.0;
