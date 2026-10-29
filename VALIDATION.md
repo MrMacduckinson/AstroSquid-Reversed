@@ -210,12 +210,16 @@ captures; those captures do not establish equivalence of the current full game.
   all128 positions, replacement of stale state and call ordering with injected
   snapshots; it is not an original G5 physical-key capture. Execution of the
   screenshot action is not covered by those host checks; quit is checked below.
-- `tests/picture_native/*.pict.gz` contains10 original GETPICT_ offscreen captures.
-  The pure-C encoder matches every byte except the two process-local PixMap
-  handle words, and G5 native DrawPicture decodes all generated RGB pixels exactly.
-  Primary ASan/UBSan, default pure-C suite and actual Intel replay pass. This is
-  a PICT payload codec proof; screenshot startup/capture/save is not integrated,
-  and the actual window/OpenGL capture and file metadata/prefix remain open.
+- `tests/picture_native/*.pict.gz` contains original offscreen, window and
+  fullscreen PICT captures. The encoder checks normalize only process-local
+  PixMap handle words; native DrawPicture additionally checked decoded RGB.
+  `bash tests/picture_host.sh` was rerun on the Intel iMac after the pilot work:
+  actual startup/debug gating, held screenshot key, quit coexistence, complete
+  saved window PICT, 512-byte prefix, Finder type/creator, same-name truncation,
+  read-only failure and folder failure all passed. The temporary files are removed
+  by the test. Earlier fullscreen evidence covers RGBA and GL state restoration;
+  this rerun does not revalidate fullscreen or every later in-game port state.
+  Full campaign screenshot identity remains unproved.
 - `tests/keymap_native.csv` records137 private-original G5 GETKEYMAP cases with
   scripted maps and a screenshot observer. The host matches control bits and
   key counts for136 API-conforming maps, including every single key. A separate

@@ -12,7 +12,7 @@ int astro_picture_window_encode(const unsigned char *rgb,size_t stride,unsigned 
 /* Fullscreen top-down RGBA: preserve alpha, raw ARGB and infinite clip. */
 int astro_picture_fullscreen_encode(const unsigned char *rgba,size_t stride,unsigned width,unsigned height,
                                     unsigned char **output,size_t *size);
-/* Original open-file metadata; filesystem application is not implemented here. */
+/* Original open-file metadata; the application saveScreenshot caller applies it. */
 enum { ASTRO_PICTURE_TYPE=0x50494354, ASTRO_PICTURE_CREATOR=0x3f3f3f3f };
 int astro_picture_filename(uint32_t mac_seconds,char *name,size_t capacity);
 /* Same ownership contract; includes the native512-byte zero file prefix. */
