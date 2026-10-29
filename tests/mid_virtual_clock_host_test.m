@@ -3,10 +3,12 @@
 #include "../src/preview.m"
 #undef main
 static uint32_t clockTick=100;
+static NSMutableString *cardEvents;
+static BOOL cardKey;
 @interface MidClockAudio:AstroAudio
 @end
 @implementation MidClockAudio
-- (void)serviceMusic {}
+- (void)serviceMusic {if(cardEvents)[cardEvents appendString:@"M"];}
 - (void)stopMusic {}
 - (void)playCue:(NSString *)name {}
 - (BOOL)playMusic:(int)track {assert(track==1);return YES;}
@@ -16,7 +18,8 @@ static uint32_t clockTick=100;
 @implementation MidClockView
 - (uint32_t)currentGameTick {assert(clockTick<100000);return clockTick++;}
 - (void)display {}
-- (void)copyKeyMap:(unsigned char *)bytes {memset(bytes,0,16);}
+- (void)copyKeyMap:(unsigned char *)bytes {memset(bytes,0,16);bytes[0]=cardKey?1:0;if(cardEvents)[cardEvents appendString:@"K"];}
+- (void)advanceFlowWithKey:(BOOL)key {if(cardEvents)[cardEvents appendString:@"A"];[super advanceFlowWithKey:key];}
 @end
 @implementation AstroView(MidClockCheck)
 - (void)checkMidClock {
@@ -40,9 +43,12 @@ static uint32_t clockTick=100;
     assert(transition.phase==ASTRO_TRANSITION_CARD&&transition.scale<.001&&engineGlow&&departureTrail);
     assert(campaign.level==1&&campaign.half==2&&pendingCampaign.level==2);
     assert([self playerClockTick]==simulationTick);
-    unsigned before=clockTick;[self advanceFlowWithKey:NO];
-    assert(flow.phase==ASTRO_FLOW_END_CARD&&clockTick==before);
-    [self advanceFlowWithKey:YES];
+    unsigned before=clockTick;campaignTestPath=nil;cardEvents=[NSMutableString string];
+    cardClockStarted=NO;[self pollFlowCard];assert(cardEvents.length==0);
+    cardClockStarted=YES;[self pollFlowCard];
+    assert([cardEvents isEqual:@"KMA"]&&flow.phase==ASTRO_FLOW_END_CARD&&clockTick==before);
+    [cardEvents setString:@""];cardKey=YES;[self pollFlowCard];
+    assert([cardEvents isEqual:@"KMA"]);cardEvents=nil;cardKey=NO;campaignTestPath=@"controlled-clock";
     assert(!changingStage&&flow.phase==ASTRO_FLOW_READY&&campaign.level==2&&campaign.half==1);
     assert(transition.scale==1&&!engineGlow&&!departureTrail&&![world containsObject:[NSNull null]]);
     assert([levels[selectedLevel] isEqual:@"Data 2A"]&&!readyLoadPending);
