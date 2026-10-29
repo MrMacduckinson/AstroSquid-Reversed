@@ -2635,8 +2635,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         NSUInteger index=[levels indexOfObject:stage];if(index==NSNotFound)return;
         if(!selftestPath&&!campaignTestPath)simulationTick=(uint32_t)floor((NSProcessInfo.processInfo.systemUptime-clockOrigin)*60);
         initialReadyCard=YES;changingStage=NO;transition=(AstroTransition){0};pendingCampaign=(AstroCampaign){0};
-        ui.editingHighscore=0;selectedLevel=index;camera=-0.0;[self resetEnemies];playerX=30;playerY=190;
-        [self finishPlayerStart];
+        ui.editingHighscore=0;selectedLevel=index;camera=-0.0;[self resetLevelWorld];
+        score=0;[self presentFrame];inventory.lives=1;gameEndRequested=NO;
+        [self createPlayerAtX:30 y:190];[self finishPlayerStart];
+        inventory.weapon=playerWeapon=10;inventory.specials=1;
         memset(keys,0,sizeof(keys));automatic=YES;paused=NO;menuVisible=NO;
         gameLoopActive=YES;gameEndRequested=gameEndHighscores=NO;
         astro_flow_ready(&flow,campaign.level,campaign.half);cardClockStarted=NO;[self unlockStage];
