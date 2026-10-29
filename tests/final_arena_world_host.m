@@ -4,7 +4,7 @@
 #import <objc/runtime.h>
 static const char *retainedStarPath;
 static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode,resumeMode,midMode,midFull,endMode,endFull,resumeLong,gameoverEntry,gameoverReached,warmMode;
-static BOOL realHUD,panelMode,panelInput,panelCleanup,panelTail,cleanupDone,destroyMode,menuMode,noScore,menuReturn;
+static BOOL realHUD,panelMode,panelInput,panelCleanup,panelTail,cleanupDone,destroyMode,menuMode,noScore,menuReturn,readyActive;
 @interface CompositeHUD:AstroHUDRenderer
 @end
 @implementation CompositeHUD
@@ -21,15 +21,16 @@ static __weak AstroView *midView;
 @interface CompositeArenaAudio:AstroTraceAudio
 @end
 @implementation CompositeArenaAudio
-- (void)serviceMusic {if(midMode)[midView captureMidFrame];else [super serviceMusic];}
+- (void)serviceMusic {if(midMode&&!readyActive)[midView captureMidFrame];else [super serviceMusic];}
 - (void)stopMusic {puts("A\tstop");}
-- (BOOL)playMusic:(int)track {if(track==3)puts("A\tplay3");else if(midMode||(menuReturn&&cleanupDone)){assert(track==1);puts("A\tplay1");}else {assert(track==2);puts("A\tplay2");}return YES;}
+- (BOOL)playMusic:(int)track {if(track==3)puts("A\tplay3");else if((midMode&&!readyActive)||(menuReturn&&cleanupDone)){assert(track==1);puts("A\tplay1");}else {assert(track==2);puts("A\tplay2");}return YES;}
 @end
 @interface CompositeArenaView:AstroTraceView
 @end
 @implementation CompositeArenaView
-- (void)readKeyMap {if(gameOver&&warmFrames==10&&ui.editingHighscore<=0){memset(keys,0,sizeof(keys));keys[0]=YES;return;}[super readKeyMap];}
-- (uint32_t)currentGameTick {if(panelMode&&warmFrames==10)return [self playerClockTick];return [super currentGameTick];}
+- (uint32_t)cardDelayClockTick {return readyActive?100+compositeClocks:[super cardDelayClockTick];}
+- (void)readKeyMap {if(readyActive){memset(keys,0,sizeof(keys));keys[0]=YES;return;}if(gameOver&&warmFrames==10&&ui.editingHighscore<=0){memset(keys,0,sizeof(keys));keys[0]=YES;return;}[super readKeyMap];}
+- (uint32_t)currentGameTick {if(readyActive||(panelMode&&warmFrames==10))return [self playerClockTick];return [super currentGameTick];}
 - (void)flushGameEvents {if(menuReturn&&cleanupDone){assert(ui.activeRegistrationField==-1);puts("RETURN-FLUSH");return;}if(panelMode&&warmFrames==10){[self dumpWorldTrace:@"panel-ready"];
  NSDictionary *states=[ui valueForKey:@"orbStates"],*deadlines=[ui valueForKey:@"hoverDeadlines"];unsigned index=0;
  for(NSDictionary *object in [ui valueForKey:@"objects"]){NSString *name=object[@"name"];AstroUIMotion *state=[states[name] mutableBytes];NSData *label=[name dataUsingEncoding:NSMacOSRomanStringEncoding];printf("U\t%u\t",index++);dump(label.bytes,label.length);printf("\t%d\t%d\t%u\t%d",[object[@"kind"]intValue],state->sprite,[deadlines[name]unsignedIntValue],state->counter);double values[]={state->x,state->y,state->width,state->height};for(unsigned i=0;i<4;i++){unsigned char bytes[8];be64(bytes,values[i]);putchar('\t');dump(bytes,8);}putchar('\n');}assert(index==3);
@@ -58,7 +59,7 @@ static __weak AstroView *midView;
     memset(bytes,0,16);unsigned input=(loopStep/8)%16;int codes[5]={126,125,123,124,55};
     for(unsigned i=0;i<5;i++)if(i==4?loopStep%7==0:(input&(1u<<i)))bytes[codes[i]>>3]|=1u<<(codes[i]&7);
 }
-- (void)createPlayerAtX:(double)x y:(double)y {if(resumeMode&&loopStep)playerTraceID=++nextEntityID;[super createPlayerAtX:x y:y];}
+- (void)createPlayerAtX:(double)x y:(double)y {if(readyActive||(resumeMode&&loopStep))playerTraceID=++nextEntityID;[super createPlayerAtX:x y:y];}
 - (void)handleMiscKeys {
     if(panelTail&&cleanupDone){[self dumpWorldTrace:@"gameover-tail"];printf("Y\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);puts("W\ttail-complete");if(destroyMode)return;@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}
     if(!loopMode&&!midMode){[super handleMiscKeys];return;}
@@ -119,7 +120,7 @@ static __weak AstroView *midView;
             midView=self;loopStep=0;@try {if(endMode){[self runEndlevelTransition];}else [self runMidlevelTransition];}@catch(NSException *e){assert([e.name isEqual:@"MidTraceFinished"]);}
             if(endFull){[self dumpWorldTrace:@"end-pre-card"];printf("K\tend\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);}
             if(midFull){[self dumpWorldTrace:@"mid-end"];printf("K\tend\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);}
-            if(getenv("ASTRO_WORLD_NEXT_LOAD")){assert(midFull&&!endMode);nextEntityID=playerTraceID=0;entityIDs=[NSMapTable strongToStrongObjectsMapTable];[self loadCampaignStage:pendingCampaign];playerTraceID=++nextEntityID;[self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;tracePhase="next-load";[self dumpWorldTrace:@"next-load"];}
+            if(getenv("ASTRO_WORLD_NEXT_LOAD")){assert(midFull&&!endMode);nextEntityID=playerTraceID=0;entityIDs=[NSMapTable strongToStrongObjectsMapTable];if(getenv("ASTRO_WORLD_READY")){readyActive=YES;BOOL previousHUDClock=hudClockActive;hudClockActive=YES;[self drawHUD:NO];hudClockActive=previousHUDClock;[self recordCardPresentation];compositeClocks+=60;for(unsigned poll=0;flow.phase==ASTRO_FLOW_READY;poll++){assert(poll<1000);[self pollFlowCard];}readyActive=NO;}else {[self loadCampaignStage:pendingCampaign];playerTraceID=++nextEntityID;[self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;}tracePhase="next-load";[self dumpWorldTrace:@"next-load"];}
         }
         if(loopMode){
             gameLoopActive=YES;menuVisible=paused=gameOver=changingStage=NO;flow.phase=ASTRO_FLOW_PLAY;automatic=YES;campaign.arena=0;
