@@ -20,6 +20,7 @@ static NSMutableString *events;
     return injecting?[self currentGameTick]:[super playerClockTick];
 }
 - (void)display {}
+- (void)beginGameOver {if(injecting){[events appendString:@"G"];gameOverPending=NO;return;}[super beginGameOver];}
 - (void)copyKeyMap:(unsigned char *)bytes {memset(bytes,0,16);}
 - (void)stepEnemies {
     if(!injecting){[super stepEnemies];return;}
@@ -50,6 +51,11 @@ static NSMutableString *events;
 - (void)checkGameLoopClock {
     [timer invalidate];timer=nil;[audio stop];audio.soundVolume=audio.musicVolume=0;splashVisible=NO;injecting=YES;
     unsigned checked=0;
+    {const uint32_t c[]={101,102};[self resetClockCase:c count:2];gameOver=gameOverPending=YES;
+        [self pollGame];assert(used==2&&!steps&&!renders&&!factories&&!gameOverPending&&[events isEqual:@"CCG"]);checked++;}
+
+    {const uint32_t c[]={101,102};[self resetClockCase:c count:2];gameOver=gameOverPending=YES;
+        [self tickWallClock];assert(used==2&&!steps&&!renders&&!factories&&!gameOverPending&&[events isEqual:@"CCG"]);checked++;}
     // Last-death iteration retains its map tail; the already-entered panel does not.
     {const uint32_t c[]={121,125};[self resetClockCase:c count:2];
         gameOver=gameOverPending=YES;[self pollMapSpawns];
@@ -96,8 +102,8 @@ static NSMutableString *events;
         assert(flow.phase==ASTRO_FLOW_PLAY&&used==8&&factories==1&&lastSpawnTick==140);
         assert(playerState.update_tick==110&&playerState.animation_tick==111&&lastPlayerShot==112);
         assert(observedWallTick==100&&worldRenderTick==100&&!steps&&!renders&&[events isEqual:@"CCCCCCCFC"]);checked++;}
-    injecting=NO;assert(checked==12);
-    puts("PASS12 actual host source-backed outer clocks, including pending/final GameOver guards: entry3, closedCPUspawn, freshCPU/factorystores, signedspawn, blockedresume, blink exception, reset preservation and READY return tail");
+    injecting=NO;assert(checked==14);
+    puts("PASS14 actual host source-backed outer clocks, including pending/final GameOver guards: entry3, closedCPUspawn, freshCPU/factorystores, signedspawn, blockedresume, blink exception, reset preservation and READY return tail");
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{

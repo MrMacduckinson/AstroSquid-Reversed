@@ -1719,6 +1719,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     uint32_t comparison=[self playerClockTick];
     if((int32_t)(comparison-observedWallTick)>0){
         observedWallTick=[self playerClockTick];simulationTick=observedWallTick;
+        if(gameOverPending){gameOverPending=NO;[self beginGameOver];return;}
         if(respawnPending){
             respawnPending=NO;inventory.lives--;[self beginRespawnWait];[self pollRespawnWaitFrame];return;
         }
@@ -2038,7 +2039,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(stringOverflowActive||pauseLoopRunning||editingKey>=0)return;
     wallClockPoll=YES;@try {
         if(gameEndRequested){[self pollGame];return;}
-        if(!menuVisible&&!paused&&!gameOver&&flow.phase==ASTRO_FLOW_PLAY){
+        if(!menuVisible&&!paused&&(!gameOver||gameOverPending)&&flow.phase==ASTRO_FLOW_PLAY){
             [self pollGame];self.window.title=@"AstroSquid";return;
         }
         if(!menuVisible&&flow.phase!=ASTRO_FLOW_PLAY){
@@ -2050,7 +2051,6 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         uint32_t elapsed=stamp-observedWallTick;
         if(!elapsed&&!menuVisible)return;
         if(!menuVisible)observedWallTick=stamp;simulationTick=stamp;
-        if(gameOverPending){gameOverPending=NO;[self beginGameOver];observedWallTick=[self currentGameTick];return;}
         BOOL idle=menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY;
         if(menuVisible)[self pollMainMenu];
         if(gameEndRequested){[self pollGame];return;}
