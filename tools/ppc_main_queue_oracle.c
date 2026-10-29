@@ -48,14 +48,15 @@ int main(int argc,char **argv){
  entry[0]=0x7c0802a6;entry[1]=0x90010010;entry[2]=0x90410014;
  tail[0]=0x926e1300;tail[1]=0x928e1304;tail[2]=0x80010010;tail[3]=0x7c0803a6;tail[4]=0x4e800020;MakeDataExecutable(code,433284);
  const short intervals[]={1,2,3,1000};
- for(unsigned seed=0;seed<2;seed++)for(unsigned focus=0;focus<3;focus++)for(unsigned interval=0;interval<4;interval++)for(step=0;step<3;step++){
+ const uint32_t service_ticks[]={1000,940,0};
+ for(unsigned seed=0;seed<3;seed++)for(unsigned focus=0;focus<3;focus++)for(unsigned interval=0;interval<4;interval++)for(step=0;step<3;step++){
   memset(g,0,0x1400);reads=frames=queued=0;start=1000;
   *(void **)(g+0x21c)=lit;*(void **)(g+0x388)=heap;*(void **)(g+0x38c)=heap;*(void **)(g+0xa54)=stars;
   *(double *)(g+0x378)=4503601774854144.;*(uint32_t *)(g+0x380)=0x43300000;*(short *)(g+0xa52)=intervals[interval];*(uint32_t *)(g+0xa4a)=1000;
   *(void **)(g+0xa06)=focus?g+0x5b2+(focus-1)*0x22a:NULL;
   *(double *)(g+0x5c2)=*(double *)(g+0x7ec)=200;
   for(unsigned i=1;i<=3000;i++){stars[i*4]=80;stars[i*4+1]=(i*17)%640;stars[i*4+2]=(i*29)%480;stars[i*4+3]=i%5+1;}
-  invoke_loop(code+0x66ce4,g,toc,seed?940:1000);
+  invoke_loop(code+0x66ce4,g,toc,service_ticks[seed]);
   assert(reads>=80&&reads<86);printf("%u,Z,%u,%u,%u,%u,%u,%u,",profile,reads,frames,queued,*(uint32_t *)(g+0xa4a),*(uint32_t *)(g+0x1300),*(uint32_t *)(g+0x1304));
   unsigned char *field=focus?g+0x5b2+(focus-1)*0x22a:NULL;if(field)for(unsigned i=0;i<field[296];i++)printf("%02x",field[297+i]);putchar('\n');profile++;
  }

@@ -3,9 +3,9 @@
 import gzip,itertools,sys
 actual=gzip.open(sys.argv[1],"rb").read().decode("ascii").splitlines()
 expected=[]
-for profile,(seed,focus,interval,step) in enumerate(itertools.product(range(2),range(3),(1,2,3,1000),range(3))):
+for profile,(seed,focus,interval,step) in enumerate(itertools.product((1000,940,0),range(3),(1,2,3,1000),range(3))):
     state={"reads":0,"frames":0,"queued":0,"stop":False}
-    text=[];last_frame=1000;last_service=940 if seed else 1000;counter=0
+    text=[];last_frame=1000;last_service=seed;counter=0
     def record(kind,value):
         expected.append(",".join(str(x) for x in (profile,kind,value,state["reads"],state["frames"],state["queued"])))
     def tick():
@@ -27,4 +27,4 @@ for profile,(seed,focus,interval,step) in enumerate(itertools.product(range(2),r
 assert len(actual)==len(expected),(len(actual),len(expected))
 for i,(a,b) in enumerate(zip(actual,expected)):
     assert a==b,"record%d: native %s / model %s"%(i,a,b)
-print("PASS72 actual PPC Main schedules, %d complete clock/frame/field/periodic/final records"%len(actual))
+print("PASS108 actual PPC Main schedules, %d complete clock/frame/field/periodic/final records"%len(actual))
