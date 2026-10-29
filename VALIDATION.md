@@ -24,6 +24,12 @@ Current bounded evidence:
   this is a bounded continuous segment, not an ordinary full campaign.
 
 
+- Extending FOLLOW to natural death on 2A matches 1,182,411 records through
+  GameOver entry (FOLLOW1_LONG_VERIFIED), clocks1370562/1370661/1370606.
+  The initial 1B controlled setup remains HP30000/Laser4; after transition,
+  health, weapon and lives follow the game without test refills. This verifies
+  post-load play and death, not a full campaign win.
+
 - Independent 2B victory through the end card and 3A player/world creation
   matches 2,187,877 records (BOSS2_NEXT_VERIFIED), terminal clocks
   2190443/2190032/2190425. Captured inventory, stage, RNG and 3000 stars match;
