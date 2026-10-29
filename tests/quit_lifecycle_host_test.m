@@ -2,7 +2,7 @@
 #define main astrosquid_application_main
 #include "../src/preview.m"
 #undef main
-static BOOL observing,shutdownMode;
+static BOOL observing,shutdownMode,reminderActive;
 static unsigned currentCase,clockReads,keyPolls,menuCode,scoreSaves;
 static uint32_t fixedTick=100,cardTick=100;
 static NSMutableArray *actual,*expected,*shutdownEvents;
@@ -12,12 +12,16 @@ static BOOL rawQuit;
 @implementation QuitAudio
 - (void)stopMusic {if(shutdownMode)[shutdownEvents addObject:@"music_stop"];if(observing)[actual addObject:@"stop_track"];}
 - (BOOL)playMusic:(int)n {if(observing){assert(n==1);[actual addObject:@"play_track"];}return YES;}
+- (void)serviceMusic {if(observing)[actual addObject:@"music"];}
 - (void)stopEffects {if(shutdownMode)[shutdownEvents addObject:@"sound_stop"];}
 - (void)stop {}
 @end
 @interface QuitView : AstroView
 @end
 @implementation QuitView
+- (void)drawRegistrationReminder {assert(reminderActive);}
+- (void)delayGameTicks:(uint32_t)ticks {if(reminderActive)assert(ticks==300);else [super delayGameTicks:ticks];}
+- (BOOL)menuMouseButtonPressed {return reminderActive?YES:[super menuMouseButtonPressed];}
 - (uint32_t)currentGameTick {if(observing){clockReads++;[actual addObject:@"clock"];}return fixedTick;}
 - (uint32_t)playerClockTick {return [self currentGameTick];}
 - (uint32_t)cardDelayClockTick {return cardTick;}
@@ -63,29 +67,33 @@ static BOOL rawQuit;
 }
 - (void)checkQuit {
     for(unsigned c=0;c<8;c++){
-        // Signed quit=-1 and game-end already1 at GAMELOOP entry are diagnostics,
-        // not STARTNEWGAME states; their native records remain separately retained.
-        if(c==2||c==3||c==7)continue;
-        [self resetQuit];currentCase=c;quitRequested=c==1;respawnPending=c==4;gameEndHighscores=c==5;ui.activeRegistrationField=c==5?0:-1;
+        // Signed quit=-1 remains diagnostic; end=1 is reachable through REGREMINDER.
+        if(c==2)continue;
+        [self resetQuit];currentCase=c;quitRequested=c==1||c==7;respawnPending=c==4;gameEndHighscores=c==5;ui.activeRegistrationField=c==5?0:-1;
+        if(c==3||c==7){
+            paused=YES;reminderActive=YES;[self showRegistrationReminder];reminderActive=NO;
+            assert(gameEndRequested&&!paused);keyPolls=0;
+        }
         FILE *f=fopen("tests/quit_loop_native.csv","r");assert(f);char line[256];assert(fgets(line,sizeof(line),f));
         expected=[NSMutableArray array];unsigned nativeReads=0,nativePolls=0,nativeMenu=0;
         while(fgets(line,sizeof(line),f)){
             unsigned id,reads,polls,disposed,menu;int quit,end,activeFlag,entities,map;char event[32];
             assert(sscanf(line,"%u,%31[^,],%u,%u,%d,%d,%d,%d,%d,%u,%u",&id,event,&reads,&polls,&quit,&end,&activeFlag,&entities,&map,&disposed,&menu)==11);
             if(id!=c)continue;
-            if(!strcmp(event,"clock")||!strcmp(event,"keys")||!strcmp(event,"dispose_entity")||!strcmp(event,"controls")||
+            if(!strcmp(event,"music")||!strcmp(event,"clock")||!strcmp(event,"keys")||!strcmp(event,"dispose_entity")||!strcmp(event,"controls")||
                !strcmp(event,"menu")||!strcmp(event,"flush")||!strcmp(event,"stop_track")||!strcmp(event,"play_track")||!strcmp(event,"cursor")||!strcmp(event,"return"))
                 [expected addObject:[NSString stringWithUTF8String:event]];
-            if(!strcmp(event,"return")){nativeReads=reads;nativePolls=polls;nativeMenu=menu;assert(!activeFlag&&!entities&&!map&&disposed==3&&quit==1);}
+            if(!strcmp(event,"return")){nativeReads=reads;nativePolls=polls;nativeMenu=menu;assert(!activeFlag&&!entities&&!map&&disposed==3&&quit==(c!=3));}
         }
         assert(!ferror(f));fclose(f);assert(nativeReads&&expected.count);
         observing=YES;[self beginGameLoop];for(unsigned i=0;gameLoopActive&&i<3;i++)[self pollGame];observing=NO;
-        assert(!gameLoopActive&&quitRequested&&!terminationAllowed&&menuVisible&&!world.count&&!mapPlacements.count&&playerVisualDeleted);
+        assert(!gameLoopActive&&quitRequested==(c!=3)&&!terminationAllowed&&menuVisible&&!world.count&&!mapPlacements.count&&playerVisualDeleted);
         assert([actual isEqual:expected]&&clockReads==nativeReads&&keyPolls==nativePolls&&menuCode==nativeMenu);
+        if(c==3){assert(!gameEndRequested);continue;}
         shutdownMode=YES;[self closeDown];[self closeDown];shutdownMode=NO;
         assert(([shutdownEvents isEqual:@[@"settings",@"graphics",@"sound_stop",@"destroy",@"music_stop",@"terminate"]]));
     }
-    puts("PASS5 native quit-tail projections: input latch, clock totals, cleanup/menu/flush/music then return; shutdown follows return and is idempotent");
+    puts("PASS7 native exit-tail projections including reminder end-on-entry: music/input order, clock totals, cleanup/menu/flush/music then return; shutdown follows return and is idempotent");
     [self resetQuit];rawQuit=YES;[self readSpecialKeys];assert(quitRequested&&gameLoopActive&&!terminationAllowed);
     respawnTick=1;respawnWaitStartTick=100;fixedTick=160;gameEndRequested=YES;
     world=[NSMutableArray array];[self pollRespawnWait];[self completeGameLoopIfRequested];assert(respawnTick&&gameLoopActive);
