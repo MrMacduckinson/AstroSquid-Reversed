@@ -9,6 +9,9 @@
 #include <errno.h>
 #include "physics.h"
 #include "picture.h"
+#include "preferences.h"
+static int preferenceWord(const uint8_t *p){unsigned v=(unsigned)p[0]*256+p[1];return v<32768?(int)v:(int)v-65536;}
+static void preferencePut(uint8_t *p,int v){p[0]=(uint16_t)v>>8;p[1]=(uint16_t)v;}
 static void *debugAGLLibrary(void){
     static void *library;static dispatch_once_t once;
     dispatch_once(&once,^{library=dlopen("/System/Library/Frameworks/AGL.framework/AGL",RTLD_LAZY|RTLD_LOCAL);});return library;
@@ -149,6 +152,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     uint64_t renderClock,playerRenderBirth;
     NSData *keyCaptureTestMap;
     int controlKeys[6],editingKey;
+    uint8_t preferenceBytes[ASTRO_PREFS_SIZE],preferenceDefaults[512];
     AstroSpriteInfo spriteInfo[1001];
     NSMutableArray *visualEffects;
     AstroVisual playerVisual;
@@ -364,6 +368,14 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         NSArray *stored=settings[@"keys"];
         if(stored.count==6)for(int i=0;i<6;i++)if([stored[i] intValue]>=0&&[stored[i] intValue]<128)controlKeys[i]=[stored[i] intValue];
     }
+    NSData *defaultSlots=[NSData dataWithContentsOfFile:[path stringByAppendingPathComponent:@"preferences-defaults.bin"]];
+    if(defaultSlots.length!=sizeof(preferenceDefaults))return nil;
+    memcpy(preferenceDefaults,defaultSlots.bytes,sizeof(preferenceDefaults));
+    id packed=[preferences objectForKey:@"AstroSquidPackedPreferences"];
+    BOOL hasPacked=[packed isKindOfClass:[NSData class]]&&[packed length]<=ASTRO_PREFS_SIZE;
+    astro_preferences_load(preferenceBytes,preferenceDefaults,preferenceDefaults+256,
+                           hasPacked?[packed bytes]:NULL,hasPacked?[packed length]:0);
+    if(hasPacked)[self applyPackedPreferences];
     [self refreshKeyLabels];
     [self loadScores];
     hud=[[AstroHUDRenderer alloc] initWithGame:game ui:ui];
@@ -1290,10 +1302,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (BOOL)updatePlayerMotion:(AstroPlayer *)actor velocity:(AstroVelocity *)velocity bounds:(AstroRect)bounds width:(double)width height:(double)height {
     unsigned controls=0;
-    if(keys[controlKeys[4]])controls|=ASTRO_KEY_LEFT;
-    if(keys[controlKeys[5]])controls|=ASTRO_KEY_RIGHT;
-    if(keys[controlKeys[2]])controls|=ASTRO_KEY_UP;
-    if(keys[controlKeys[3]])controls|=ASTRO_KEY_DOWN;
+    if([self controlPressed:4])controls|=ASTRO_KEY_LEFT;
+    if([self controlPressed:5])controls|=ASTRO_KEY_RIGHT;
+    if([self controlPressed:2])controls|=ASTRO_KEY_UP;
+    if([self controlPressed:3])controls|=ASTRO_KEY_DOWN;
     if(changingStage&&!transition.allow_input)controls=transition.controls;
     uint32_t comparison=[self playerClockTick],store=actor->animation_tick;
     if((int32_t)(comparison-actor->animation_tick)>10)store=[self playerClockTick];
@@ -1312,13 +1324,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     simulationTick=finishTick;[self finishPlayerUpdateAtTick:finishTick];
 }
 - (BOOL)requestPlayerSpecialFrom:(AstroEnemy *)actor actionTick:(uint32_t *)actionTick {
-    BOOL startSpecial=(!changingStage||transition.allow_input)&&keys[selftestPath?58:controlKeys[1]]&&!special.active&&inventory.specials>0&&
+    BOOL startSpecial=(!changingStage||transition.allow_input)&&(selftestPath?keys[58]:[self controlPressed:1])&&!special.active&&inventory.specials>0&&
         (int32_t)([self playerClockTick]-*actionTick)>
         60.0/[game[@"weapons"][[NSString stringWithFormat:@"%d",playerWeapon]][@"rate"] doubleValue];
     return startSpecial&&(actor?[self startSpecialFrom:actor]:[self startSpecial]);
 }
 - (void)fireOrdinaryPlayerWeaponFrom:(AstroRect)bounds actionTick:(uint32_t *)actionTick kind:(int)kind {
-    if((!changingStage||transition.allow_input)&&keys[selftestPath?8:controlKeys[0]]&&(int32_t)([self playerClockTick]-*actionTick)>
+    if((!changingStage||transition.allow_input)&&(selftestPath?keys[8]:[self controlPressed:0])&&(int32_t)([self playerClockTick]-*actionTick)>
         60.0/[game[@"weapons"][[NSString stringWithFormat:@"%d",playerWeapon]][@"rate"] doubleValue]) {
         [self fireWeapon:playerWeapon x:astro_ppc_i32(38+(bounds.left+bounds.right)/2.0)
             y:astro_ppc_i32((bounds.top+bounds.bottom)/2.0) heading:0 source:kind];
@@ -1682,11 +1694,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         campaign=(AstroCampaign){4,1,0,0};[self unlockStage];
         assert(ui.unlockedLevel==7&&[preferences integerForKey:@"AstroSquidUnlockedLevel"]==1);
         preferenceFPS=20;[self saveSettings];assert(ui.frameInterval==1&&[preferences integerForKey:@"AstroSquidUnlockedLevel"]==7);
-        assert([preferences synchronize]);puts("PASS isolated preference write through actual UI handlers");
+        NSData *packed=[preferences dataForKey:@"AstroSquidPackedPreferences"];uint8_t expected[ASTRO_PREFS_SIZE];astro_preferences_save(preferenceBytes,expected);assert(packed.length==sizeof(expected)&&!memcmp(packed.bytes,expected,sizeof(expected)));
+        assert([preferences synchronize]);puts("PASS isolated preference write through actual UI handlers and exact packed payload");
     } else if([stage isEqual:@"read"]) {
         assert(controlKeys[0]==14&&fabs(ui.soundVolume-.7)<.001&&ui.musicVolume==0&&!ui.smooth&&ui.unlockedLevel==7);
         assert(highscores[0].score==650&&!strcmp(highscores[0].name,"Persistence Probe"));
         assert(preferenceFPS==20&&ui.frameInterval==3&&ui.registered&&ui.registeredName.length==0&&[registeredSerial isEqual:@"AAAAAAAA"]);
+        NSData *packed=[preferences dataForKey:@"AstroSquidPackedPreferences"];uint8_t expected[ASTRO_PREFS_SIZE];astro_preferences_save(preferenceBytes,expected);assert(packed.length==sizeof(expected)&&!memcmp(packed.bytes,expected,sizeof(expected)));
         [preferences removePersistentDomainForName:domain];assert([preferences synchronize]);
         puts("PASS new-process reload of keys, volumes, filter, unlocked stage and score; probe preferences removed");
     } else {fputs("Unknown preference probe stage\n",stderr);exit(2);}
@@ -2427,8 +2441,49 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     for(int i=0;i<6;i++)[labels addObject:[ui nameForKeyCode:controlKeys[i]]];
     ui.keyLabels=labels;
 }
+- (BOOL)controlPressed:(unsigned)index {
+    int code=controlKeys[index];return code>=0&&code<128&&keys[code];
+}
+- (void)applyPackedPreferences {
+    preferenceFPS=preferenceWord(preferenceBytes+2);ui.frameInterval=astro_frame_interval(preferenceFPS);
+    ui.musicVolume=preferenceWord(preferenceBytes+4)/10.;ui.soundVolume=preferenceWord(preferenceBytes+6)/10.;
+    ui.unlockedLevel=preferenceWord(preferenceBytes+ASTRO_PREFS_LEVEL);
+    ui.smooth=preferenceWord(preferenceBytes+ASTRO_PREFS_FILTER)==1;
+    const unsigned order[]={0,1,2,3,5,4};
+    for(unsigned i=0;i<6;i++)controlKeys[order[i]]=preferenceWord(preferenceBytes+ASTRO_PREFS_KEYS+i*2)^7;
+    uint8_t *name=preferenceBytes+ASTRO_PREFS_NAME,*code=preferenceBytes+ASTRO_PREFS_CODE;
+    registeredSerial=[[NSString alloc]initWithBytes:code+1 length:code[0] encoding:NSMacOSRomanStringEncoding];
+    ui.registered=astro_registration_valid(name+1,name[0],code+1,code[0]);
+    uint8_t submittedName[256];memcpy(submittedName,name,256);
+    memcpy(name,preferenceDefaults,2+2*(preferenceDefaults[0]/2));
+    if(ui.registered)memcpy(name,submittedName,2+2*(submittedName[0]/2));
+    ui.registeredName=[[NSString alloc]initWithBytes:name+1 length:name[0] encoding:NSMacOSRomanStringEncoding];
+}
+- (void)updatePackedPreferences {
+    preferencePut(preferenceBytes+2,preferenceFPS);
+    preferencePut(preferenceBytes+4,(int)lround(ui.musicVolume*10));
+    preferencePut(preferenceBytes+6,(int)lround(ui.soundVolume*10));
+    preferencePut(preferenceBytes+ASTRO_PREFS_LEVEL,(int)ui.unlockedLevel);
+    if((preferenceWord(preferenceBytes+ASTRO_PREFS_FILTER)==1)!=ui.smooth)
+        preferencePut(preferenceBytes+ASTRO_PREFS_FILTER,ui.smooth?1:0);
+    const unsigned order[]={0,1,2,3,5,4};
+    for(unsigned i=0;i<6;i++)preferencePut(preferenceBytes+ASTRO_PREFS_KEYS+i*2,controlKeys[order[i]]^7);
+    NSArray *strings=@[ui.registeredName?:@"",registeredSerial?:@""];
+    const unsigned offsets[]={ASTRO_PREFS_NAME,ASTRO_PREFS_CODE};
+    for(unsigned i=0;i<2;i++){
+        NSData *data=[strings[i]dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:NO];
+        uint8_t *dest=preferenceBytes+offsets[i];
+        if(!data||data.length>255)continue;
+        if(dest[0]==data.length&&(!data.length||!memcmp(dest+1,data.bytes,data.length)))continue;
+        dest[0]=data.length;if(data.length)memcpy(dest+1,data.bytes,data.length);
+        if(!(data.length&1))dest[data.length+1]=0;
+        if(i==0&&!ui.registered)memcpy(dest,preferenceDefaults,2+2*(preferenceDefaults[0]/2));
+    }
+}
 - (void)saveSettings {
     if(selftestPath||campaignTestPath)return;
+    [self updatePackedPreferences];uint8_t disk[ASTRO_PREFS_SIZE];astro_preferences_save(preferenceBytes,disk);
+    [[NSUserDefaults standardUserDefaults]setObject:[NSData dataWithBytes:disk length:sizeof(disk)] forKey:@"AstroSquidPackedPreferences"];
     [[NSUserDefaults standardUserDefaults]setObject:@{@"name":ui.registeredName?:@"",@"serial":registeredSerial?:@""} forKey:@"AstroSquidRegistration"];
     [[NSUserDefaults standardUserDefaults] setInteger:ui.unlockedLevel forKey:@"AstroSquidUnlockedLevel"];
     NSMutableArray *codes=[NSMutableArray array];for(int i=0;i<6;i++)[codes addObject:@(controlKeys[i])];
@@ -2494,10 +2549,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         AstroScoreEditor *fields=[ui registrationFields];fields[0].submitted=fields[1].submitted=0;
         [ui setButton:name pressed:YES];[self display];
         ui.registeredName=@"Unregistered";
+        memcpy(preferenceBytes+ASTRO_PREFS_NAME,preferenceDefaults,2+2*(preferenceDefaults[0]/2));
         if(astro_registration_valid((const unsigned char *)fields[0].name,strlen(fields[0].name),(const unsigned char *)fields[1].name,strlen(fields[1].name))){
             ui.registered=YES;
             ui.registeredName=[[NSString alloc]initWithBytes:fields[0].name length:strlen(fields[0].name) encoding:NSMacOSRomanStringEncoding];
             registeredSerial=[[NSString alloc]initWithBytes:fields[1].name length:strlen(fields[1].name) encoding:NSMacOSRomanStringEncoding];
+            const unsigned offsets[]={ASTRO_PREFS_NAME,ASTRO_PREFS_CODE};
+            for(unsigned i=0;i<2;i++){size_t n=strlen(fields[i].name);uint8_t *dest=preferenceBytes+offsets[i];dest[0]=n;memcpy(dest+1,fields[i].name,n+!(n&1));}
             [self saveSettings];navigationButton=[name copy];[ui show:@"Reg Thanks"];observedWallTick=[self currentGameTick];
             if(!ui.transitioning)[self finishMenuNavigation];
             while(navigationButton)[self pollMenu];
