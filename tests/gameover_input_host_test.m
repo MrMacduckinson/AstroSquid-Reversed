@@ -77,6 +77,17 @@ static void event(char code){eventValue(code,0);}
     [self keyDown:overflow];assert(!alerts&&scoreEditor.cursor==255);observedWallTick=1000;[self pollMenu];assert(!alerts&&scoreKeyEvents.length==2);
     for(unsigned i=1;i<=2;i++){observedWallTick=999;[self pollMenu];assert(alerts==i&&scoreKeyEvents.length==2-i&&scoreEditor.cursor==255+(int)i&&strlen(scoreEditor.name)==255&&!scoreEditor.alert);}
     fputs("PASS queued overflow waits for eligible frame and resolves once perbyte\n",stderr);
+    astro_score_editor_begin(&scoreEditor);[self refreshScoreEditor];scoreKeyEvents=[NSMutableData dataWithBytes:"X" length:1];
+    [NSApp discardEventsMatchingMask:NSEventMaskAny beforeEvent:nil];
+    for(unsigned i=0;i<2;i++)[NSApp postEvent:[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:i windowNumber:0 context:nil characters:i?@"B":@"A" charactersIgnoringModifiers:i?@"B":@"A" isARepeat:i!=0 keyCode:i?11:0] atStart:NO];
+    observedWallTick=1000;[self pollMenu];assert(!scoreEditor.name[0]&&scoreKeyEvents.length==1);
+    observedWallTick=999;[self pollMenu];assert(!strcmp(scoreEditor.name,"X"));
+    assert([NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO].keyCode==0);
+    observedWallTick=999;[self pollMenu];assert(!strcmp(scoreEditor.name,"XA"));
+    assert([NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO].keyCode==11);
+    observedWallTick=999;[self pollMenu];assert(!strcmp(scoreEditor.name,"XAB"));
+    assert(![NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO]);
+    fputs("PASS GameOver pending Cocoa keys/repeat consumed at eligible field phase after earlier delivered bytes\n",stderr);
     glDeleteFramebuffersEXT(1,&framebuffer);glDeleteTextures(1,&color);
 }
 @end

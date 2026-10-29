@@ -1852,6 +1852,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     BOOL finishGameOver=NO;
     if(gameOverPanel){
         if(ui.editingHighscore>0){
+            if(!scoreKeyEvents.length)[self consumePendingFieldEvent];
             if(scoreKeyEvents.length){
                 unsigned char ch=*(const unsigned char *)scoreKeyEvents.bytes;
                 [scoreKeyEvents replaceBytesInRange:NSMakeRange(0,1) withBytes:NULL length:0];
@@ -1875,7 +1876,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(navigationButton&&!ui.transitioning)[self finishMenuNavigation];
     if(gameOverPanel&&finishGameOver)[self finishGameOver];
 }
+- (void)consumePendingFieldEvent {
+    NSEvent *event=[NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast]
+        inMode:NSDefaultRunLoopMode dequeue:YES];
+    if(event)[self keyDown:event];
+}
 - (BOOL)pollRegistrationInput {
+    if(!registrationKeyEvents.length)[self consumePendingFieldEvent];
     if(!registrationKeyEvents.length)return YES;
     unsigned char ch=*(const unsigned char *)registrationKeyEvents.bytes;
     [registrationKeyEvents replaceBytesInRange:NSMakeRange(0,1) withBytes:NULL length:0];

@@ -58,6 +58,18 @@ static NSMutableString *events;static BOOL observing,checkRegisterFocus,autoTest
     fields[1].submitted=0;fields[1].cursor=2;[self queueCharacter:@"" code:115 repeat:NO];[self queueCharacter:@"" code:119 repeat:NO];
     [self frameExpect:@"DWSKE"];assert(fields[1].cursor==2&&registrationKeyEvents.length==1);[self frameExpect:@"DWSKE"];assert(fields[1].cursor==2);
     [self queueCharacter:[NSString stringWithFormat:@"%C",(unichar)NSF1FunctionKey] code:122 repeat:NO];[self frameExpect:@"DWSKE"];assert(fields[1].cursor==2);
+    [ui resetRegistrationFields];ui.activeRegistrationField=-1;registrationKeyEvents=nil;
+    [NSApp discardEventsMatchingMask:NSEventMaskAny beforeEvent:nil];
+    for(unsigned i=0;i<2;i++)[NSApp postEvent:[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:i windowNumber:0 context:nil characters:i?@"B":@"A" charactersIgnoringModifiers:i?@"B":@"A" isARepeat:i!=0 keyCode:i?11:0] atStart:NO];
+    [self frameExpect:@"DWSK"];assert([NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO].keyCode==0);
+    ui.activeRegistrationField=0;[events setString:@""];observedWallTick=1000;[self pollMenu];assert(!events.length);
+    [self queueCharacter:@"X" code:7 repeat:NO];[self frameExpect:@"DWSKE"];assert(!strcmp(fields[0].name,"X"));
+    assert([NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO].keyCode==0);
+    [self frameExpect:@"DWSKE"];assert(!strcmp(fields[0].name,"XA"));
+    assert([NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO].keyCode==11);
+    [self frameExpect:@"DWSKE"];assert(!strcmp(fields[0].name,"XAB"));
+    assert(![NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO]);
+    puts("PASS pending Cocoa key events retained while unfocused/closed gate and consumed one per eligible field frame, including repeat");
     observing=NO;
     for(NSString *button in @[@"Back3",@"Back4",@"Back5",@"Back6",@"Back7"]){
         ui.activeRegistrationField=0;[self performMenuAction:button];assert(ui.activeRegistrationField==-1);
