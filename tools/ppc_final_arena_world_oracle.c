@@ -14,7 +14,8 @@ static int dispatch_mode,boss_seen,end_card_active,next_ids_reset;
 static unsigned char *render_code;static uint32_t *render_toc;
 void world_beams(void){for(unsigned char *e=*(void **)(world_globals+0xa76);e;e=*(void **)(e+102))if(*(int16_t *)e==999)invoke_fb(render_code+0x559e8,world_globals,render_toc,e,NULL,NULL);}
 static unsigned char ready_entry[16];
-void ready_keys(void){if(getenv("ASTRO_WORLD_ENCOUNTER"))for(unsigned o=0xaa8;o<=0xab2;o+=2)set_short(world_globals,o,0);if(getenv("ASTRO_WORLD_BOSS")){set_short(world_globals,0xab2,-1);unsigned char *player=*(unsigned char **)(world_globals+0xa7a);if(player){double y=*(double *)(player+52);set_short(world_globals,0xaac,y>100?-1:0);set_short(world_globals,0xaae,y<90?-1:0);}}set_short(world_globals,0xab6,1);}
+void loop_keys(void);
+void ready_keys(void){if(getenv("ASTRO_WORLD_ENCOUNTER"))for(unsigned o=0xaa8;o<=0xab2;o+=2)set_short(world_globals,o,0);if(getenv("ASTRO_WORLD_BOSS")){set_short(world_globals,0xab2,-1);unsigned char *player=*(unsigned char **)(world_globals+0xa7a);if(player){double y=*(double *)(player+52);set_short(world_globals,0xaac,y>100?-1:0);set_short(world_globals,0xaae,y<90?-1:0);}}if(getenv("ASTRO_WORLD_INPUT"))loop_keys();set_short(world_globals,0xab6,1);}
 static const unsigned char panel_input[]={65,66,28,67,13};
 static Boolean panel_event(EventMask mask,EventRecord *event){assert(panel_active&&mask==0x28&&input_index<sizeof(panel_input));memset(event,0,sizeof(*event));event->what=keyDown;event->message=panel_input[input_index++];return true;}
 static int panel_button(void){return 0;}
