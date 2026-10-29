@@ -6,6 +6,10 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <setjmp.h>
+static unsigned menu_lookups;static unsigned char quit_command;
+static MenuHandle quit_menu(short identifier){assert(identifier==1);menu_lookups++;return (MenuHandle)0x12345678;}
+static short quit_count(MenuHandle menu){assert(menu==(MenuHandle)0x12345678);return 1;}
+static void quit_cmd(MenuHandle menu,short item,short *command){assert(menu==(MenuHandle)0x12345678&&item==1);*command=quit_command;}
 static unsigned expected_character,menus,beeps,stops,ends;
 static uint32_t menu_result,stop_location;static jmp_buf end_return;
 static unsigned alerts,parameters,cursors;static short alert_choice;static char stop_message[256];
@@ -29,6 +33,9 @@ int main(int argc,char **argv){
  unsigned char *code=read_file(argv[1])+128,*lit=read_file(argv[2]),*g=calloc(1,0x1400);assert(g);uint32_t toc[489]={0};
  for(unsigned i=0;i<484;i++){
   void *fn=missing_import;
+  if(!strcmp(import_names[i],"GetMenuHandle"))fn=quit_menu;
+  if(!strcmp(import_names[i],"CountMenuItems"))fn=quit_count;
+  if(!strcmp(import_names[i],"GetItemCmd"))fn=quit_cmd;
   if(!strcmp(import_names[i],"FrontWindow"))fn=no_window;
   if(!strcmp(import_names[i],"MenuKey"))fn=no_menu;
   if(!strcmp(import_names[i],"SysBeep"))fn=beep;
@@ -42,10 +49,19 @@ int main(int argc,char **argv){
   if(!strcmp(import_names[i],"StopAlert"))fn=stop_alert;
   descriptors[i][0]=(uint32_t)(uintptr_t)fn;toc[i]=(uint32_t)(uintptr_t)descriptors[i];
  }toc[0]=(uint32_t)(uintptr_t)g;toc[1]=(uint32_t)(uintptr_t)lit;MakeDataExecutable(code,433284);
+ uint32_t configured_quit=0;unsigned menu_cases=0;
+ for(unsigned version=0;version<2;version++)for(unsigned command=0;command<2;command++){
+  memset(g,0,0x1400);*(unsigned short *)(g+0x22c)=version?0x1040:0x922;quit_command=command?'Q':'X';menu_lookups=0;
+  invoke_fb(code+0x1ac6c,g,toc,(void *)1,NULL,NULL);
+  assert(menu_lookups==1&&*(uint32_t *)(g+0x128)==(command?0x00010001:0));
+  if(command){configured_quit=*(uint32_t *)(g+0x128);invoke_fb(code+0x1ac6c,g,toc,(void *)1,NULL,NULL);assert(menu_lookups==1);}
+  menu_cases++;
+ }
+ printf("PASS %u original FBFIXQUITMENU cases: one-item Q sets menu1/item1 on OS9/OSX, other shortcut does not; configured pair not overwritten\n",menu_cases);
  unsigned cases=0;
  for(unsigned kind=3;kind<=5;kind+=2)for(unsigned ch=0;ch<256;ch++){
   if(ch=='.'||ch=='q'||ch=='Q')continue; /* Separate stop/quit paths. */
-  memset(g,0,0x1400);*(void **)(g+0x21c)=lit;*(uint32_t *)(g+0x128)=0x00010001;
+  memset(g,0,0x1400);*(void **)(g+0x21c)=lit;*(uint32_t *)(g+0x128)=configured_quit;
   EventRecord *event=(void *)(g+0x168);event->what=kind;event->message=ch;event->modifiers=0x100;
   expected_character=ch;menus=beeps=0;unsigned char before[0x454];memset(before,0x5a,sizeof(before));memcpy(g+0x5b2,before,sizeof(before));
   invoke_fb(code+0x22558,g,toc,NULL,NULL,NULL);
@@ -56,7 +72,7 @@ int main(int argc,char **argv){
  unsigned char *heap=calloc(1,0x10000);assert(heap);unsigned special=0;
  for(unsigned kind=3;kind<=5;kind+=2)for(unsigned selected=0;selected<2;selected++)for(unsigned i=0;i<3;i++){
   const unsigned chars[]={'.','q','Q'};expected_character=chars[i];menu_result=selected?0x00010001:0;
-  memset(g,0,0x1400);*(void **)(g+0x21c)=lit;*(void **)(g+0x388)=heap;*(void **)(g+0x38c)=heap;*(uint32_t *)(g+0x128)=0x00010001;
+  memset(g,0,0x1400);*(void **)(g+0x21c)=lit;*(void **)(g+0x388)=heap;*(void **)(g+0x38c)=heap;*(uint32_t *)(g+0x128)=configured_quit;
   EventRecord *event=(void *)(g+0x168);event->what=kind;event->message=expected_character;event->modifiers=0x100;
   menus=beeps=stops=ends=stop_location=0;
   if(!setjmp(end_return))invoke_fb(code+0x22558,g,toc,NULL,NULL,NULL);
@@ -70,7 +86,7 @@ int main(int argc,char **argv){
  memcpy(code+0x1b360,original_stop,sizeof(original_stop));MakeDataExecutable(code,433284);menu_result=0;unsigned dialog_cases=0;
  for(unsigned kind=3;kind<=5;kind+=2)for(unsigned choice=1;choice<=2;choice++)for(unsigned i=0;i<3;i++){
   const unsigned chars[]={'.','q','Q'};expected_character=chars[i];alert_choice=choice;
-  memset(g,0,0x1400);memset(heap,0,0x10000);*(void **)(g+0x21c)=lit;*(void **)(g+0x388)=heap;*(void **)(g+0x38c)=heap;*(uint32_t *)(g+0x128)=0x00010001;
+  memset(g,0,0x1400);memset(heap,0,0x10000);*(void **)(g+0x21c)=lit;*(void **)(g+0x388)=heap;*(void **)(g+0x38c)=heap;*(uint32_t *)(g+0x128)=configured_quit;
   EventRecord *event=(void *)(g+0x168);event->what=kind;event->message=expected_character;event->modifiers=0x100;
   menus=beeps=stops=ends=alerts=parameters=cursors=0;
   if(!setjmp(end_return))invoke_fb(code+0x22558,g,toc,NULL,NULL,NULL);
