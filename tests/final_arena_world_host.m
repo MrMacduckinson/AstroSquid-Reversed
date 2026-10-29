@@ -3,6 +3,15 @@
 #include "world_trace_host.m"
 static const char *retainedStarPath;
 static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode,resumeMode,midMode,midFull,endMode,endFull,resumeLong,gameoverEntry,gameoverReached,warmMode;
+static BOOL realHUD;
+@interface CompositeHUD:AstroHUDRenderer
+@end
+@implementation CompositeHUD
+- (void)drawState:(const AstroHUDState *)state texture:(AstroUITextureLoader)texture framebufferWidth:(GLsizei)width height:(GLsizei)height {
+ AstroHUDCommand commands[32];size_t n=astro_hud_commands(state,commands,32);
+ for(size_t i=0;i<n;i++)if(commands[i].kind==ASTRO_HUD_SPRITE){AstroHUDCommand c=commands[i];self.didDrawSprite(c.sprite,c.x,c.y,c.width,c.height);}
+}
+@end
 static unsigned warmFrames;static unsigned loopStep;static char resumeLabel[32];
 static __weak AstroView *midView;
 @interface AstroView(MidCapture)
@@ -26,7 +35,7 @@ static __weak AstroView *midView;
  printf("D\t%u\t%u\t%u\n",warmFrames++,ticks,compositeClocks);compositeClocks+=ticks;
 }
 - (void)setGameCursorHidden:(BOOL)hidden {if(warmMode){assert(!hidden&&warmFrames==10);gameoverReached=YES;puts("W\tcomplete");@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super setGameCursorHidden:hidden];}
-- (void)display {if(loopMode||midMode){if(hudRedraws)hudRedraws--;}else [super display];}
+- (void)display {if(loopMode||midMode){if(realHUD)[self drawHUD:YES];else if(hudRedraws)hudRedraws--;}else [super display];}
 - (void)copyKeyMap:(unsigned char *)bytes {
     if(midMode){memset(bytes,0,16);return;}
     if(!loopMode){[super copyKeyMap:bytes];return;}
@@ -56,6 +65,7 @@ static __weak AstroView *midView;
     snprintf(resumeLabel,sizeof resumeLabel,"mid%u",loopStep);tracePhase=resumeLabel;
 }
 - (void)runCompositeArena:(const char *)phaseOutput {
+    realHUD=getenv("ASTRO_WORLD_REAL_HUD")!=NULL;if(realHUD){CompositeHUD *observer=[[CompositeHUD alloc]initWithGame:game ui:ui];observer.didDrawSprite=hud.didDrawSprite;hud=observer;}
     warmMode=phaseOutput&&!strncmp(phaseOutput,"resumewarm",10);gameoverEntry=warmMode||(phaseOutput&&!strncmp(phaseOutput,"resumegameover",14));resumeLong=gameoverEntry||(phaseOutput&&!strncmp(phaseOutput,"resumelong",10));endFull=phaseOutput&&!strncmp(phaseOutput,"endfull",7);endMode=phaseOutput&&!strncmp(phaseOutput,"end",3);midFull=phaseOutput&&!strncmp(phaseOutput,"midfull",7);midMode=endMode||(phaseOutput&&!strncmp(phaseOutput,"mid",3));resumeMode=phaseOutput&&!strncmp(phaseOutput,"resume",6);loopMode=resumeMode||(phaseOutput&&!strncmp(phaseOutput,"loop",4));
     BOOL chainMode=phaseOutput&&!strcmp(phaseOutput,"chain");
     BOOL runMode=phaseOutput&&!strncmp(phaseOutput,"run",3);

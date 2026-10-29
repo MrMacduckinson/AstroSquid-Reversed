@@ -8,6 +8,8 @@ static FILE *input_file;static long input_size;static const char *data_directory
 static unsigned clock_reads,opens,records,map_records,scene_records;
 static int advancing,load_mode,start_mode,run_mode,chain_mode,loop_mode,resume_mode,mid_mode,mid_full,end_mode,end_full,resume_long,gameover_entry,gameover_reached,warm_mode;
 static unsigned warm_frames;
+static int real_hud;
+static double hud_font_widths[257];
 static jmp_buf loop_done;static unsigned loop_step;static char loop_label[32];
 void loop_noop(void){}
 static void warm_delay(unsigned ticks,unsigned *final){
@@ -56,6 +58,7 @@ WRAP(gameover_enter) WRAP(end_sound) WRAP(mid_observe) WRAP(loop_noop) WRAP(loop
 WRAP(arena_ready) WRAP(arena_system) WRAP(arena_folder) WRAP(arena_open) WRAP(arena_read) WRAP(arena_readfile)
 WRAP(arena_eof) WRAP(arena_length) WRAP(arena_close) WRAP(arena_stop) WRAP(arena_play)
 int main(int argc,char **argv){
+    real_hud=getenv("ASTRO_WORLD_REAL_HUD")!=NULL;
     if(argc<6||argc>9)return 2;alarm(30);data_directory=argv[5];advancing=argc>=7;if(advancing)assert(!strcmp(argv[6],"advancing"));
     warm_mode=argc>=8&&!strncmp(argv[7],"resumewarm",10);gameover_entry=warm_mode||(argc>=8&&!strncmp(argv[7],"resumegameover",14));resume_long=gameover_entry||(argc>=8&&!strncmp(argv[7],"resumelong",10));end_full=argc>=8&&!strncmp(argv[7],"endfull",7);end_mode=argc>=8&&!strncmp(argv[7],"end",3);mid_full=argc>=8&&!strncmp(argv[7],"midfull",7);mid_mode=end_mode||(argc>=8&&!strncmp(argv[7],"mid",3));resume_mode=argc>=8&&!strncmp(argv[7],"resume",6);loop_mode=resume_mode||(argc>=8&&!strncmp(argv[7],"loop",4));chain_mode=argc>=8&&!strcmp(argv[7],"chain");run_mode=argc>=8&&!strncmp(argv[7],"run",3);start_mode=mid_mode||loop_mode||chain_mode||run_mode||(argc>=8&&!strncmp(argv[7],"start",5));load_mode=argc>=8&&(!strncmp(argv[7],"load",4)||start_mode);
     if(resume_long)alarm(180);
@@ -63,6 +66,7 @@ int main(int argc,char **argv){
     unsigned char *code=read_file(argv[1])+128,*g=calloc(1,0x1300),*heap=calloc(1,0x100000);assert(g&&heap);world_globals=g;
     uint32_t toc[489]={0};for(int i=0;i<484;i++){
         void *fn=dlsym(RTLD_DEFAULT,import_names[i]);
+        if(real_hud&&!strncmp(import_names[i],"gl",2))fn=loop_noop;
         if(!strcmp(import_names[i],"TickCount"))fn=arena_tick;
         if(warm_mode&&!strcmp(import_names[i],"Delay"))fn=warm_delay;
         if(warm_mode&&!strcmp(import_names[i],"ShowCursor"))fn=warm_cursor;
@@ -83,6 +87,8 @@ int main(int argc,char **argv){
         {0x31af4,arena_stop_fb},{0x31edc,arena_play_fb},{0x3ce84,world_sound_fb}};
     for(unsigned i=0;i<sizeof(hooks)/sizeof(hooks[0]);i++)jump_to(code+hooks[i].at,hooks[i].fn);MakeDataExecutable(code,433284);
     FSRef ref;ResFileRefNum rf;HFSUniStr255 fork;assert(!FSPathMakeRef((const UInt8 *)argv[3],&ref,NULL));assert(!FSGetResourceForkName(&fork));assert(!FSOpenResourceFile(&ref,fork.length,fork.unicode,fsRdPerm,&rf));UseResFile(rf);
+    if(real_hud){Str255 text;for(int i=1;i<=256;i++){GetIndString(text,129,i);text[text[0]+1]=0;hud_font_widths[i]=atof((char *)text+1)/32;}hud_font_widths[32]=.2;set_pointer(g,0xeb6,hud_font_widths);
+        unsigned drawing[]={0x3a278,0x41730,0x3572c,0x342b4};for(unsigned i=0;i<4;i++)jump_to(code+drawing[i],loop_noop_fb);MakeDataExecutable(code,433284);}
     if(load_mode){for(unsigned chain=0;chain<(chain_mode?17u:1u);chain++){
         if(chain){invoke_fb(code+0x529f8,g,toc,NULL,NULL,NULL);invoke_fb(code+0x3e66c,g,toc,NULL,NULL,NULL);invoke_fb(code+0x34edc,g,toc,NULL,NULL,NULL);entity_birth=render_birth=0;}
         unsigned level=0;char half=0,extra=0;if(chain_mode){level=chain/2+1;half=chain==16?'B':chain%2?'B':'A';}else assert(sscanf(argv[7]+((mid_full||end_full)?7:mid_mode?3:warm_mode?10:gameover_entry?14:resume_long?10:resume_mode?6:loop_mode?4:run_mode?3:start_mode?5:4),"%u%c%c",&level,&half,&extra)==2&&level>=1&&level<=9&&(half=='A'||half=='B'));
@@ -98,7 +104,7 @@ int main(int argc,char **argv){
         for(index=0;index<3000;index++){printf("T\t%u\t",index);hex(stars+index*32,32);putchar('\n');}
         if(mid_mode){
             const struct {unsigned at;void *fn;} mh[]={{0x57afc,loop_noop_fb},{0x35eb8,loop_noop_fb},{0x43134,loop_noop_fb},{0x334bc,mid_observe_fb},{0x4cb28,loop_noop_fb},{0x4de74,loop_noop_fb}};
-            for(unsigned j=0;j<sizeof(mh)/sizeof(mh[0]);j++)jump_to(code+mh[j].at,mh[j].fn);MakeDataExecutable(code,433284);
+            for(unsigned j=0;j<sizeof(mh)/sizeof(mh[0]);j++)if(!real_hud||mh[j].at!=0x43134)jump_to(code+mh[j].at,mh[j].fn);MakeDataExecutable(code,433284);
             if(end_mode){jump_to(code+0x3ccd8,end_sound_fb);MakeDataExecutable(code+0x3ccd8,16);}
             strcpy(loop_label,"mid0");phase=loop_label;(void)arena_tick();*(unsigned *)(g+0xa4a)=arena_tick();*(unsigned *)(g+0xa4e)=arena_tick();set_double(g,0xa58,0);set_short(g,0x5ac,1);*(unsigned *)(g+0xa3e)=0x4321;
             if(!setjmp(loop_done))invoke_fb(code+(end_mode?0x4eda0:0x4e9c4),g,toc,NULL,NULL,NULL);
@@ -106,7 +112,7 @@ int main(int argc,char **argv){
         }
         if(loop_mode){
             const struct {unsigned at;void *fn;} lh[]={{0x57afc,loop_noop_fb},{0x35eb8,loop_noop_fb},{0x43134,loop_noop_fb},{0x334bc,loop_noop_fb},{0x4cb28,loop_keys_fb},{0x4de74,loop_misc_fb}};
-            for(unsigned j=0;j<sizeof(lh)/sizeof(lh[0]);j++)jump_to(code+lh[j].at,lh[j].fn);MakeDataExecutable(code,433284);
+            for(unsigned j=0;j<sizeof(lh)/sizeof(lh[0]);j++)if(!real_hud||lh[j].at!=0x43134)jump_to(code+lh[j].at,lh[j].fn);MakeDataExecutable(code,433284);
             if(gameover_entry&&!warm_mode){jump_to(code+0x4cef0,gameover_enter_fb);MakeDataExecutable(code+0x4cef0,16);}
             strcpy(loop_label,"loop0");phase=loop_label;if(!setjmp(loop_done))invoke_fb(code+0x51a68,g,toc,NULL,NULL,NULL);if(gameover_entry)assert(gameover_reached);
         }
