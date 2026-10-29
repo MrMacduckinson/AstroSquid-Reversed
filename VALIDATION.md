@@ -16,6 +16,14 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- FOLLOW=500 continues the real game loop after 1B victory and 2A creation,
+  without resetting player, inventory, clocks or RNG: 1,115,774 records match
+  (FOLLOW1_VERIFIED), including all 500 post-load music observations. The host
+  fixture now passes pilot input once READY reaches PLAY instead of retaining
+  its card-only key override. Initial HP30000/Laser4 remain controlled inputs;
+  this is a bounded continuous segment, not an ordinary full campaign.
+
+
 - Independent 2B victory through the end card and 3A player/world creation
   matches 2,187,877 records (BOSS2_NEXT_VERIFIED), terminal clocks
   2190443/2190032/2190425. Captured inventory, stage, RNG and 3000 stars match;
