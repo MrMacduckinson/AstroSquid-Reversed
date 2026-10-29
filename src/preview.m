@@ -124,6 +124,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     uint32_t respawnStartTick,respawnBlinkTick;
     double respawnBlinkWidth;
     BOOL paused,gameOver,gameOverPending,pauseLoopRunning;
+    BOOL gameCursorHidden;
     BOOL menuMouseLatched;
     BOOL quitRequested,gameLoopActive,gameEndRequested,gameEndHighscores,terminationAllowed;
     NSArray *presentedBeams;
@@ -2228,7 +2229,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     @try {while(ui.transitioning){[ui animateTicks:1];[self display];}}
     @finally {panelTransitionRender=previous;}
 }
+- (void)setGameCursorHidden:(BOOL)hidden {
+    if(gameCursorHidden==hidden)return;
+    if(hidden)[NSCursor hide];else [NSCursor unhide];
+    gameCursorHidden=hidden;
+}
 - (void)enterPause {
+    [self setGameCursorHidden:NO];
     menuVisible=YES;paused=YES;[audio playCue:@"Menu"];
     [ui show:@"Pause"];[self drawPanelTransition];
 }
@@ -2250,7 +2257,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)resumePause {
     if(pauseLoopRunning){paused=NO;return;}
     if(!gameOver&&!respawnPending&&!gameEndRequested){[ui beginPauseExit];[self drawPanelTransition];}
-    menuVisible=NO;paused=NO;[audio setPaused:NO];
+    menuVisible=NO;paused=NO;[audio setPaused:NO];[self setGameCursorHidden:YES];
 }
 - (NSString *)scoreOperandDescription:(NSData *)operand {
     NSMutableData *shown=[operand mutableCopy];
@@ -2277,6 +2284,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     return [self continueRuntimeAlert:@"Length >255 while adding strings:" details:[NSString stringWithFormat:@"%@ +\n%@",[self scoreOperandDescription:left],[self scoreOperandDescription:right]]];
 }
 - (BOOL)continueRuntimeAlert:(NSString *)message details:(NSString *)details {
+    [self setGameCursorHidden:NO];[[NSCursor arrowCursor]set];
     BOOL previous=stringOverflowActive;stringOverflowActive=YES;@try {
     NSAlert *alert=[NSAlert new];alert.alertStyle=NSAlertStyleCritical;
     alert.messageText=message;alert.informativeText=details;
@@ -2412,7 +2420,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [self delayGameTicks:(uint32_t)(milliseconds*60/1000)];
     }
     flow.phase=savedPhase;simulationTick=[self currentGameTick];
-    menuVisible=YES;[ui show:@"GameOver"];[self drawPanelTransition];
+    [self setGameCursorHidden:NO];menuVisible=YES;[ui show:@"GameOver"];[self drawPanelTransition];
     ui.editingHighscore=astro_scores_qualifies(highscores,score)?1:0;
     if(ui.editingHighscore>0){
         [ui prepareScoreField];astro_score_editor_begin(&scoreEditor);
@@ -2444,7 +2452,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     presentedBeams=@[];playerVisualDeleted=YES;playerHitVisual.active=NO;engineGlow=departureTrail=NO;
 }
 - (void)flushGameEvents {queuedKeyEvents=nil;[NSApp discardEventsMatchingMask:NSEventMaskAny beforeEvent:nil];}
-- (void)terminateApplication {[NSApp terminate:nil];}
+- (void)terminateApplication {[self setGameCursorHidden:NO];[NSApp terminate:nil];}
 - (void)releaseGraphics {
     if(graphicsReleased)return;graphicsReleased=YES;
     [self appendDebugMessage:@" "];[self appendDebugMessage:@"---------- Shutdown  -----------"];[self appendDebugMessage:@" "];
@@ -2477,7 +2485,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self reloadMainMenu];[ui show:gameEndHighscores?@"Highscores Menu":@"Play Menu"];
     [self display];ui.activeRegistrationField=-1;gameEndHighscores=NO;[self flushGameEvents];
     [audio setPaused:NO];[audio stopMusic];[audio playMusic:1];
-    gameEndRequested=NO;
+    [self setGameCursorHidden:NO];gameEndRequested=NO;
 }
 - (void)unlockStage {
     ui.unlockedLevel=MAX(ui.unlockedLevel,MIN(16,(campaign.level-1)*2+campaign.half));
@@ -2637,6 +2645,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         initialReadyCard=YES;changingStage=NO;transition=(AstroTransition){0};pendingCampaign=(AstroCampaign){0};
         ui.editingHighscore=0;selectedLevel=index;camera=-0.0;[self resetLevelWorld];
         score=0;[self presentFrame];inventory.lives=1;gameEndRequested=NO;
+        [self setGameCursorHidden:YES];
         [self createPlayerAtX:30 y:190];[self finishPlayerStart];
         inventory.weapon=playerWeapon=10;inventory.specials=1;
         memset(keys,0,sizeof(keys));automatic=YES;paused=NO;menuVisible=NO;
@@ -2714,7 +2723,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(![view isKindOfClass:[AstroView class]]||[view canTerminateApplication])return YES;
     [view requestQuit];return NO;
 }
-- (void)applicationWillTerminate:(NSNotification *)notification {restoreFullscreen();}
+- (void)applicationWillTerminate:(NSNotification *)notification {[self.view setGameCursorHidden:NO];restoreFullscreen();}
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender { return YES; }
 @end
 

@@ -16,6 +16,7 @@ static unsigned resets,seedReads,startPhase;static BOOL checkStart;static int ol
  if(checkStart)assert(startPhase++==2&&!score&&inventory.lives==1&&!gameEndRequested&&inventory.weapon==50&&inventory.specials==8);
  [super createPlayerAtX:x y:y];
 }
+- (void)setGameCursorHidden:(BOOL)hidden {if(checkStart)assert(hidden&&startPhase==2&&inventory.lives==1&&!gameEndRequested);}
 - (void)finishPlayerStart {if(checkStart)assert(startPhase++==3);[super finishPlayerStart];}
 - (BOOL)appendDebugMessage:(NSString *)message {[messages addObject:message];return YES;}
 @end

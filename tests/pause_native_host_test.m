@@ -32,6 +32,9 @@ static void boundary(const char *name,int value,uint32_t cpu,BOOL paused){
 - (void)display {
     if(observing&&!inTransition){frames++;boundary("world",0,observedWallTick,paused);}
 }
+- (void)setGameCursorHidden:(BOOL)hidden {
+    if(observing)boundary(hidden?"hide":"show",0,observedWallTick,paused);
+}
 - (void)presentFrame {}
 - (void)drawPanelTransition {
     if(observing)transitions++;
@@ -60,13 +63,15 @@ static void boundary(const char *name,int value,uint32_t cpu,BOOL paused){
 - (void)preparePauseCase:(unsigned)number path:(const char *)path {
     observing=NO;[timer invalidate];timer=nil;[audio stop];audio.soundVolume=audio.musicVolume=0;
     selftestPath=campaignTestPath=nil;
+    // Native fixture substitutes scene/animation bodies, including their internal clocks.
+    ui.readTick=nil;
     FILE *f=fopen(path,"r");assert(f);char line[512];assert(fgets(line,sizeof(line),f));rowCount=0;
     while(fgets(line,sizeof(line),f)){
         unsigned id,quit,hudDirty;PauseRow r;
         assert(sscanf(line,"%u,%23[^,],%d,%u,%u,%u,%u,%d,%d,%u,%u",&id,r.event,&r.value,
             &r.reads,&r.polls,&r.frames,&r.cpu,&r.paused,&r.any,&quit,&hudDirty)==11);
         if(id!=number)continue;
-        if(!strcmp(r.event,"clock")||!strcmp(r.event,"world")||!strcmp(r.event,"keys")||!strcmp(r.event,"mouse")){
+        if(!strcmp(r.event,"show")||!strcmp(r.event,"hide")||!strcmp(r.event,"clock")||!strcmp(r.event,"world")||!strcmp(r.event,"keys")||!strcmp(r.event,"mouse")){
             assert(rowCount<128);rows[rowCount++]=r;
         }
     }
