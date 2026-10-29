@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+"""Compare complete recorded world returns with explicit native/host UI mapping."""
+import sys
+from pathlib import Path
+from compare_menu_return import selected
+
+PHASES = {'panel-ready', 'panel-submit', 'panel-cleanup', 'gameover-tail'}
+
+
+def canonical(rows, panel_ids=()):
+    output = []
+    for row in rows:
+        fields = row.split('\t')
+        if fields[0] == 'R' and fields[2] in PHASES:
+            if fields[3] in panel_ids:
+                continue  # Host UI lives outside the world list; U/F records compare it.
+            if fields[5] in panel_ids:
+                fields[5] = '0'
+        if fields[0] in {'G', 'E', 'R', 'S'}:
+            fields[1] = 'T'  # Diagnostic annotation, not a game-state clock.
+        output.append('\t'.join(fields))
+    return output
+
+
+def compare(native_path, host_path):
+    assert selected(native_path) == selected(host_path), 'menu return differs'
+    native, host = [Path(p).read_text().splitlines() for p in (native_path, host_path)]
+    ids = lambda phase: {r.split('\t')[3] for r in native
+                         if r.startswith('R\t') and r.split('\t')[2] == phase}
+    panel_ids = ids('panel-ready') - ids('warm9')
+    assert len(panel_ids) == 3, 'expected three native panel nodes'
+    for rows in (native, host):
+        assert sum(r.startswith('U\t') for r in rows) == 3
+        assert sum(r.startswith('F\t') for r in rows) == 1
+        required = PHASES if any(r.startswith('Q\t') for r in rows) else PHASES - {'panel-submit'}
+        for phase in required:
+            assert any(r.startswith('G\t') and r.split('\t')[2] == phase for r in rows)
+    a, b = canonical(native, panel_ids), canonical(host)
+    assert len(a) == len(b), f'record counts differ: {len(a)} / {len(b)}'
+    for i, (x, y) in enumerate(zip(a, b)):
+        assert x == y, f'record {i}:\nnative: {x}\nhost: {y}'
+    print(f'PASS {len(a)} canonical records across recorded world, panel and menu return')
+
+
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        sys.exit('usage: compare_world_return.py native.tsv host.tsv')
+    compare(*sys.argv[1:])
