@@ -638,3 +638,14 @@ The paired fixtures now drive subsequent A→B READY through production methods
 and observe its music-service calls; unsupported later flow phases still assert.
 Full paired traces/hashes are retained in internal FOLLOW1_READY_VERIFIED.json.
 This is bounded route equivalence, not proof of the full ordinary campaign.
+
+The continuous scenery-fallback route matches all 6,706,802 original G5 records,
+including exactly 20,000 observations after 1B→2A, actual READY into 2B, and the
+alive endpoint x8573/HP60/lives0. Terminal RNG is 106b8fa8 and clocks are
+6879048/6878675/6879143. Only G/E/R/S diagnostic annotation ticks are normalized.
+`ASTRO_WORLD_BOSS_AVOID_FALLBACK` retries the input pilot's corridor selection
+against scenery alone when enemies leave no conservative safe candidate. It
+changes test inputs, not collision rules or health. The initial 1B remains a
+controlled HP30000/Laser4 setup; no test health refills occur after stage load.
+This verifies the bounded route, not a 2B victory or full ordinary campaign.
+Complete paired traces and hashes: internal FOLLOW1_FALLBACK_VERIFIED.json.
