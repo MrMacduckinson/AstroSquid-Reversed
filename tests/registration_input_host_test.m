@@ -15,7 +15,7 @@ static BOOL observeIdleWait;static NSTimeInterval idleWait;
     return [super nextEventMatchingMask:mask untilDate:expiration inMode:mode dequeue:dequeue];
 }
 @end
-static unsigned commandMenuCalls;
+static unsigned commandMenuCalls,deliveredKeyUps,deliveredFlags;
 @interface CommandProbeMenu:NSMenu @end
 @implementation CommandProbeMenu
 - (BOOL)performKeyEquivalent:(NSEvent *)event {assert(event.modifierFlags&NSEventModifierFlagCommand);commandMenuCalls++;return YES;}
@@ -42,6 +42,8 @@ static NSModalResponse commandModal(NSAlert *alert,SEL selector){
 @end
 @interface RegistrationInputView:AstroView @end
 @implementation RegistrationInputView
+- (void)keyUp:(NSEvent *)event {deliveredKeyUps++;[super keyUp:event];}
+- (void)flagsChanged:(NSEvent *)event {deliveredFlags++;[super flagsChanged:event];}
 - (void)stepMenu {
     if(injectNestedMenu){injectNestedMenu=NO;observedWallTick=999;[self pollMenu];}
     [super stepMenu];
@@ -130,6 +132,12 @@ static NSModalResponse commandModal(NSAlert *alert,SEL selector){
         NSEvent *event=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:200+i windowNumber:dispatchWindow.windowNumber context:nil characters:typed[i] charactersIgnoringModifiers:typed[i] isARepeat:i==2 keyCode:typedCodes[i]];
         [app sendEvent:event];assert(queuedKeyEvents[i]==event);
     }
+    assert([dispatchWindow makeFirstResponder:self]);
+    // Hidden-window application dispatch can drop releases; verify window routing separately.
+    unsigned ups=deliveredKeyUps,flags=deliveredFlags;
+    [dispatchWindow sendEvent:[NSEvent keyEventWithType:NSKeyUp location:NSZeroPoint modifierFlags:0 timestamp:204 windowNumber:dispatchWindow.windowNumber context:nil characters:@"B" charactersIgnoringModifiers:@"B" isARepeat:NO keyCode:11]];
+    [dispatchWindow sendEvent:[NSEvent keyEventWithType:NSFlagsChanged location:NSZeroPoint modifierFlags:0 timestamp:205 windowNumber:dispatchWindow.windowNumber context:nil characters:@"" charactersIgnoringModifiers:@"" isARepeat:NO keyCode:56]];
+    assert(deliveredKeyUps==ups+1&&deliveredFlags==flags+1);
     assert(commandMenuCalls==menuBeforeTyping&&queuedKeyEvents.count==3);
     observedWallTick=1000;[self pollMenu];assert(queuedKeyEvents.count==3&&!fields[0].name[0]);
     [self frameExpect:@"DWSKE"];assert(!strcmp(fields[0].name,"A")&&queuedKeyEvents.count==2);
