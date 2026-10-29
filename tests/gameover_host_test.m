@@ -18,6 +18,7 @@ static BOOL observing;
 - (void)calculateActors {if(observing)[events appendString:@"A"];[super calculateActors];}
 - (void)updateVisualEffects {if(observing)[events appendString:@"L"];[super updateVisualEffects];}
 - (void)flushGameEvents {flushes++;[super flushGameEvents];}
+- (void)setGameCursorHidden:(BOOL)hidden {if(observing){assert(!hidden&&delays==10&&worldFrames==10&&!panelFrames);[events appendString:@"S"];}}
 - (void)display {
     if(!observing)return;
     assert(ui.editingHighscore==0);
@@ -39,7 +40,7 @@ static BOOL observing;
     queuedKeyEvents=[NSMutableArray arrayWithObject:[self testEvent:NSKeyDown code:0]];
     events=[NSMutableString string];observing=YES;[self beginGameOver];observing=NO;assert(!queuedKeyEvents.count&&flushes==1);
     NSMutableString *expected=[NSMutableString string];for(int i=0;i<10;i++)[expected appendString:@"CALRD"];
-    for(int i=0;i<60;i++)[expected appendString:@"P"];
+    [expected appendString:@"S"];for(int i=0;i<60;i++)[expected appendString:@"P"];
     assert([events isEqual:expected]);assert(delays==10&&worldFrames==10&&panelFrames==60);
     assert(controlledTick==129&&simulationTick==129&&camera==10&&randomSeed==42);
     assert(gameOver&&menuVisible&&!gameOverPending&&!ui.transitioning&&ui.editingHighscore==1&&ui.editingCaretVisible);

@@ -22,6 +22,7 @@ static BOOL rawQuit;
 - (uint32_t)playerClockTick {return [self currentGameTick];}
 - (uint32_t)cardDelayClockTick {return cardTick;}
 - (void)display {if(observing){assert(ui.activeRegistrationField==(currentCase==5?0:-1));menuCode=[ui.anchor isEqual:@"Highscores Menu"]?2:1;[actual addObject:@"menu"];}}
+- (void)setGameCursorHidden:(BOOL)hidden {if(observing){assert(!hidden);[actual addObject:@"cursor"];}}
 - (void)presentFrame {}
 - (void)copyKeyMap:(unsigned char *)bytes {
     memset(bytes,0,16);keyPolls++;
@@ -73,7 +74,7 @@ static BOOL rawQuit;
             assert(sscanf(line,"%u,%31[^,],%u,%u,%d,%d,%d,%d,%d,%u,%u",&id,event,&reads,&polls,&quit,&end,&activeFlag,&entities,&map,&disposed,&menu)==11);
             if(id!=c)continue;
             if(!strcmp(event,"clock")||!strcmp(event,"keys")||!strcmp(event,"dispose_entity")||!strcmp(event,"controls")||
-               !strcmp(event,"menu")||!strcmp(event,"flush")||!strcmp(event,"stop_track")||!strcmp(event,"play_track")||!strcmp(event,"return"))
+               !strcmp(event,"menu")||!strcmp(event,"flush")||!strcmp(event,"stop_track")||!strcmp(event,"play_track")||!strcmp(event,"cursor")||!strcmp(event,"return"))
                 [expected addObject:[NSString stringWithUTF8String:event]];
             if(!strcmp(event,"return")){nativeReads=reads;nativePolls=polls;nativeMenu=menu;assert(!activeFlag&&!entities&&!map&&disposed==3&&quit==1);}
         }
