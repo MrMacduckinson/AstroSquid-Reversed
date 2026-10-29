@@ -60,3 +60,18 @@ unchanged. The old discrepancy characterization is retained in Git history and
 persistent fidelity notes, rather than remaining an expected failing behavior.
 Movement/render/animation callbacks are observers in these traces; they do not
 prove every numeric waiting-frame state or physical OS event delivery.
+
+## Authorized correction for death during a scripted transition
+
+On 2026-10-30 the user also approved safe death handling instead of the original
+NULL-player crash during a midlevel transition. This is a separate exception
+from the allocator-dependent cached-tail issue above. The original G5 fault
+was mapped to a player rectangle read at code offset 0x4ea80.
+
+The port returns to its existing death dispatcher: remaining lives allow
+respawn and continuation; zero lives dispatches Game Over.
+`../mid_virtual_clock_host_test.m` checks both branches and successful
+continuation to the next half after respawn in controlled geometry. A longer
+route separately exercised repeated deaths and reached Game Over without
+stalling; it did not complete the transition or campaign. Exact equality after
+the original crash is not claimed.
