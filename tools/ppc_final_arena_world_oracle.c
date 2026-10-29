@@ -5,7 +5,7 @@
 #include <unistd.h>
 static FILE *input_file;static long input_size;static const char *data_directory;
 static unsigned clock_reads,opens,records,map_records,scene_records;
-static int advancing;
+static int advancing,load_mode;
 static uint32_t arena_tick(void){unsigned index=clock_reads++;return tick+(advancing&&phase&&strcmp(phase,"before")?index:0);}
 int arena_system(int selector){assert(selector==1);return 123;}
 int arena_folder(int volume){
@@ -14,7 +14,7 @@ int arena_folder(int volume){
 }
 void arena_open(int mode,int number,int kind,unsigned char *name,int zero,int folder,int unused){
     assert(!input_file&&number==1&&kind==1&&!zero&&folder==123&&!unused);
-    assert((mode==0x49&&name[0]==7&&!memcmp(name+1,"Data 9B",7))||
+    assert((load_mode&&(mode==0x49||mode==0x52)&&name[0]>=6&&name[0]<=8&&!memcmp(name+1,"Data ",5))||(mode==0x49&&name[0]==7&&!memcmp(name+1,"Data 9B",7))||
            (mode==0x52&&name[0]==7&&!memcmp(name+1,"Data 19",7)));
     char path[2048];assert(snprintf(path,sizeof(path),"%s/%.*s",data_directory,name[0],name+1)<(int)sizeof(path));
     input_file=fopen(path,"rb");assert(input_file);assert(!fseek(input_file,0,SEEK_END));input_size=ftell(input_file);rewind(input_file);opens++;
@@ -39,6 +39,7 @@ WRAP(arena_system) WRAP(arena_folder) WRAP(arena_open) WRAP(arena_read) WRAP(are
 WRAP(arena_eof) WRAP(arena_length) WRAP(arena_close) WRAP(arena_stop) WRAP(arena_play)
 int main(int argc,char **argv){
     if(argc<6||argc>8)return 2;alarm(30);data_directory=argv[5];advancing=argc>=7;if(advancing)assert(!strcmp(argv[6],"advancing"));
+    load_mode=argc==8&&!strncmp(argv[7],"load",4);
     int inputs=argc==8&&!strcmp(argv[7],"outer-input256");
     unsigned char *code=read_file(argv[1])+128,*g=calloc(1,0x1300),*heap=calloc(1,0x100000);assert(g&&heap);world_globals=g;
     uint32_t toc[489]={0};for(int i=0;i<484;i++){
@@ -60,6 +61,12 @@ int main(int argc,char **argv){
         {0x31af4,arena_stop_fb},{0x31edc,arena_play_fb},{0x3ce84,world_sound_fb}};
     for(unsigned i=0;i<sizeof(hooks)/sizeof(hooks[0]);i++)jump_to(code+hooks[i].at,hooks[i].fn);MakeDataExecutable(code,433284);
     FSRef ref;ResFileRefNum rf;HFSUniStr255 fork;assert(!FSPathMakeRef((const UInt8 *)argv[3],&ref,NULL));assert(!FSGetResourceForkName(&fork));assert(!FSOpenResourceFile(&ref,fork.length,fork.unicode,fsRdPerm,&rf));UseResFile(rf);
+    if(load_mode){
+        unsigned level=0;char half=0,extra=0;assert(sscanf(argv[7],"load%u%c%c",&level,&half,&extra)==2&&level>=1&&level<=9&&(half=='A'||half=='B'));
+        set_short(g,0xa82,level);set_short(g,0xa84,half=='A'?1:2);tick=100;phase="load";
+        invoke_fb(code+0x510c8,g,toc,(void *)(uintptr_t)level,NULL,NULL);snapshot();
+        fprintf(stderr,"LOAD %u%c maps%u scenes%u clocks%u RNG%08x\n",level,half,map_records,scene_records,clock_reads,*(unsigned *)(g+0x244));return 0;
+    }
     tick=100;phase="before";unsigned char *player=spawn(code,toc,1,1,1400,180);set_pointer(g,0xa7a,player);set_short(player,88,73);
     unsigned char *boss=spawn(code,toc,7,3,1500,180);set_short(boss,96,-2);set_short(boss,70,-1);
     unsigned char *survivor=spawn(code,toc,7,3,1600,100);set_short(survivor,88,71);

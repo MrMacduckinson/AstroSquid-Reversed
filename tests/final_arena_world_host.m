@@ -22,6 +22,13 @@ static unsigned compositeClocks;static BOOL advancing,outerFrame;
     world=[NSMutableArray array];enemies=[NSMutableArray array];visualEffects=[NSMutableArray array];mapPlacements=[NSMutableArray array];
     backgrounds=@[];parallaxData=[NSMutableData data];starsInitialized=YES;renderClock=0;simulationTick=100;
     campaign=(AstroCampaign){8,2,0,0};inventory=(AstroInventory){0};selectedLevel=[levels indexOfObject:@"Data 8B"];
+    if(phaseOutput&&!strncmp(phaseOutput,"load",4)){
+        unsigned level=0;char half=0,extra=0;assert(sscanf(phaseOutput,"load%u%c%c",&level,&half,&extra)==2&&level>=1&&level<=9&&(half=='A'||half=='B'));
+        selectedLevel=[levels indexOfObject:[NSString stringWithFormat:@"Data %u%c",level,half]];assert(selectedLevel!=NSNotFound);
+        randomSeed=123;camera=-0.0;traceTick=100;tracePhase="load";compositeClocks=0;nextEntityID=playerTraceID=0;
+        [self resetLevelWorld];[self dumpWorldTrace:@"load"];
+        fprintf(stderr,"LOAD %u%c maps%lu scenes%lu clocks%u RNG%08x\n",level,half,(unsigned long)mapPlacements.count,(unsigned long)backgrounds.count,compositeClocks,randomSeed);return;
+    }
     randomSeed=123;camera=0;tickedScroll=0;[self createPlayerAtX:1400 y:180];playerCombat=(AstroCombatState){.kind=1,.hit_points=73};playerState.frame=1;
     for(int i=0;i<2;i++){
         NSDictionary *a=game[@"attributes"][@"73"];int sprite=[a[@"sprite"] intValue];
