@@ -1388,6 +1388,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(object!=[NSNull null])[enemies removeObjectIdenticalTo:object];
     else if(!actorTraversalDepth)playerNextActor=nil;
 }
+- (void)requestCampaignEvent:(int)tag marker:(BOOL)marker {
+    if(changingStage)return;
+    AstroCampaign next=campaign;
+    int action=astro_campaign_event(&next,tag,marker);
+    if(action!=ASTRO_CAMPAIGN_NONE){pendingCampaign=next;campaignAction=action;}
+    else campaign=next;
+}
 - (void)cleanupWorld {
     [self syncActorLinks];
     for(id object in [world copy]) {
@@ -1403,8 +1410,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
                 body->visual=playerVisual;body->bounds=playerBounds;body->state.velocity=playerVelocity;[self addDeathEffects:body];
             } else {
                 [self addDeathEffects:enemy];
-                int action=changingStage?ASTRO_CAMPAIGN_NONE:astro_campaign_event(&campaign,[enemy->placement[@"tag"] intValue],0);
-                if(action!=ASTRO_CAMPAIGN_NONE)campaignAction=action;
+                [self requestCampaignEvent:[enemy->placement[@"tag"] intValue] marker:NO];
             }
         }
         [self deleteActor:object];
@@ -1468,8 +1474,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     }
     if([enemy->placement[@"attribute"] intValue]==399) {
         int tag=[enemy->placement[@"tag"] intValue];
-        int action=changingStage?ASTRO_CAMPAIGN_NONE:astro_campaign_event(&campaign,tag,1);
-        if(action!=ASTRO_CAMPAIGN_NONE)campaignAction=action;
+        [self requestCampaignEvent:tag marker:YES];
         tickedScroll=0;
         if(tag!=-1){state->remove=1;[audio stopMusic];if(ui.musicVolume>0)[audio playMusic:3];}
     }
@@ -1484,7 +1489,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)beginStageTransition {
     hudRedraws=2;
-    pendingCampaign=campaign;
+    if(campaignAction==ASTRO_CAMPAIGN_NONE)pendingCampaign=campaign;
     if(!finalArena)campaign.level=[[levels[selectedLevel] substringFromIndex:5] intValue];
     if(pendingCampaign.complete){pendingCampaign.level=campaign.level+1;pendingCampaign.half=1;}
     campaign.half=[levels[selectedLevel] hasSuffix:@"A"]?1:2;campaign.complete=0;campaign.arena=1;
@@ -1600,7 +1605,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)stepEnemies {
     if(campaignAction!=ASTRO_CAMPAIGN_NONE&&!changingStage) {
         if(selftestPath) {
-            AstroCampaign next=campaign;[self loadCampaignStage:next];
+            AstroCampaign next=pendingCampaign;[self loadCampaignStage:next];
             [self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;
         } else [self beginStageTransition];
     }

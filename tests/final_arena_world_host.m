@@ -116,7 +116,9 @@ static __weak AstroView *midView;
         }}
         if(midMode&&getenv("ASTRO_WORLD_MARKER")){
             assert(level==1&&half=='A');camera=worldLeft=10700;worldRight=11340;
-            [self makeNewSprites];[self calculateActors];assert(campaignAction==ASTRO_CAMPAIGN_LOAD);tracePhase="marker-trigger";[self dumpWorldTrace:@"marker-trigger"];return;
+            [self makeNewSprites];[self calculateActors];assert(campaignAction==ASTRO_CAMPAIGN_LOAD);tracePhase="marker-trigger";[self dumpWorldTrace:@"marker-trigger"];
+            assert(campaign.level==1&&campaign.half==1&&pendingCampaign.level==1&&pendingCampaign.half==2);
+            [self beginStageTransition];assert(campaign.half==1&&pendingCampaign.half==2&&transition.mode==ASTRO_TRANSITION_MID);return;
         }
         if(midMode){
             ui.musicVolume=1;menuVisible=paused=gameOver=NO;flow.phase=ASTRO_FLOW_PLAY;automatic=YES;tracePhase="mid0";[self beginGameLoop];
