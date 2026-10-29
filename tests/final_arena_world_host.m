@@ -108,6 +108,7 @@ static __weak AstroView *midView;
         unsigned index=0;unsigned char bytes[38];
         for(NSDictionary *m in mapPlacements){be64(bytes,number(m,@"x"));be64(bytes+8,number(m,@"y"));be64(bytes+16,number(m,@"width"));be64(bytes+24,number(m,@"height"));be16(bytes+32,[m[@"attribute"] intValue]);be32(bytes+34,[m[@"tag"] intValue]);printf("P\t%u\t",index++);dump(bytes,38);putchar('\n');}
         for(index=0;index<3000;index++){be64(bytes,stars[index].brightness);be64(bytes+8,stars[index].x);be64(bytes+16,stars[index].y);be64(bytes+24,stars[index].speed);printf("T\t%u\t",index);dump(bytes,32);putchar('\n');}
+        if(midMode&&getenv("ASTRO_WORLD_MARKER")&&getenv("ASTRO_WORLD_NEXT_LOAD"))[self beginGameLoop];
         if(runMode||(midMode&&getenv("ASTRO_WORLD_PRELUDE"))){tickedScroll=1;for(unsigned step=0;step<(runMode?256u:64u);step++){
             char label[32];snprintf(label,sizeof label,"run%u",step);tracePhase=label;
             unsigned input=(step/8)%16;int controls[6]={55,58,126,125,123,124};memcpy(controlKeys,controls,sizeof controls);memset(keys,0,sizeof keys);keys[126]=(input&1)!=0;keys[125]=(input&2)!=0;keys[123]=(input&4)!=0;keys[124]=(input&8)!=0;keys[55]=step%7==0;
@@ -115,14 +116,14 @@ static __weak AstroView *midView;
             [self dumpWorldTrace:[NSString stringWithUTF8String:label]];
         }}
         if(midMode&&getenv("ASTRO_WORLD_MARKER")){
-            assert(level==1&&half=='A');camera=worldLeft=10700;worldRight=11340;
+            assert(level==1&&half=='A');if(getenv("ASTRO_WORLD_NEXT_LOAD"))playerVisual.x+=10700-camera;camera=worldLeft=10700;worldRight=11340;
             [self makeNewSprites];[self calculateActors];assert(campaignAction==ASTRO_CAMPAIGN_LOAD);tracePhase="marker-trigger";[self dumpWorldTrace:@"marker-trigger"];
             assert(campaign.level==1&&campaign.half==1&&pendingCampaign.level==1&&pendingCampaign.half==2);
-            [self beginStageTransition];assert(campaign.half==1&&pendingCampaign.half==2&&transition.mode==ASTRO_TRANSITION_MID);return;
+            if(!getenv("ASTRO_WORLD_NEXT_LOAD")){[self beginStageTransition];assert(campaign.half==1&&pendingCampaign.half==2&&transition.mode==ASTRO_TRANSITION_MID);return;}
         }
         if(midMode){
-            ui.musicVolume=1;menuVisible=paused=gameOver=NO;flow.phase=ASTRO_FLOW_PLAY;automatic=YES;tracePhase="mid0";[self beginGameLoop];
-            if(endMode){campaign.level++;campaign.half=1;}else campaign.half=2;tickedScroll=0;[self beginStageTransition];
+            ui.musicVolume=1;menuVisible=paused=gameOver=NO;flow.phase=ASTRO_FLOW_PLAY;automatic=YES;tracePhase="mid0";if(!(getenv("ASTRO_WORLD_MARKER")&&getenv("ASTRO_WORLD_NEXT_LOAD")))[self beginGameLoop];
+            if(!getenv("ASTRO_WORLD_MARKER")){if(endMode){campaign.level++;campaign.half=1;}else campaign.half=2;}tickedScroll=0;[self beginStageTransition];
             midView=self;loopStep=0;@try {if(endMode){[self runEndlevelTransition];}else [self runMidlevelTransition];}@catch(NSException *e){assert([e.name isEqual:@"MidTraceFinished"]);}
             if(endFull){[self dumpWorldTrace:@"end-pre-card"];printf("K\tend\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);}
             if(midFull){[self dumpWorldTrace:@"mid-end"];printf("K\tend\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);}

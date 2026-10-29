@@ -131,6 +131,7 @@ int main(int argc,char **argv){
         }
         unsigned char *stars=*(unsigned char **)(g+0xa54)+32;
         for(index=0;index<3000;index++){printf("T\t%u\t",index);hex(stars+index*32,32);putchar('\n');}
+        if(mid_mode&&getenv("ASTRO_WORLD_MARKER")&&getenv("ASTRO_WORLD_NEXT_LOAD")){(void)arena_tick();*(unsigned *)(g+0xa4a)=arena_tick();*(unsigned *)(g+0xa4e)=arena_tick();}
         if(run_mode||(mid_mode&&getenv("ASTRO_WORLD_PRELUDE")))for(unsigned step=0;step<(run_mode?256u:64u);step++){
             char label[32];snprintf(label,sizeof label,"run%u",step);phase=label;
             unsigned keys=(step/8)%16;set_short(g,0xaac,keys&1?-1:0);set_short(g,0xaae,keys&2?-1:0);set_short(g,0xaa8,keys&4?-1:0);set_short(g,0xaaa,keys&8?-1:0);set_short(g,0xab2,step%7==0?-1:0);
@@ -138,15 +139,16 @@ int main(int argc,char **argv){
             invoke_fb(code+0x3b55c,g,toc,NULL,NULL,NULL);invoke_fb(code+0x4c854,g,toc,NULL,NULL,NULL);snapshot();
         }
         if(mid_mode&&getenv("ASTRO_WORLD_MARKER")){
-            assert(level==1&&half=='A');set_double(g,0xea2,-10700);set_double(g,0xa1e,10700);set_double(g,0xa26,11340);
+            assert(level==1&&half=='A');if(getenv("ASTRO_WORLD_NEXT_LOAD")){unsigned char *player=*(unsigned char **)(g+0xa7a);double *visual=*(double **)(player+0x3e);visual[0]+=10700+*(double *)(g+0xea2);}
+            set_double(g,0xea2,-10700);set_double(g,0xa1e,10700);set_double(g,0xa26,11340);
             invoke_fb(code+0x4c854,g,toc,NULL,NULL,NULL);invoke_fb(code+0x54c64,g,toc,NULL,NULL,NULL);
-            assert(*(short *)(g+0x5ac)==1);phase="marker-trigger";snapshot();return 0;
+            assert(*(short *)(g+0x5ac)==1);phase="marker-trigger";snapshot();if(!getenv("ASTRO_WORLD_NEXT_LOAD"))return 0;
         }
         if(mid_mode){
             const struct {unsigned at;void *fn;} mh[]={{0x57afc,loop_noop_fb},{0x35eb8,loop_noop_fb},{0x43134,loop_noop_fb},{0x334bc,mid_observe_fb},{0x4cb28,loop_noop_fb},{0x4de74,loop_noop_fb}};
             for(unsigned j=0;j<sizeof(mh)/sizeof(mh[0]);j++)if(!real_hud||mh[j].at!=0x43134)jump_to(code+mh[j].at,mh[j].fn);MakeDataExecutable(code,433284);
             if(end_mode){jump_to(code+0x3ccd8,end_sound_fb);MakeDataExecutable(code+0x3ccd8,16);}
-            strcpy(loop_label,"mid0");phase=loop_label;(void)arena_tick();*(unsigned *)(g+0xa4a)=arena_tick();*(unsigned *)(g+0xa4e)=arena_tick();set_double(g,0xa58,0);set_short(g,0x5ac,1);*(unsigned *)(g+0xa3e)=0x4321;
+            strcpy(loop_label,"mid0");phase=loop_label;if(!(getenv("ASTRO_WORLD_MARKER")&&getenv("ASTRO_WORLD_NEXT_LOAD"))){(void)arena_tick();*(unsigned *)(g+0xa4a)=arena_tick();*(unsigned *)(g+0xa4e)=arena_tick();}set_double(g,0xa58,0);set_short(g,0x5ac,1);*(unsigned *)(g+0xa3e)=0x4321;
             if(!setjmp(loop_done))invoke_fb(code+(end_mode?0x4eda0:0x4e9c4),g,toc,NULL,NULL,NULL);
             if(mid_full){set_short(g,0xa84,2);phase="mid-end";snapshot();printf("K\tend\t%u\t%u\t%u\n",clock_reads,*(unsigned *)(g+0xa4a),*(unsigned *)(g+0xa4e));}
             if(getenv("ASTRO_WORLD_NEXT_LOAD")){assert(mid_full&&!end_mode);if(getenv("ASTRO_WORLD_READY")){memcpy(code+0x4e004,ready_entry,16);jump_to(code+0x3bb58,loop_noop_fb);jump_to(code+0x4cb28,ready_keys_fb);jump_to(code+0x334bc,loop_noop_fb);MakeDataExecutable(code,433284);invoke_fb(code+0x4e004,g,toc,NULL,NULL,NULL);}entity_birth=render_birth=0;invoke_fb(code+0x510c8,g,toc,(void *)(uintptr_t)level,NULL,NULL);invoke_fb(code+0x50bfc,g,toc,(void *)(uintptr_t)2,NULL,NULL);phase="next-load";snapshot();
