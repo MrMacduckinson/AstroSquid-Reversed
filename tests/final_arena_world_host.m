@@ -23,7 +23,7 @@ static __weak AstroView *midView;
 @implementation CompositeArenaAudio
 - (void)serviceMusic {if(midMode)[midView captureMidFrame];else [super serviceMusic];}
 - (void)stopMusic {puts("A\tstop");}
-- (BOOL)playMusic:(int)track {if(midMode||(menuReturn&&cleanupDone)){assert(track==1);puts("A\tplay1");}else {assert(track==2);puts("A\tplay2");}return YES;}
+- (BOOL)playMusic:(int)track {if(track==3)puts("A\tplay3");else if(midMode||(menuReturn&&cleanupDone)){assert(track==1);puts("A\tplay1");}else {assert(track==2);puts("A\tplay2");}return YES;}
 @end
 @interface CompositeArenaView:AstroTraceView
 @end
@@ -82,7 +82,7 @@ static __weak AstroView *midView;
     snprintf(resumeLabel,sizeof resumeLabel,"mid%u",loopStep);tracePhase=resumeLabel;
 }
 - (void)runCompositeArena:(const char *)phaseOutput {
-    realHUD=getenv("ASTRO_WORLD_REAL_HUD")!=NULL;panelMode=getenv("ASTRO_WORLD_PANEL")!=NULL;panelInput=getenv("ASTRO_WORLD_PANEL_INPUT")!=NULL;panelCleanup=getenv("ASTRO_WORLD_PANEL_CLEANUP")!=NULL;panelTail=getenv("ASTRO_WORLD_PANEL_TAIL")!=NULL;destroyMode=getenv("ASTRO_WORLD_DESTROY")!=NULL;menuMode=getenv("ASTRO_WORLD_MENU")!=NULL;menuReturn=getenv("ASTRO_WORLD_MENU_RETURN")!=NULL;assert(!menuReturn||menuMode);noScore=getenv("ASTRO_WORLD_NO_SCORE")!=NULL;assert(!noScore||menuMode);assert(!menuMode||destroyMode);if(menuMode){ui.unlockedLevel=16;ui.registered=NO;}assert(!destroyMode||panelTail);assert(!panelTail||panelCleanup);assert(!panelCleanup||panelInput);assert(!panelInput||panelMode);if(panelInput)memset(highscores,0,sizeof(highscores));if(noScore)for(unsigned i=0;i<10;i++)highscores[i].score=1000000;assert(!panelMode||realHUD);if(realHUD){CompositeHUD *observer=[[CompositeHUD alloc]initWithGame:game ui:ui];observer.didDrawSprite=hud.didDrawSprite;hud=observer;}
+    realHUD=getenv("ASTRO_WORLD_REAL_HUD")!=NULL;panelMode=getenv("ASTRO_WORLD_PANEL")!=NULL;panelInput=getenv("ASTRO_WORLD_PANEL_INPUT")!=NULL;panelCleanup=getenv("ASTRO_WORLD_PANEL_CLEANUP")!=NULL;panelTail=getenv("ASTRO_WORLD_PANEL_TAIL")!=NULL;destroyMode=getenv("ASTRO_WORLD_DESTROY")!=NULL;menuMode=getenv("ASTRO_WORLD_MENU")!=NULL;menuReturn=getenv("ASTRO_WORLD_MENU_RETURN")!=NULL;assert(!menuReturn||menuMode);noScore=getenv("ASTRO_WORLD_NO_SCORE")!=NULL;assert(!noScore||menuMode);assert(!menuMode||destroyMode);if(menuMode){ui.musicVolume=1;ui.unlockedLevel=16;ui.registered=NO;}assert(!destroyMode||panelTail);assert(!panelTail||panelCleanup);assert(!panelCleanup||panelInput);assert(!panelInput||panelMode);if(panelInput)memset(highscores,0,sizeof(highscores));if(noScore)for(unsigned i=0;i<10;i++)highscores[i].score=1000000;assert(!panelMode||realHUD);if(realHUD){CompositeHUD *observer=[[CompositeHUD alloc]initWithGame:game ui:ui];observer.didDrawSprite=hud.didDrawSprite;hud=observer;}
     warmMode=phaseOutput&&!strncmp(phaseOutput,"resumewarm",10);gameoverEntry=warmMode||(phaseOutput&&!strncmp(phaseOutput,"resumegameover",14));resumeLong=gameoverEntry||(phaseOutput&&!strncmp(phaseOutput,"resumelong",10));endFull=phaseOutput&&!strncmp(phaseOutput,"endfull",7);endMode=phaseOutput&&!strncmp(phaseOutput,"end",3);midFull=phaseOutput&&!strncmp(phaseOutput,"midfull",7);midMode=endMode||(phaseOutput&&!strncmp(phaseOutput,"mid",3));resumeMode=phaseOutput&&!strncmp(phaseOutput,"resume",6);loopMode=resumeMode||(phaseOutput&&!strncmp(phaseOutput,"loop",4));
     if(panelMode)assert(warmMode);
     BOOL chainMode=phaseOutput&&!strcmp(phaseOutput,"chain");
