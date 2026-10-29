@@ -36,6 +36,12 @@ Current bounded evidence:
   and braking; only diagnostic annotation ticks normalized. This includes
   the end transition, ready card and world/player creation after the boss.
 
+- Reactor destruction on 5B through 6A creation matches 4,417,697 records
+  (BOSS5_NEXT_VERIFIED), terminal clocks 3411295/3410856/3411248 and next-stage
+  RNG39a9015e. Initial HP30000/Laser4/Y190 with avoidance/braking; complete
+  captured state and event order match except diagnostic annotation ticks.
+  This is an independent stage carryover test, not ordinary campaign proof.
+
 - On 2026-10-30, independent full-stage native G5/Intel comparisons matched
   through victory on 4B (3,954,811 records), 5B (4,402,142 records), and 6B
   (2,065,930 records). The actual targets were attribute153 (Drill-Killah),
