@@ -17,6 +17,15 @@ static unsigned commandMenuCalls;
 @implementation CommandProbeMenu
 - (BOOL)performKeyEquivalent:(NSEvent *)event {assert(event.modifierFlags&NSEventModifierFlagCommand);commandMenuCalls++;return YES;}
 @end
+static BOOL commandChecking;static unsigned commandDialogs,commandExits,commandSaves;static NSModalResponse commandChoice;static NSString *commandReason;static AstroView *commandView;
+@interface AstroView (CommandModalProbe)
+- (void)checkCommandModalFreeze;
+@end
+static NSModalResponse commandModal(NSAlert *alert,SEL selector){
+    assert(commandChecking&&[alert.messageText isEqual:@"Stop"]&&[alert.informativeText isEqual:commandReason]);
+    assert(alert.buttons.count==2&&[alert.buttons[0].title isEqual:@"Stop"]&&[alert.buttons[1].title isEqual:@"Continue"]);
+    commandDialogs++;[commandView checkCommandModalFreeze];return commandChoice;
+}
 @interface RegistrationInputUI:AstroUIRenderer @end
 @implementation RegistrationInputUI
 - (void)setButton:(NSString *)name pressed:(BOOL)pressed {if(checkRegisterFocus&&pressed&&[name isEqual:@"Register"])assert(self.activeRegistrationField==-1);[super setButton:name pressed:pressed];}
@@ -32,6 +41,15 @@ static unsigned commandMenuCalls;
 @implementation RegistrationInputView
 - (uint32_t)currentGameTick {return 1000;}
 - (void)signalUnhandledCommand {commandBeeps++;}
+- (void)checkCommandModalFreeze {
+    assert(stringOverflowActive);unsigned clocks=serviceClockReads;
+    [self tick:nil];[self tickWallClock];[self drawRect:NSZeroRect];assert(serviceClockReads==clocks);
+}
+- (void)saveSettings {if(commandChecking){commandSaves++;return;}[super saveSettings];}
+- (void)terminateApplication {
+    if(commandChecking){assert(terminationAllowed);commandExits++;@throw [NSException exceptionWithName:@"CommandStopped" reason:nil userInfo:nil];}
+    [super terminateApplication];
+}
 - (uint32_t)cardDelayClockTick {serviceClockReads++;uint32_t tick=serviceTick;serviceTick+=serviceTickStep;return tick;}
 - (void)copyKeyMap:(unsigned char *)map {memset(map,0,16);}
 - (BOOL)menuMouseButtonPressed {return autoTest?autoHeld:NO;}
@@ -120,6 +138,21 @@ static unsigned commandMenuCalls;
     NSApp.mainMenu=[CommandProbeMenu new];
     NSEvent *matched=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:NSEventModifierFlagCommand timestamp:0 windowNumber:0 context:nil characters:@"x" charactersIgnoringModifiers:@"x" isARepeat:NO keyCode:7];
     [self keyDown:matched];serviceTick+=60;[self pollMainMenu];assert(commandMenuCalls==1&&commandBeeps==1);
+    NSApp.mainMenu=nil;commandView=self;commandChecking=YES;
+    Method modal=class_getInstanceMethod([NSAlert class],@selector(runModal));IMP previousModal=method_setImplementation(modal,(IMP)commandModal);
+    for(unsigned repeat=0;repeat<2;repeat++)for(unsigned choice=0;choice<2;choice++)for(unsigned i=0;i<3;i++){
+        NSString *ch=@[@".",@"q",@"Q"][i];commandReason=i?@"User Break (3)":@"User Break (2)";
+        commandChoice=choice?NSAlertSecondButtonReturn:NSAlertFirstButtonReturn;unsigned beforeExits=commandExits,beforeBeeps=commandBeeps,beforeDialogs=commandDialogs;
+        AstroScoreEditor beforeFields[2];memcpy(beforeFields,fields,sizeof(beforeFields));
+        NSEvent *command=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:NSEventModifierFlagCommand timestamp:0 windowNumber:0 context:nil characters:ch charactersIgnoringModifiers:ch isARepeat:repeat keyCode:i?12:47];
+        [self keyDown:command];serviceTick+=60;terminationAllowed=NO;quitRequested=NO;
+        @try {[self pollMainMenu];assert(choice);}
+        @catch(NSException *exception){assert(!choice&&[exception.name isEqual:@"CommandStopped"]);}
+        assert(commandDialogs==beforeDialogs+1&&commandExits==beforeExits+!choice&&commandBeeps==beforeBeeps+(choice&&i!=0));
+        assert(!commandSaves&&!quitRequested&&!stringOverflowActive&&!queuedKeyEvents.count&&!memcmp(beforeFields,fields,sizeof(beforeFields)));
+    }
+    method_setImplementation(modal,previousModal);commandChecking=NO;terminationAllowed=NO;
+    puts("PASS 12 actual Root Stop/Continue command routes, no settings save, unchanged fields, and modal timer/draw freeze");
     NSApp.mainMenu=savedMenu;
     [self flushGameEvents];puts("PASS outer Main field/periodic shared consumption AC,59/60 boundary,closed frame gate,and nested/pause exclusion");
     observing=NO;

@@ -1892,9 +1892,14 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(event.type==NSEventTypeKeyDown){
         NSData *characters=[self fieldCharacters:event];unsigned ch=characters.length?*(const unsigned char *)characters.bytes:0;
         if((event.modifierFlags&NSEventModifierFlagCommand)&&ch!=16){
-            BOOL handled=[NSApp.mainMenu performKeyEquivalent:event];
-            // shortcut: unmatched Q/dot use separate original stop/quit paths still under audit.
-            if(!handled&&ch!='q'&&ch!='Q'&&ch!='.')[self signalUnhandledCommand];
+            BOOL handled=ch!='.'&&[NSApp.mainMenu performKeyEquivalent:event];
+            if(!handled){
+                if(ch=='.'||ch=='q'||ch=='Q'){
+                    NSString *reason=ch=='.'?@"User Break (2)":@"User Break (3)";
+                    if(![self continueRuntimeAlert:@"Stop" details:reason]){[self stopRuntime];return;}
+                }
+                if(ch!='.')[self signalUnhandledCommand];
+            }
         }
     }else if(event)[NSApp sendEvent:event];
     lastMainEventTick=[self cardDelayClockTick];
@@ -2247,13 +2252,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     NSString *text=[[NSString alloc] initWithData:shown encoding:NSMacOSRomanStringEncoding];
     return [NSString stringWithFormat:@"\"%@\" (length %lu)",text,(unsigned long)operand.length];
 }
-- (void)stopForTextOverflow {terminationAllowed=YES;[self terminateApplication];}
+- (void)stopRuntime {terminationAllowed=YES;[self terminateApplication];}
 - (NSString *)registrationFooterWithPrefix:(NSString *)prefix name:(NSString *)name {
     NSData *left=[prefix dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:YES];
     NSData *right=[name dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:YES];
     NSMutableData *joined=[left mutableCopy];[joined appendData:right];
     if(joined.length>255){
-        if(![self continueScoreOverflow:left right:right]){[self stopForTextOverflow];return nil;}
+        if(![self continueScoreOverflow:left right:right]){[self stopRuntime];return nil;}
         // FBAddStrings copies backwards across its two overlapping 256-byte string slots.
         NSMutableData *slots=[NSMutableData dataWithLength:MAX(257+right.length,1+left.length+right.length)];
         unsigned char *bytes=slots.mutableBytes;memcpy(bytes+1,left.bytes,left.length);memcpy(bytes+257,right.bytes,right.length);
@@ -2263,10 +2268,12 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     return [[NSString alloc]initWithData:joined encoding:NSMacOSRomanStringEncoding];
 }
 - (BOOL)continueScoreOverflow:(NSData *)left right:(NSData *)right {
+    return [self continueRuntimeAlert:@"Length >255 while adding strings:" details:[NSString stringWithFormat:@"%@ +\n%@",[self scoreOperandDescription:left],[self scoreOperandDescription:right]]];
+}
+- (BOOL)continueRuntimeAlert:(NSString *)message details:(NSString *)details {
     BOOL previous=stringOverflowActive;stringOverflowActive=YES;@try {
     NSAlert *alert=[NSAlert new];alert.alertStyle=NSAlertStyleCritical;
-    alert.messageText=@"Length >255 while adding strings:";
-    alert.informativeText=[NSString stringWithFormat:@"%@ +\n%@",[self scoreOperandDescription:left],[self scoreOperandDescription:right]];
+    alert.messageText=message;alert.informativeText=details;
     [alert addButtonWithTitle:@"Stop"];[alert addButtonWithTitle:@"Continue"];
     return [alert runModal]!=NSAlertFirstButtonReturn;
     } @finally {stringOverflowActive=previous;[[self openGLContext]makeCurrentContext];}
@@ -2281,7 +2288,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(left==255)second=[NSData dataWithBytes:&character length:1];
     else{[first appendBytes:&character length:1];second=[NSData dataWithBytes:editor->name+length-right length:right];}
     BOOL proceed=[self continueScoreOverflow:first right:second];
-    if(astro_score_editor_resolve_alert(editor,proceed)==ASTRO_SCORE_EDIT_STOP){[self stopForTextOverflow];return NO;}
+    if(astro_score_editor_resolve_alert(editor,proceed)==ASTRO_SCORE_EDIT_STOP){[self stopRuntime];return NO;}
     return YES;
 }
 - (BOOL)editScoreByte:(unsigned)ch {
