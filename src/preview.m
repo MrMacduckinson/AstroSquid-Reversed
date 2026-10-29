@@ -2646,6 +2646,20 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)viewDidMoveToWindow { [self.window makeFirstResponder:self]; }
 @end
 
+@interface AstroApplication : NSApplication
+@property(weak) AstroView *gameView;
+@end
+@implementation AstroApplication
+- (void)sendEvent:(NSEvent *)event {
+    AstroView *view=self.gameView;
+    // Preserve the original shared key queue before AppKit consumes menu equivalents.
+    if(event.type==NSEventTypeKeyDown&&view.window&&event.window==view.window&&!self.modalWindow){
+        [view keyDown:event];return;
+    }
+    [super sendEvent:event];
+}
+@end
+
 @interface AstroDelegate : NSObject<NSApplicationDelegate,NSWindowDelegate>
 @property(strong) NSWindow *window;
 @property(strong) AstroView *view;
@@ -2675,6 +2689,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(!view) { NSLog(@"Missing or invalid extracted game assets at %@",path); [NSApp terminate:nil]; return; }
     [view initializeDebugJournal];
     self.view=view;self.window.contentView=view;
+    ((AstroApplication *)NSApp).gameView=view;
     [self presentGameWindow];
     if(preferenceProbe)[view probePreferences:preferenceProbe];
     if(testPath) [view beginSelfTest:testPath];
@@ -2697,7 +2712,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 int main(int argc,const char **argv) {
     atexit(restoreFullscreen);
     @autoreleasepool {
-        NSApplication *app=[NSApplication sharedApplication];
+        AstroApplication *app=[AstroApplication sharedApplication];
         [app setActivationPolicy:NSApplicationActivationPolicyRegular];
         AstroDelegate *delegate=[AstroDelegate new]; app.delegate=delegate;
         NSMenu *menu=[NSMenu new]; NSMenuItem *root=[NSMenuItem new]; [menu addItem:root];

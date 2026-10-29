@@ -4,9 +4,11 @@
 #import <objc/runtime.h>
 static uint32_t serviceTick=1000;static unsigned serviceClockReads,serviceTickStep,commandBeeps;
 static NSMutableString *events;static BOOL observing,checkRegisterFocus,autoTest,autoHeld;
+static NSWindow *dispatchModalWindow;
 static BOOL observeIdleWait;static NSTimeInterval idleWait;
-@interface MainWaitApplication:NSApplication @end
+@interface MainWaitApplication:AstroApplication @end
 @implementation MainWaitApplication
+- (NSWindow *)modalWindow {return dispatchModalWindow ?: [super modalWindow];}
 - (NSEvent *)nextEventMatchingMask:(NSEventMask)mask untilDate:(NSDate *)expiration inMode:(NSRunLoopMode)mode dequeue:(BOOL)dequeue {
     if(observeIdleWait){assert(mask==NSEventMaskAny&&dequeue&&[mode isEqual:NSDefaultRunLoopMode]);idleWait=[expiration timeIntervalSinceNow];return nil;}
     return [super nextEventMatchingMask:mask untilDate:expiration inMode:mode dequeue:dequeue];
@@ -98,6 +100,27 @@ static NSModalResponse commandModal(NSAlert *alert,SEL selector){
     assert(queuedKeyEvents[0].isARepeat&&queuedKeyEvents[0].modifierFlags==NSEventModifierFlagCommand&&queuedKeyEvents[0].timestamp==123);
     [self frameExpect:@"DWSKE"];assert(!strcmp(fields[0].name,"Y")&&!queuedKeyEvents.count);
     [ui resetRegistrationFields];ui.activeRegistrationField=-1;queuedKeyEvents=nil;
+    NSWindow *dispatchWindow=[[NSWindow alloc]initWithContentRect:NSMakeRect(0,0,640,480) styleMask:NSWindowStyleMaskTitled backing:NSBackingStoreBuffered defer:NO];
+    NSView *container=[[NSView alloc]initWithFrame:NSMakeRect(0,0,640,480)];dispatchWindow.contentView=container;[container addSubview:self];
+    AstroApplication *app=(AstroApplication *)NSApp;app.gameView=self;
+    NSMenu *dispatchSavedMenu=app.mainMenu;app.mainMenu=[CommandProbeMenu new];
+    for(unsigned repeat=0;repeat<2;repeat++){
+        unsigned before=commandMenuCalls;
+        NSEvent *command=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:NSEventModifierFlagCommand timestamp:123 windowNumber:dispatchWindow.windowNumber context:nil characters:@"q" charactersIgnoringModifiers:@"q" isARepeat:repeat keyCode:12];
+        [app sendEvent:command];assert(commandMenuCalls==before&&queuedKeyEvents.count==1&&queuedKeyEvents[0]==command);
+        assert(command.isARepeat==repeat&&command.timestamp==123);[queuedKeyEvents removeAllObjects];
+    }
+    NSWindow *other=[[NSWindow alloc]initWithContentRect:NSMakeRect(0,0,64,64) styleMask:NSWindowStyleMaskTitled backing:NSBackingStoreBuffered defer:NO];
+    unsigned before=commandMenuCalls;
+    [app sendEvent:[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:NSEventModifierFlagCommand timestamp:0 windowNumber:other.windowNumber context:nil characters:@"q" charactersIgnoringModifiers:@"q" isARepeat:NO keyCode:12]];
+    assert(!queuedKeyEvents.count&&commandMenuCalls==before+1);
+    Class dispatchClass=object_getClass(app);object_setClass(app,[MainWaitApplication class]);dispatchModalWindow=other;
+    before=commandMenuCalls;
+    [app sendEvent:[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:NSEventModifierFlagCommand timestamp:0 windowNumber:dispatchWindow.windowNumber context:nil characters:@"q" charactersIgnoringModifiers:@"q" isARepeat:NO keyCode:12]];
+    assert(!queuedKeyEvents.count&&commandMenuCalls==before+1);
+    dispatchModalWindow=nil;object_setClass(app,dispatchClass);
+    app.mainMenu=dispatchSavedMenu;app.gameView=nil;[self removeFromSuperview];commandMenuCalls=0;
+    puts("PASS application sendEvent queues game-window Command-Q/repeat before menu dispatch, including wrapped view; other window and modal guard retain AppKit dispatch");
     [NSApp discardEventsMatchingMask:NSEventMaskAny beforeEvent:nil];
     for(unsigned i=0;i<2;i++)[NSApp postEvent:[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:i windowNumber:0 context:nil characters:i?@"B":@"A" charactersIgnoringModifiers:i?@"B":@"A" isARepeat:i!=0 keyCode:i?11:0] atStart:NO];
     [self frameExpect:@"DWSK"];assert([NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO].keyCode==0);
@@ -174,7 +197,7 @@ static NSModalResponse commandModal(NSAlert *alert,SEL selector){
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
-    assert(argc==2);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
+    assert(argc==2);[AstroApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
     [[NSUserDefaults standardUserDefaults]setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}} forName:NSArgumentDomain];
     events=[NSMutableString string];RegistrationInputView *view=[[RegistrationInputView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(view);[view checkInput];
     for(unsigned valid=0;valid<2;valid++){
