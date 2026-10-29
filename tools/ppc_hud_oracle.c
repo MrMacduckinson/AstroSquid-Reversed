@@ -67,9 +67,12 @@ int main(int argc,char **argv){
         sequence=0;*(void **)(globals+0x38c)=heap;
         double camera_x=cases%2?-1234.25:1234.75,camera_y=cases%4<2?19.5:-19.5;
         *(double *)(globals+0xea2)=camera_x;*(double *)(globals+0xeaa)=camera_y;
+        double bounds[4]={-camera_x,640-camera_x,-camera_y,380-camera_y};
+        memcpy(globals+0xa1e,bounds,sizeof(bounds));
         invoke_fb(code+0x43134,globals,toc,NULL,NULL,NULL);
         assert(*(double *)(globals+0xea2)==(double)(int32_t)camera_x);
         assert(*(double *)(globals+0xeaa)==(double)(int32_t)camera_y);
+        assert(!memcmp(globals+0xa1e,bounds,sizeof(bounds)));
         AstroHUDState state={present,hp,weapon,upgrade,ammo,4,12345};AstroHUDCommand ported[32];size_t n=astro_hud_commands(&state,ported,32);
         if(n!=sequence){fprintf(stderr,"Command count differs %lu %u\n",(unsigned long)n,sequence);return 1;}
         for(unsigned i=0;i<n;i++){
