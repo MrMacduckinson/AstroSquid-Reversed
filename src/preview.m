@@ -2592,6 +2592,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self display];ui.activeRegistrationField=-1;gameEndHighscores=NO;[self flushGameEvents];
     [audio setPaused:NO];[audio stopMusic];[audio playMusic:1];
     [self setGameCursorHidden:NO];gameEndRequested=NO;
+    // DOMOUSE sets its held-button latch after synchronous STARTNEWGAME returns.
+    menuMouseLatched=YES;
 }
 - (void)unlockStage {
     ui.unlockedLevel=MAX(ui.unlockedLevel,MIN(16,(campaign.level-1)*2+campaign.half));
