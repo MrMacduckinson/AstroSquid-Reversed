@@ -71,6 +71,7 @@ build/flow_test
 build/scores_test
 bash tests/registration_field_key.sh
 bash tests/registration_validator.sh
+bash tests/preferences.sh
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/caret_test.c src/scores.c -o build/caret_test
 build/caret_test tests/caret_vectors.csv
 "${CC:-cc}" -std=c99 -O2 -ffp-contract=off -Wall -Wextra tests/transition_test.c src/transition.c -lm -o build/transition_test
