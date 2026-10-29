@@ -20,4 +20,4 @@ static uint32_t constant_tick(void *context){return *(const uint32_t *)context;}
 void astro_debris_step(AstroDebris *s,uint32_t tick,int right,double left,double gravity) {
     astro_debris_step_clocked(s,right,left,gravity,constant_tick,&tick);
 }
-double astro_debris_gravity(int stage) {return stage==6||stage==8?.3:stage==9?-.2:0;}
+double astro_debris_gravity(int stage) {return stage==6||stage==8?.3:0;}

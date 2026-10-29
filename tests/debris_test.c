@@ -18,7 +18,7 @@ int main(int argc,char **argv) {
         count++;
     }
     fclose(f);assert(count==450);
-    for(int stage=0;stage<11;stage++)assert(astro_debris_gravity(stage)==(stage==6||stage==8?.3:stage==9?-.2:0));
+    for(int stage=0;stage<11;stage++)assert(astro_debris_gravity(stage)==(stage==6||stage==8?.3:0));
     AstroDebris s={.kind=4,.state=1,.frame=3,.update_tick=0,.animation_tick=0,.action_tick=0};
     astro_debris_step(&s,45,100,100,0);assert(!s.remove&&s.frame==3);
     astro_debris_step(&s,46,100,100,0);assert(s.remove==1);
