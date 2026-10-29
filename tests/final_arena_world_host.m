@@ -44,7 +44,7 @@ static __weak AstroView *midView;
 - (BOOL)menuMouseButtonPressed {return panelInput?NO:[super menuMouseButtonPressed];}
 - (void)pollMenuMouse {if(!panelInput)[super pollMenuMouse];}
 - (void)reloadMainMenu {if(destroyMode&&!menuMode&&cleanupDone){assert(!world.count&&!enemies.count&&!mapPlacements.count);printf("DEND\t%u\t0\t0\n",compositeClocks);puts("W\tdestroy-complete");@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super reloadMainMenu];}
-- (void)beginGameOver {if(gameoverEntry&&!warmMode){gameoverReached=YES;[self dumpWorldTrace:@"gameover-entry"];printf("K\tentry\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super beginGameOver];}
+- (void)beginGameOver {if((gameoverEntry&&!warmMode)||getenv("ASTRO_WORLD_GAMEOVER")){gameoverReached=YES;[self dumpWorldTrace:@"gameover-entry"];printf("K\tentry\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);@throw [NSException exceptionWithName:midMode?@"MidTraceFinished":@"TraceFinished" reason:nil userInfo:nil];}[super beginGameOver];}
 - (void)delayGameTicks:(uint32_t)ticks {
  if(!warmMode){[super delayGameTicks:ticks];return;}
  static const unsigned expected[]={0,1,1,2,3,3,4,4,5,6};assert(warmFrames<10&&ticks==expected[warmFrames]);
@@ -59,7 +59,7 @@ static __weak AstroView *midView;
     memset(bytes,0,16);unsigned input=(loopStep/8)%16;int codes[5]={126,125,123,124,55};
     for(unsigned i=0;i<5;i++)if(i==4?loopStep%7==0:(input&(1u<<i)))bytes[codes[i]>>3]|=1u<<(codes[i]&7);
 }
-- (void)createPlayerAtX:(double)x y:(double)y {if(readyActive||(resumeMode&&loopStep))playerTraceID=++nextEntityID;[super createPlayerAtX:x y:y];}
+- (void)createPlayerAtX:(double)x y:(double)y {if(readyActive||((resumeMode||midMode)&&loopStep))playerTraceID=++nextEntityID;[super createPlayerAtX:x y:y];}
 - (void)handleMiscKeys {
     if(panelTail&&cleanupDone){[self dumpWorldTrace:@"gameover-tail"];printf("Y\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);puts("W\ttail-complete");if(destroyMode)return;@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}
     if(!loopMode&&!midMode){[super handleMiscKeys];return;}
@@ -128,6 +128,7 @@ static __weak AstroView *midView;
             ui.musicVolume=1;menuVisible=paused=gameOver=NO;flow.phase=ASTRO_FLOW_PLAY;automatic=YES;tracePhase="mid0";if(getenv("ASTRO_WORLD_DISPATCH")||!(getenv("ASTRO_WORLD_MARKER")&&getenv("ASTRO_WORLD_NEXT_LOAD")))[self beginGameLoop];
             if(!getenv("ASTRO_WORLD_MARKER")){if(endMode){campaign.level++;campaign.half=1;}else campaign.half=2;}tickedScroll=0;if(!getenv("ASTRO_WORLD_DISPATCH"))[self beginStageTransition];
             midView=self;loopStep=0;@try {if(getenv("ASTRO_WORLD_DISPATCH")){for(unsigned poll=0;flow.phase==ASTRO_FLOW_PLAY;poll++){assert(poll<(getenv("ASTRO_WORLD_FLIGHT")?40000u:1000u));[self pollGame];if(getenv("ASTRO_WORLD_BOSS")&&campaignAction!=ASTRO_CAMPAIGN_NONE){if(!getenv("ASTRO_WORLD_BOSS_END"))break;[self dumpWorldTrace:@"boss-defeated"];printf("KB\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);}}}else if(endMode){[self runEndlevelTransition];}else [self runMidlevelTransition];}@catch(NSException *e){assert([e.name isEqual:@"MidTraceFinished"]);}
+            if(getenv("ASTRO_WORLD_GAMEOVER")){assert(gameoverReached);return;}
             if(getenv("ASTRO_WORLD_BOSS_END")){assert(flow.phase==ASTRO_FLOW_END_CARD);[self dumpWorldTrace:@"end-pre-card"];printf("K\tend\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);if(!getenv("ASTRO_WORLD_BOSS_NEXT"))return;readyActive=YES;tracePhase="end-pre-card";nextEntityID=playerTraceID=0;entityIDs=[NSMapTable strongToStrongObjectsMapTable];[self recordCardPresentation];[self pollFlowCard];assert(flow.phase==ASTRO_FLOW_READY&&campaign.level==2&&campaign.half==1);}
             if(getenv("ASTRO_WORLD_BOSS")&&!getenv("ASTRO_WORLD_BOSS_NEXT")){assert(campaignAction==ASTRO_CAMPAIGN_LOAD);[self dumpWorldTrace:@"boss-defeated"];printf("KB\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);return;}
             if(endFull){[self dumpWorldTrace:@"end-pre-card"];printf("K\tend\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);}

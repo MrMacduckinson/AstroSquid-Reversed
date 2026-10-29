@@ -1725,7 +1725,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)pollGame {
     if(respawnTick){[self pollRespawnWaitFrame];return;}
-    if(invulnerableUntil){[self pollNestedWorld];[self pollMapSpawns];if(!invulnerableUntil){[audio serviceMusic];[self readGameKeys];[self completeGameLoopIfRequested];}specialReturnPending=NO;return;}
+    if(invulnerableUntil){[self pollNestedWorld];[self pollRespawnBlink];if(!invulnerableUntil){[audio serviceMusic];[self pollMapSpawns];[self readGameKeys];[self completeGameLoopIfRequested];}specialReturnPending=NO;return;}
     if(gameEndRequested&&!firstGameLoopPoll){[audio serviceMusic];[self pollMapSpawns];[self readGameKeys];[self completeGameLoopIfRequested];return;}
     firstGameLoopPoll=NO;
     uint32_t comparison=[self playerClockTick];

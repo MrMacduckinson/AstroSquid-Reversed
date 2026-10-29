@@ -8,6 +8,11 @@ static BOOL injecting,constantClock,factoryConsumesClock;
 static uint32_t values[16],constantValue,factoryCheckpoint,cpuAtStep,simulationAtStep;
 static unsigned supplied,used,steps,renders,factories;
 static NSMutableString *events;
+@interface RespawnOrderAudio : AstroAudio
+@end
+@implementation RespawnOrderAudio
+- (void)serviceMusic {[events appendString:@"M"];}
+@end
 @interface AstroGameClockView : AstroView
 @end
 @implementation AstroGameClockView
@@ -102,8 +107,14 @@ static NSMutableString *events;
         assert(flow.phase==ASTRO_FLOW_PLAY&&used==8&&factories==1&&lastSpawnTick==140);
         assert(playerState.update_tick==110&&playerState.animation_tick==111&&lastPlayerShot==112);
         assert(observedWallTick==100&&worldRenderTick==100&&!steps&&!renders&&[events isEqual:@"CCCCCCCFC"]);checked++;}
-    injecting=NO;assert(checked==14);
-    puts("PASS14 actual host source-backed outer clocks, including pending/final GameOver guards: entry3, closedCPUspawn, freshCPU/factorystores, signedspawn, blockedresume, blink exception, reset preservation and READY return tail");
+    {const uint32_t c[]={100,100,281,282,283};[self resetClockCase:c count:5];
+        invulnerableUntil=1;respawnStartTick=respawnBlinkTick=100;
+        AstroAudio *saved=audio;audio=[[RespawnOrderAudio alloc]init];
+        [self pollGame];audio=saved;
+        assert(!invulnerableUntil&&used==5&&factories==2&&lastSpawnTick==283);
+        assert([events isEqual:@"CCFMCMCFC"]);checked++;}
+    injecting=NO;assert(checked==15);
+    puts("PASS15 actual host source-backed outer clocks, including pending/final GameOver guards: entry3, closedCPUspawn, freshCPU/factorystores, signedspawn, blockedresume, blink exception, reset preservation and READY return tail");
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
