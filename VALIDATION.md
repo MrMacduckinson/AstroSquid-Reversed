@@ -30,6 +30,12 @@ Current bounded evidence:
   Laser4/Y95 scope and annotation-only normalization; no continuous campaign
   or ordinary-health completion claim.
 
+- Independent 4B victory through 5A creation matches 3,974,206 records
+  (BOSS4_NEXT_VERIFIED), terminal clocks 2826813/2826414/2826806 and
+  next-stage RNG19478066. Initial HP30000/Laser4/Y225 with terrain avoidance
+  and braking; only diagnostic annotation ticks normalized. This includes
+  the end transition, ready card and world/player creation after the boss.
+
 - On 2026-10-30, independent full-stage native G5/Intel comparisons matched
   through victory on 4B (3,954,811 records), 5B (4,402,142 records), and 6B
   (2,065,930 records). The actual targets were attribute153 (Drill-Killah),
