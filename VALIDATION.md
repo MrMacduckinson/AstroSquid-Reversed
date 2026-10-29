@@ -36,6 +36,16 @@ Current bounded evidence:
   not evidence of an ordinary-health winning strategy. BOSS7_VERIFIED retains
   the complete capture hashes; the same annotation-only normalization applies.
 
+- The continuous 8B-to-9B route matches 2,726,752 records through final victory,
+  including destruction of the tag -2 entrance (attribute261) and final boss
+  (attribute157). Both end at HP0/removal -1. The fixture uses HP30000/Laser4,
+  Y190, enemy aiming, objective priority, terrain avoidance and braking.
+  Objective priority targets live tag -1/-2 entities 80–600 pixels ahead; it
+  changes test inputs only. The host additionally asserts campaign completion
+  while the global stage remains 8B. FINAL8_VERIFIED retains full captures and
+  hashes with the same annotation-only normalization. This stops before the
+  ending transition and does not establish an ordinary-health campaign win.
+
 - `tests/gameover_held_host.sh` matches171 records from three original GAMEOVER
   schedules with held mouse and queued A/B/Enter at intervals1/2/3. The original
   TRANS and DOMOUSE body execute; a validated PC-independent prologue trampoline
