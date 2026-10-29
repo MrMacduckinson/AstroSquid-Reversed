@@ -44,12 +44,19 @@ static NSMutableString *events;
 - (void)resetClockCase:(const uint32_t *)script count:(unsigned)count {
     assert(count<=16);if(count)memcpy(values,script,count*sizeof(*script));supplied=count;used=steps=renders=factories=0;
     factoryCheckpoint=cpuAtStep=simulationAtStep=0;events=[NSMutableString string];constantClock=NO;factoryConsumesClock=NO;
-    menuVisible=paused=gameOver=changingStage=NO;flow.phase=ASTRO_FLOW_PLAY;respawnTick=invulnerableUntil=0;
+    menuVisible=paused=gameOver=gameOverPending=changingStage=NO;flow.phase=ASTRO_FLOW_PLAY;respawnTick=invulnerableUntil=0;
     observedWallTick=worldRenderTick=lastSpawnTick=100;simulationTick=100;automatic=NO;campaign.arena=0;campaignAction=ASTRO_CAMPAIGN_NONE;
 }
 - (void)checkGameLoopClock {
     [timer invalidate];timer=nil;[audio stop];audio.soundVolume=audio.musicVolume=0;splashVisible=NO;injecting=YES;
     unsigned checked=0;
+    // Last-death iteration retains its map tail; the already-entered panel does not.
+    {const uint32_t c[]={121,125};[self resetClockCase:c count:2];
+        gameOver=gameOverPending=YES;[self pollMapSpawns];
+        assert(used==2&&factories==1&&lastSpawnTick==125&&[events isEqual:@"CFC"]);checked++;}
+    {[self resetClockCase:NULL count:0];gameOver=YES;[self pollMapSpawns];
+        assert(!used&&!factories&&!events.length);checked++;}
+
     {const uint32_t c[]={100,101,102};[self resetClockCase:c count:3];[self beginGameLoop];
         assert(used==3&&lastSpawnTick==100&&observedWallTick==101&&worldRenderTick==102);assert([events isEqual:@"CCC"]);checked++;}
     {const uint32_t c[]={100,121,123,125};[self resetClockCase:c count:4];factoryConsumesClock=YES;[self pollGame];
@@ -89,8 +96,8 @@ static NSMutableString *events;
         assert(flow.phase==ASTRO_FLOW_PLAY&&used==8&&factories==1&&lastSpawnTick==140);
         assert(playerState.update_tick==110&&playerState.animation_tick==111&&lastPlayerShot==112);
         assert(observedWallTick==100&&worldRenderTick==100&&!steps&&!renders&&[events isEqual:@"CCCCCCCFC"]);checked++;}
-    injecting=NO;assert(checked==10);
-    puts("PASS10 actual host source-backed outer clocks: entry3, closedCPUspawn, freshCPU/factorystores, signedspawn, blockedresume, blink exception, reset preservation and READY return tail");
+    injecting=NO;assert(checked==12);
+    puts("PASS12 actual host source-backed outer clocks, including pending/final GameOver guards: entry3, closedCPUspawn, freshCPU/factorystores, signedspawn, blockedresume, blink exception, reset preservation and READY return tail");
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
