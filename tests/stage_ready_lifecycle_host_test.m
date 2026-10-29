@@ -9,6 +9,7 @@ static NSMutableString *events;
 @end
 @implementation StageAudioProbe
 - (void)stopMusic {[events appendString:@"S"];}
+- (void)serviceMusic {[events appendString:@"U"];}
 - (BOOL)playMusic:(int)track {[events appendString:@"P"];return YES;}
 @end
 @interface StageReadyView : AstroView
@@ -37,7 +38,7 @@ static NSMutableString *events;
     inventory=(AstroInventory){40,3,2,2};playerWeapon=43;
     flow.ticks=58;[self advanceFlowWithKey:YES];assert(reads==0&&events.length==0);
     checkingInventory=YES;[self advanceFlowWithKey:YES];checkingInventory=NO;
-    assert([events isEqual:@"SPLMC"]&&flow.phase==ASTRO_FLOW_PLAY&&!readyLoadPending);
+    assert([events isEqual:@"SPLMCU"]&&flow.phase==ASTRO_FLOW_PLAY&&!readyLoadPending);
     assert([levels[selectedLevel] isEqual:@"Data 1B"]&&reads==backgrounds.count+4*enemies.count+6);
     unsigned constructor=1000+reads-6;
     assert(playerState.update_tick==constructor&&playerState.animation_tick==constructor+1&&lastPlayerShot==constructor+2);
@@ -58,7 +59,7 @@ static NSMutableString *events;
         [NSData dataWithBytes:&enemy->visual length:sizeof(enemy->visual)],@(enemy->renderBirth)]];
     unsigned before=reads;seed=randomSeed;[events setString:@""];flow.ticks=59;
     [self advanceFlowWithKey:NO];assert(reads==before&&events.length==0&&randomSeed==seed);
-    [self advanceFlowWithKey:YES];checkingInventory=NO;assert([events isEqual:@"SPC"]&&reads==before+6&&randomSeed==seed&&score==12345);
+    [self advanceFlowWithKey:YES];checkingInventory=NO;assert([events isEqual:@"SPCU"]&&reads==before+6&&randomSeed==seed&&score==12345);
     for(NSUInteger i=0;i<enemies.count;i++){
         AstroEnemy *enemy=enemies[i];NSArray *saved=snapshots[i];
         assert(!memcmp([saved[0] bytes],&enemy->state,sizeof(enemy->state)));

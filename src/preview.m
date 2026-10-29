@@ -1768,7 +1768,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         else {
             if(readyLoadPending)[self loadCampaignStage:pendingCampaign];
             [self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;
-            [self pollMapSpawns];[self readGameKeys];[self completeGameLoopIfRequested];specialReturnPending=NO;
+            [audio serviceMusic];[self pollMapSpawns];[self readGameKeys];[self completeGameLoopIfRequested];specialReturnPending=NO;
         }
     }
     if(flow.phase==ASTRO_FLOW_FINISHED)[self beginGameOver];
