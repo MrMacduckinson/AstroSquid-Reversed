@@ -22,7 +22,16 @@
 @synthesize anchor=_anchor;
 @synthesize transitioning=_transitioning;
 @synthesize panelOffset=_panelOffset;
+@synthesize panelWorldOriginX=_panelWorldOriginX;
 @synthesize cameraX=_cameraX,cameraY=_cameraY,cameraStepX=_cameraStepX,cameraStepY=_cameraStepY;
+- (void)setPanelWorldOriginX:(double)origin {
+    _panelWorldOriginX=origin;
+    // HUD drawing can truncate the world camera after panel sprites are born.
+    for(NSString *name in _panelWorldX){
+        AstroUIMotion *state=[_orbStates[name] mutableBytes];
+        state->x=[_panelWorldX[name] doubleValue]-origin;
+    }
+}
 - (instancetype)initWithAssets:(NSString *)assets error:(NSError **)error {
     if((self=[super init])){
         NSData *bytes=[NSData dataWithContentsOfFile:[assets stringByAppendingPathComponent:@"ui/ui.json"] options:0 error:error];

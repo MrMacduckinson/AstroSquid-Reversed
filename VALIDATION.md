@@ -69,6 +69,15 @@ Current bounded evidence:
   retains the captures. The real cleanup, actor and visual updates run after
   the ending; the observer stops at ShowCursor before panel construction.
 
+- ENDING + GAMEOVER_WARM + PANEL now reaches panel-ready with 2,738,092
+  matching canonical records (ENDING_PANEL_VERIFIED). Native's three linked
+  UI render nodes are compared through U/F, with host P duplicates checked
+  against U; game clocks and IEEE coordinates are not normalized. This found
+  and fixed stale screen coordinates after HUD truncates the world camera:
+  the UI now reprojects its retained world coordinates against the updated
+  origin. Pause/GameOver actual projection tests pass at 1x and 2x. This route
+  still uses initial HP30000/Laser4 and stops before name submission/menu return.
+
 - `tests/gameover_held_host.sh` matches171 records from three original GAMEOVER
   schedules with held mouse and queued A/B/Enter at intervals1/2/3. The original
   TRANS and DOMOUSE body execute; a validated PC-independent prologue trampoline

@@ -514,6 +514,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         framebufferWidth:(GLsizei)bounds.size.width height:(GLsizei)bounds.size.height];
     // DRAWOVERLAY restores render offsets through int32; CALC refreshes bounds later.
     if(consume||simulationRender||panelTransitionRender||hudClockActive||(!menuVisible&&flow.phase==ASTRO_FLOW_ENDING))camera=-(double)astro_ppc_i32(-camera);
+    if(menuVisible&&([ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"]))ui.panelWorldOriginX=camera;
     if(consume)hudRedraws--;
 }
 - (void)drawRect:(NSRect)dirty {
