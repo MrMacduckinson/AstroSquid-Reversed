@@ -2,7 +2,8 @@
 #define ASTRO_WORLD_TRACE_LIBRARY
 #include "world_trace_host.m"
 static const char *retainedStarPath;
-static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode,resumeMode,midMode,midFull,endMode,endFull,resumeLong,gameoverEntry,gameoverReached;static unsigned loopStep;static char resumeLabel[32];
+static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode,resumeMode,midMode,midFull,endMode,endFull,resumeLong,gameoverEntry,gameoverReached,warmMode;
+static unsigned warmFrames;static unsigned loopStep;static char resumeLabel[32];
 static __weak AstroView *midView;
 @interface AstroView(MidCapture)
 - (void)captureMidFrame;
@@ -17,7 +18,14 @@ static __weak AstroView *midView;
 @interface CompositeArenaView:AstroTraceView
 @end
 @implementation CompositeArenaView
-- (void)beginGameOver {if(gameoverEntry){gameoverReached=YES;[self dumpWorldTrace:@"gameover-entry"];printf("K\tentry\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super beginGameOver];}
+- (void)beginGameOver {if(gameoverEntry&&!warmMode){gameoverReached=YES;[self dumpWorldTrace:@"gameover-entry"];printf("K\tentry\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super beginGameOver];}
+- (void)delayGameTicks:(uint32_t)ticks {
+ if(!warmMode){[super delayGameTicks:ticks];return;}
+ static const unsigned expected[]={0,1,1,2,3,3,4,4,5,6};assert(warmFrames<10&&ticks==expected[warmFrames]);
+ snprintf(resumeLabel,sizeof resumeLabel,"warm%u",warmFrames);tracePhase=resumeLabel;[self dumpWorldTrace:[NSString stringWithUTF8String:tracePhase]];
+ printf("D\t%u\t%u\t%u\n",warmFrames++,ticks,compositeClocks);compositeClocks+=ticks;
+}
+- (void)setGameCursorHidden:(BOOL)hidden {if(warmMode){assert(!hidden&&warmFrames==10);gameoverReached=YES;puts("W\tcomplete");@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super setGameCursorHidden:hidden];}
 - (void)display {if(loopMode||midMode){if(hudRedraws)hudRedraws--;}else [super display];}
 - (void)copyKeyMap:(unsigned char *)bytes {
     if(midMode){memset(bytes,0,16);return;}
@@ -48,7 +56,7 @@ static __weak AstroView *midView;
     snprintf(resumeLabel,sizeof resumeLabel,"mid%u",loopStep);tracePhase=resumeLabel;
 }
 - (void)runCompositeArena:(const char *)phaseOutput {
-    gameoverEntry=phaseOutput&&!strncmp(phaseOutput,"resumegameover",14);resumeLong=gameoverEntry||(phaseOutput&&!strncmp(phaseOutput,"resumelong",10));endFull=phaseOutput&&!strncmp(phaseOutput,"endfull",7);endMode=phaseOutput&&!strncmp(phaseOutput,"end",3);midFull=phaseOutput&&!strncmp(phaseOutput,"midfull",7);midMode=endMode||(phaseOutput&&!strncmp(phaseOutput,"mid",3));resumeMode=phaseOutput&&!strncmp(phaseOutput,"resume",6);loopMode=resumeMode||(phaseOutput&&!strncmp(phaseOutput,"loop",4));
+    warmMode=phaseOutput&&!strncmp(phaseOutput,"resumewarm",10);gameoverEntry=warmMode||(phaseOutput&&!strncmp(phaseOutput,"resumegameover",14));resumeLong=gameoverEntry||(phaseOutput&&!strncmp(phaseOutput,"resumelong",10));endFull=phaseOutput&&!strncmp(phaseOutput,"endfull",7);endMode=phaseOutput&&!strncmp(phaseOutput,"end",3);midFull=phaseOutput&&!strncmp(phaseOutput,"midfull",7);midMode=endMode||(phaseOutput&&!strncmp(phaseOutput,"mid",3));resumeMode=phaseOutput&&!strncmp(phaseOutput,"resume",6);loopMode=resumeMode||(phaseOutput&&!strncmp(phaseOutput,"loop",4));
     BOOL chainMode=phaseOutput&&!strcmp(phaseOutput,"chain");
     BOOL runMode=phaseOutput&&!strncmp(phaseOutput,"run",3);
     BOOL startMode=midMode||loopMode||chainMode||runMode||(phaseOutput&&!strncmp(phaseOutput,"start",5));
@@ -59,7 +67,7 @@ static __weak AstroView *midView;
     backgrounds=@[];parallaxData=[NSMutableData data];starsInitialized=YES;renderClock=0;simulationTick=100;
     campaign=(AstroCampaign){8,2,0,0};inventory=(AstroInventory){0};selectedLevel=[levels indexOfObject:@"Data 8B"];
     if(phaseOutput&&(!strncmp(phaseOutput,"load",4)||startMode)){for(unsigned chain=0;chain<(chainMode?17u:1u);chain++){
-        unsigned level=0;char half=0,extra=0;if(chainMode){level=chain/2+1;half=chain==16?'B':chain%2?'B':'A';}else assert(sscanf(phaseOutput+((midFull||endFull)?7:midMode?3:gameoverEntry?14:resumeLong?10:resumeMode?6:loopMode?4:runMode?3:startMode?5:4),"%u%c%c",&level,&half,&extra)==2&&level>=1&&level<=9&&(half=='A'||half=='B'));
+        unsigned level=0;char half=0,extra=0;if(chainMode){level=chain/2+1;half=chain==16?'B':chain%2?'B':'A';}else assert(sscanf(phaseOutput+((midFull||endFull)?7:midMode?3:warmMode?10:gameoverEntry?14:resumeLong?10:resumeMode?6:loopMode?4:runMode?3:startMode?5:4),"%u%c%c",&level,&half,&extra)==2&&level>=1&&level<=9&&(half=='A'||half=='B'));
         selectedLevel=[levels indexOfObject:[NSString stringWithFormat:@"Data %u%c",level,half]];assert(selectedLevel!=NSNotFound);
         if(!chain){randomSeed=123;compositeClocks=0;}camera=-0.0;traceTick=100;char label[24];snprintf(label,sizeof label,"load%u%c",level,half);tracePhase=chainMode?label:"load";nextEntityID=playerTraceID=0;entityIDs=[NSMapTable strongToStrongObjectsMapTable];
         if(retainedStarPath&&!chain){NSData *d=[NSData dataWithContentsOfFile:[NSString stringWithUTF8String:retainedStarPath]];assert(d.length==96004);const unsigned char *b=d.bytes;
