@@ -97,7 +97,8 @@ int main(int argc,char **argv){
         if(!strcmp(import_names[i],"TickCount"))fn=arena_tick;
         if(warm_mode&&!strcmp(import_names[i],"Delay"))fn=warm_delay;
         if(getenv("ASTRO_WORLD_READY")&&!strcmp(import_names[i],"Delay"))fn=ready_delay;
-        if(warm_mode&&!strcmp(import_names[i],"ShowCursor"))fn=warm_cursor;
+        if(getenv("ASTRO_WORLD_GAMEOVER_WARM")&&!strcmp(import_names[i],"Delay"))fn=warm_delay;
+        if((warm_mode||getenv("ASTRO_WORLD_GAMEOVER_WARM"))&&!strcmp(import_names[i],"ShowCursor"))fn=warm_cursor;
         if(!strcmp(import_names[i],"NewPtrClear"))fn=world_alloc;
         if(!strcmp(import_names[i],"DisposePtr"))fn=cleanup_mode?panel_dispose:world_dispose;
         descriptors[i][0]=(uint32_t)(uintptr_t)(fn?fn:missing_import);toc[i]=(uint32_t)(uintptr_t)descriptors[i];
@@ -159,7 +160,7 @@ int main(int argc,char **argv){
             jump_to(code+0x334bc,mid_observe_fb);jump_to(code+0x4cb28,ready_keys_fb);jump_to(code+0x4de74,dispatch_done_fb);MakeDataExecutable(code,433284);
             if(getenv("ASTRO_WORLD_FLIGHT")){set_pointer(g,0xcd6,calloc(1,8));render_code=code;render_toc=toc;jump_to(code+0x57afc,world_beams_fb);MakeDataExecutable(code,433284);}
             if(getenv("ASTRO_WORLD_BOSS_END")){jump_to(code+0x3ccd8,end_sound_fb);MakeDataExecutable(code,433284);}
-            if(getenv("ASTRO_WORLD_GAMEOVER")){jump_to(code+0x4cef0,gameover_enter_fb);MakeDataExecutable(code+0x4cef0,16);}
+            if(getenv("ASTRO_WORLD_GAMEOVER")&&!getenv("ASTRO_WORLD_GAMEOVER_WARM")){jump_to(code+0x4cef0,gameover_enter_fb);MakeDataExecutable(code+0x4cef0,16);}
             strcpy(loop_label,"mid0");phase=loop_label;*(unsigned *)(g+0xa3e)=0x4321;
             if(!setjmp(loop_done))invoke_fb(code+0x51a68,g,toc,NULL,NULL,NULL);return 0;
         }
