@@ -70,6 +70,15 @@ static BOOL observing;
     assert(first==before+1);
     assert(gameOver&&gameOverPending&&![world containsObject:[NSNull null]]&&delays==10);
     puts("PASS actual player death queues GameOver after removal without recursive world processing");
+    [world removeAllObjects];[enemies removeAllObjects];backgrounds=@[@{}];
+    parallaxData=[NSMutableData dataWithLength:sizeof(AstroParallax)];
+    for(unsigned state=0;state<5;state++){
+        respawnPending=state==1;gameOver=state==2;gameEndRequested=state==3;respawnTick=state==4;
+        AstroParallax *layer=parallaxData.mutableBytes;*layer=(AstroParallax){100,50,20};
+        tickedScroll=1;ui.frameInterval=1;[self calculateActors];
+        assert(layer->y==50&&layer->x==((state>=1&&state<=3)?100:100.95));
+    }
+    puts("PASS parallax stops for pending death/GameOver/end but moves during cleared-death respawn wait");
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{

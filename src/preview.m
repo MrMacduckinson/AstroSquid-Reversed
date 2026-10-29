@@ -1386,11 +1386,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if(!remove)continue;
         if(remove==-1) {
             if(player) {
+                if(inventory.lives==0){if(!gameOver&&!selftestPath)gameOverPending=YES;gameOver=YES;}
+                else respawnPending=YES;
                 AstroEnemy *body=[AstroEnemy new];body->kind=playerCombat.kind;
                 body->placement=@{@"attribute":@11,@"tag":@0};body->definition=game[@"attributes"][@"11"];
                 body->visual=playerVisual;body->bounds=playerBounds;body->state.velocity=playerVelocity;[self addDeathEffects:body];
-                if(inventory.lives==0){if(!gameOver&&!selftestPath)gameOverPending=YES;gameOver=YES;}
-                else respawnPending=YES;
             } else {
                 [self addDeathEffects:enemy];
                 int action=changingStage?ASTRO_CAMPAIGN_NONE:astro_campaign_event(&campaign,[enemy->placement[@"tag"] intValue],0);
@@ -1593,7 +1593,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)calculateActors {
     actorVisits=0;
     astro_stars_move(stars,-camera,0,camera,worldTop,camera+640,worldBottom,tickedScroll,0,0,0,ui.frameInterval,&randomSeed,
-        parallaxData.mutableBytes,backgrounds.count,0);
+        parallaxData.mutableBytes,(respawnPending||gameOver||gameEndRequested)?0:backgrounds.count,0);
     camera=astro_camera_advance(camera,tickedScroll);
     worldTop=-0.0;worldBottom=380;
     [specialPolygons removeAllObjects];[specialFlashes removeAllObjects];
@@ -1616,7 +1616,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if(trail){
             astro_transition_render_trail(&transition);tickedScroll=transition.scroll_x;
             astro_stars_move(stars,-camera,0,camera,worldTop,camera+640,worldBottom,tickedScroll,0,0,0,ui.frameInterval,&randomSeed,
-                parallaxData.mutableBytes,backgrounds.count,0);
+                parallaxData.mutableBytes,(respawnPending||gameOver||gameEndRequested)?0:backgrounds.count,0);
         }
         simulationRender=YES;[self display];simulationRender=NO;
         if(trail&&transition.phase==ASTRO_TRANSITION_CARD){
