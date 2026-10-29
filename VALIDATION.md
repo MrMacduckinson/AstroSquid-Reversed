@@ -605,3 +605,16 @@ replenishes shield and uses weapon 53 without stage teleportation. Initial RNG
 is not fixed, so score/tick differences from prior runs are not a deterministic
 comparison. This establishes current route completion, not original campaign
 equivalence. See `validation/campaign.json`.
+
+Continuous carryover with close-enemy avoidance: the original on G5 and Intel
+host matched all 3,124,822 records through 10,000 post-load observations after
+1B→2A. Only G/E/R/S annotation ticks were normalized; game clocks, RNG,
+serialized entity/render fields and events were compared exactly. Both ended
+with `W follow-complete`, player alive in 2A (HP30, lives2, x10019.065101883212),
+RNG db0df262. The optional `ASTRO_WORLD_BOSS_AVOID_ENEMIES` pilot flag includes
+live kind5 enemies in the existing obstacle checks; this changes test inputs,
+not production collision rules. Initial 1B uses controlled HP30000/Laser4;
+after loading 2A the original health/weapon resets apply, without test refills.
+This does not establish ordinary full-campaign equivalence or the subsequent
+2A→2B transition. Full paired traces and hashes are retained internally in
+`FOLLOW1_AVOID_ENEMIES_VERIFIED.json`.
