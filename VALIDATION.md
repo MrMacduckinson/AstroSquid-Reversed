@@ -618,3 +618,23 @@ after loading 2A the original health/weapon resets apply, without test refills.
 This does not establish ordinary full-campaign equivalence or the subsequent
 2A→2B transition. Full paired traces and hashes are retained internally in
 `FOLLOW1_AVOID_ENEMIES_VERIFIED.json`.
+
+Continuous 1B→2A→2B through natural GameOver now matches the original G5 in
+all 4,438,577 records, including 16,221 post-load observations and both READY
+music-service snapshots. Terminal clocks are 4625066/4625165/4625122, RNG
+4775ea5c, stage2B/lives0. Only diagnostic G/E/R/S annotation ticks are normalized;
+serialized game state, event order and clocks are exact. This extends the prior
+10,000-observation route using the same initial controlled HP30000/Laser4 and
+actual health/weapon resets after loading 2A, without test refills thereafter.
+
+The comparison found a real held-fire bug: MID scripted movement suppressed
+manual movement but allowed ordinary shots. The original clears ordinary fire
+at 0x4eb30 and 0x4ecbc; the port now suppresses it during MID transitions while
+preserving END and special-weapon behavior. The original mismatch began after
+3,371,675 matching records with an extra Plasma projectile. With the fix, all
+MID state and clocks match, followed by READY and subsequent gameplay. The
+existing synchronous MID/END virtual-clock/card regression also passes on Intel.
+The paired fixtures now drive subsequent A→B READY through production methods
+and observe its music-service calls; unsupported later flow phases still assert.
+Full paired traces/hashes are retained in internal FOLLOW1_READY_VERIFIED.json.
+This is bounded route equivalence, not proof of the full ordinary campaign.

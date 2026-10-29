@@ -1345,7 +1345,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     return startSpecial&&(actor?[self startSpecialFrom:actor]:[self startSpecial]);
 }
 - (void)fireOrdinaryPlayerWeaponFrom:(AstroRect)bounds actionTick:(uint32_t *)actionTick kind:(int)kind {
-    if((selftestPath?keys[8]:[self controlPressed:0])&&(int32_t)([self playerClockTick]-*actionTick)>
+    // MIDLEVEL clears ordinary fire while scripted movement takes control.
+    if(!(changingStage&&transition.mode==ASTRO_TRANSITION_MID)&&
+        (selftestPath?keys[8]:[self controlPressed:0])&&(int32_t)([self playerClockTick]-*actionTick)>
         60.0/[game[@"weapons"][[NSString stringWithFormat:@"%d",playerWeapon]][@"rate"] doubleValue]) {
         [self fireWeapon:playerWeapon x:astro_ppc_i32(38+(bounds.left+bounds.right)/2.0)
             y:astro_ppc_i32((bounds.top+bounds.bottom)/2.0) heading:0 source:kind];
