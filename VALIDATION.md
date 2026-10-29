@@ -30,6 +30,11 @@ Current bounded evidence:
   health, weapon and lives follow the game without test refills. This verifies
   post-load play and death, not a full campaign win.
 
+- With AIM/AVOID/BRAKE inputs the continuous 1B-to-2A route reaches late2A
+  before natural GameOver: 2,957,894 records match (FOLLOW1_PILOT_VERIFIED),
+  final clocks3168645/3168744/3168692. No post-load health refill is used;
+  this remains a controlled initial1B setup, not an ordinary full campaign.
+
 - Independent 2B victory through the end card and 3A player/world creation
   matches 2,187,877 records (BOSS2_NEXT_VERIFIED), terminal clocks
   2190443/2190032/2190425. Captured inventory, stage, RNG and 3000 stars match;
