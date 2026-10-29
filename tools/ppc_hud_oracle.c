@@ -13,7 +13,8 @@
 static uint32_t descriptors[484][2];
 static double color[4]={1,1,1,1};
 static unsigned char *sprites;
-static unsigned sequence;
+static unsigned sequence,clock_reads;
+static uint32_t hud_tick(void){return 100+clock_reads++;}
 static AstroHUDCommand native_commands[32];
 static double font_widths[257];
 static void capture(AstroHUDKind kind,int sprite,int value,double x,double y,double w,double h){native_commands[sequence++]=(AstroHUDCommand){kind,sprite,value,x,y,w,h,color[0],color[1],color[2],color[3]};}
@@ -39,9 +40,11 @@ static unsigned char *read_file(const char *name){FILE *f=fopen(name,"rb");if(!f
 static void jump_to(unsigned char *at,void *destination){uintptr_t p=(uintptr_t)destination;uint32_t *w=(uint32_t *)at;w[0]=0x3d800000|(uint32_t)(p>>16);w[1]=0x618c0000|(uint32_t)(p&65535);w[2]=0x7d8903a6;w[3]=0x4e800420;}
 int main(int argc,char **argv){
     if(argc!=5&&argc!=6){fputs("usage: ppc_hud_oracle original.pef literals.bin original-app sprt.bin [fixture.csv]\n",stderr);return 2;}
+    int native_sprites=getenv("ASTRO_HUD_NATIVE_SPRITES")!=NULL;
     unsigned char *pef=read_file(argv[1]),*code=pef+128,*literals=read_file(argv[2]),*globals=calloc(1,0x1300),*heap=calloc(1,0x10000);sprites=read_file(argv[4]);uint32_t toc[489]={0};
     for(int i=0;i<484;i++){
         void *function=dlsym(RTLD_DEFAULT,import_names[i]);
+        if(!strcmp(import_names[i],"TickCount"))function=hud_tick;
         if(!strcmp(import_names[i],"glColor3d"))function=color3;
         if(!strcmp(import_names[i],"glColor4d"))function=color4;
         if(!strcmp(import_names[i],"glViewport"))function=viewport;
@@ -49,14 +52,14 @@ int main(int argc,char **argv){
         if(!strncmp(import_names[i],"gl",2)&&function!=color3&&function!=color4&&function!=viewport&&function!=ortho)function=noop;
         descriptors[i][0]=(uint32_t)(uintptr_t)(function?function:(void *)missing_import);toc[i]=(uint32_t)(uintptr_t)descriptors[i];
     }
-    *(void **)(globals+0x21c)=literals;*(double *)(globals+0x378)=4503601774854144.;*(uint32_t *)(globals+0x380)=0x43300000;
+    *(void **)(globals+0xe82)=sprites;*(void **)(globals+0x21c)=literals;*(double *)(globals+0x378)=4503601774854144.;*(uint32_t *)(globals+0x380)=0x43300000;
     *(void **)(globals+0x388)=heap;*(void **)(globals+0x38c)=heap;toc[0]=(uint32_t)(uintptr_t)globals;
     *(int16_t *)(globals+0xed6)=640;*(int16_t *)(globals+0xed8)=480;
     Str255 text;*(void **)(globals+0xeb6)=font_widths;
     FSRef ref;SInt16 resourceFile;HFSUniStr255 forkName;OSStatus error=FSPathMakeRef((const UInt8 *)argv[3],&ref,NULL);
     if(!error)error=FSGetResourceForkName(&forkName);if(!error)error=FSOpenResourceFile(&ref,forkName.length,forkName.unicode,fsRdPerm,&resourceFile);if(error)return 2;UseResFile(resourceFile);
     for(int i=1;i<=256;i++){GetIndString(text,129,i);text[text[0]+1]=0;font_widths[i]=atof((char *)text+1)/32;}font_widths[32]=.2;
-    jump_to(code+0x34a34,new_sprite_fb);jump_to(code+0x34dd8,kill_sprite_fb);jump_to(code+0x3a278,draw_sprite_fb);jump_to(code+0x41730,draw_box_fb);jump_to(code+0x3572c,draw_text_fb);jump_to(code+0x342b4,noop);MakeDataExecutable(code,433284);
+    if(!native_sprites){jump_to(code+0x34a34,new_sprite_fb);jump_to(code+0x34dd8,kill_sprite_fb);}jump_to(code+0x3a278,draw_sprite_fb);jump_to(code+0x41730,draw_box_fb);jump_to(code+0x3572c,draw_text_fb);jump_to(code+0x342b4,noop);MakeDataExecutable(code,433284);
     FILE *fixture=argc==6?fopen(argv[5],"w"):NULL;
     if(argc==6&&!fixture)return 2;
     unsigned cases=0;
@@ -64,7 +67,7 @@ int main(int argc,char **argv){
         if(weapon==20)continue;
         unsigned char player[128]={0};*(void **)(globals+0xa7a)=present?player:NULL;*(int16_t *)(player+88)=hp;
         *(int16_t *)(globals+0xa8a)=weapon;*(int16_t *)(globals+0xa8c)=upgrade;*(int16_t *)(globals+0xa8e)=ammo;*(int *)(globals+0xa86)=4;*(int *)(globals+0xa7e)=12345;
-        sequence=0;*(void **)(globals+0x38c)=heap;
+        sequence=0;clock_reads=0;*(void **)(globals+0x38c)=heap;
         double camera_x=cases%2?-1234.25:1234.75,camera_y=cases%4<2?19.5:-19.5;
         *(double *)(globals+0xea2)=camera_x;*(double *)(globals+0xeaa)=camera_y;
         double bounds[4]={-camera_x,640-camera_x,-camera_y,380-camera_y};
@@ -74,6 +77,7 @@ int main(int argc,char **argv){
         assert(*(double *)(globals+0xeaa)==(double)(int32_t)camera_y);
         assert(!memcmp(globals+0xa1e,bounds,sizeof(bounds)));
         AstroHUDState state={present,hp,weapon,upgrade,ammo,4,12345};AstroHUDCommand ported[32];size_t n=astro_hud_commands(&state,ported,32);
+        if(native_sprites){unsigned expected=0;for(unsigned i=0;i<n;i++)expected+=ported[i].kind==ASTRO_HUD_SPRITE;assert(clock_reads==expected);assert(!*(void **)(globals+0xe86));if(!cases)fprintf(stderr,"Native HUD creates and destroys %u sprites with %u TickCount calls per draw\n",expected,clock_reads);}
         if(n!=sequence){fprintf(stderr,"Command count differs %lu %u\n",(unsigned long)n,sequence);return 1;}
         for(unsigned i=0;i<n;i++){
             AstroHUDCommand a=native_commands[i],b=ported[i];
