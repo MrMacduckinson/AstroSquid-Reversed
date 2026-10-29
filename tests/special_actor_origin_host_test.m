@@ -30,7 +30,7 @@ static AstroEnemy *origin;
 @implementation AstroView (SpecialActorCheck)
 - (void)checkSpecialActor {
     [timer invalidate];timer=nil;[audio stop];audio.soundVolume=audio.musicVolume=0;
-    world=[NSMutableArray array];playerCombat.kind=1;playerBounds=(AstroRect){500,200,571,220};
+    world=[NSMutableArray array];worldLeft=0;worldRight=640;worldTop=0;worldBottom=380;playerCombat.kind=1;playerBounds=(AstroRect){500,200,571,220};
     origin=[AstroEnemy new];ui.frameInterval=3;observing=YES;
     for(int weapon=40;weapon<=50;weapon+=10){
         special=(AstroSpecial){0};specialReturnPending=specialLoopRunning=NO;reads=calculations=0;
