@@ -103,6 +103,7 @@ static __weak AstroView *midView;
             for(unsigned i=0;i<12000;i++){uint64_t v=0;for(unsigned j=0;j<8;j++)v=(v<<8)|b[i*8+j];memcpy((unsigned char *)stars+i*8,&v,8);}randomSeed=((uint32_t)b[96000]<<24)|((uint32_t)b[96001]<<16)|((uint32_t)b[96002]<<8)|b[96003];}
         [self resetLevelWorld];
         if(startMode){inventory.lives=1;playerTraceID=++nextEntityID;[self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;inventory.specials=1;}
+        if(getenv("ASTRO_WORLD_FLIGHT"))playerCombat.hit_points=30000;
         if(getenv("ASTRO_WORLD_FRACTIONAL_CAMERA")){camera=worldLeft=.25;worldRight=640.25;}
         [self dumpWorldTrace:[NSString stringWithUTF8String:tracePhase]];
         unsigned index=0;unsigned char bytes[38];
@@ -115,7 +116,7 @@ static __weak AstroView *midView;
             [self cleanupWorld];[self calculateActors];[self handleVisualEffects];[self makeNewSprites];
             [self dumpWorldTrace:[NSString stringWithUTF8String:label]];
         }}
-        if(midMode&&getenv("ASTRO_WORLD_MARKER")){
+        if(midMode&&getenv("ASTRO_WORLD_MARKER")&&!getenv("ASTRO_WORLD_FLIGHT")){
             assert(level==1&&half=='A');if(getenv("ASTRO_WORLD_NEXT_LOAD"))playerVisual.x+=10700-camera;camera=worldLeft=10700;worldRight=11340;
             if(!getenv("ASTRO_WORLD_ENCOUNTER")){[self makeNewSprites];[self calculateActors];assert(campaignAction==ASTRO_CAMPAIGN_LOAD);tracePhase="marker-trigger";[self dumpWorldTrace:@"marker-trigger"];
             assert(campaign.level==1&&campaign.half==1&&pendingCampaign.level==1&&pendingCampaign.half==2);
@@ -124,7 +125,7 @@ static __weak AstroView *midView;
         if(midMode){
             ui.musicVolume=1;menuVisible=paused=gameOver=NO;flow.phase=ASTRO_FLOW_PLAY;automatic=YES;tracePhase="mid0";if(getenv("ASTRO_WORLD_DISPATCH")||!(getenv("ASTRO_WORLD_MARKER")&&getenv("ASTRO_WORLD_NEXT_LOAD")))[self beginGameLoop];
             if(!getenv("ASTRO_WORLD_MARKER")){if(endMode){campaign.level++;campaign.half=1;}else campaign.half=2;}tickedScroll=0;if(!getenv("ASTRO_WORLD_DISPATCH"))[self beginStageTransition];
-            midView=self;loopStep=0;@try {if(getenv("ASTRO_WORLD_DISPATCH")){for(unsigned poll=0;flow.phase==ASTRO_FLOW_PLAY;poll++){assert(poll<1000);[self pollGame];}}else if(endMode){[self runEndlevelTransition];}else [self runMidlevelTransition];}@catch(NSException *e){assert([e.name isEqual:@"MidTraceFinished"]);}
+            midView=self;loopStep=0;@try {if(getenv("ASTRO_WORLD_DISPATCH")){for(unsigned poll=0;flow.phase==ASTRO_FLOW_PLAY;poll++){assert(poll<(getenv("ASTRO_WORLD_FLIGHT")?40000u:1000u));[self pollGame];}}else if(endMode){[self runEndlevelTransition];}else [self runMidlevelTransition];}@catch(NSException *e){assert([e.name isEqual:@"MidTraceFinished"]);}
             if(endFull){[self dumpWorldTrace:@"end-pre-card"];printf("K\tend\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);}
             if(midFull&&!getenv("ASTRO_WORLD_DISPATCH")){[self dumpWorldTrace:@"mid-end"];printf("K\tend\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);}
             if(getenv("ASTRO_WORLD_NEXT_LOAD")){assert(midFull&&!endMode);nextEntityID=playerTraceID=0;entityIDs=[NSMapTable strongToStrongObjectsMapTable];if(getenv("ASTRO_WORLD_READY")){readyActive=YES;BOOL previousHUDClock=hudClockActive;hudClockActive=YES;[self drawHUD:NO];hudClockActive=previousHUDClock;[self recordCardPresentation];compositeClocks+=60;for(unsigned poll=0;flow.phase==ASTRO_FLOW_READY;poll++){assert(poll<1000);[self pollFlowCard];}readyActive=NO;}else {[self loadCampaignStage:pendingCampaign];playerTraceID=++nextEntityID;[self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;}tracePhase="next-load";[self dumpWorldTrace:@"next-load"];
