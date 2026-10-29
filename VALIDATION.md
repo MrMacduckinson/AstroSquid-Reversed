@@ -409,3 +409,29 @@ FutureBASIC project, a PPC build, or a claim of support for every macOS version.
 No unaided full playthrough or pixel-identical live campaign capture across GPUs
 has been established. Native routine comparisons, controlled rendering and a
 complete assisted route provide separate evidence for their respective scopes.
+
+## Main event and registration lifecycle checks (2026-10-29)
+
+The original Main loop trace now includes the published 16-bit frame count:
+108 schedules and 11,058 records compared by `tests/main_queue_schedule_test.py`.
+Actual Root tests in `tests/registration_input_host_test.m` cover eligible and
+closed frame gates, 59/60-tick publication, low-word wrap, and nested menu exclusion.
+These are separate from renderer FPS; the complete native trace is not yet
+replayed against the complete Root run loop.
+
+Game-window key events enter the shared queue before Cocoa menu equivalents.
+Targeted tests cover repeat, wrapped views, other windows, and the modal guard.
+Original startup snapshots (`tools/ppc_startup_callbacks.gdb`) found zero menu/end
+callbacks and quit identity 00010001 after initialization. Menu Quit therefore
+uses runtime termination without saving, while physical key-map quit remains a
+separate path. `tests/menu_quit_process_test.m` verified actual Intel process exit
+and fullscreen restoration, with a failing trap if saveSettings was called.
+
+`tools/ppc_menu_setup_oracle.c` in `lifecycle` mode seeds existing field state
+before actual PUTCONTROLS: focus and the second field's submitted flag survive;
+text/cursors and the first submitted flag reset. The port now preserves this
+asymmetry. Nine native profiles and three Root focus cases passed. Unused Pascal
+buffer bytes and the complete shared GameOver-field lifecycle remain unaudited.
+The complete application self-test passed again after this change (f7f8e1c),
+with normal process exit and native display restoration. This is not a new
+whole-campaign equivalence result.
