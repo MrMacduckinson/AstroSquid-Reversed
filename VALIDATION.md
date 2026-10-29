@@ -47,6 +47,15 @@ Current bounded evidence:
   Initial HP30000/Laser4/Y95 with aiming, avoidance and braking; only diagnostic
   annotation ticks normalized. This does not prove ordinary-health campaign play.
 
+- 6B victory through 7A creation matches 2,073,038 records after fixing
+  incoming scroll preservation (BOSS6_NEXT_VERIFIED), terminal clocks
+  1862516/1861732/1862491 and RNGdf258983. Pending stage dispatch previously
+  zeroed scroll before ENDOFLEVEL, unlike the moving 6B arena in the original.
+  Dispatch now retains the last scroll and transition initialization inherits it.
+  The actual MID/END virtual-clock regression passes after its manually
+  requested transitions explicitly initialize pendingCampaign. Initial HP30000,
+  Laser4/Y280 avoidance/braking remain controlled conditions.
+
 - On 2026-10-30, independent full-stage native G5/Intel comparisons matched
   through victory on 4B (3,954,811 records), 5B (4,402,142 records), and 6B
   (2,065,930 records). The actual targets were attribute153 (Drill-Killah),

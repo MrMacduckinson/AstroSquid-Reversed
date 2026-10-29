@@ -1496,7 +1496,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(pendingCampaign.complete){pendingCampaign.level=campaign.level+1;pendingCampaign.half=1;}
     campaign.half=[levels[selectedLevel] hasSuffix:@"A"]?1:2;campaign.complete=0;campaign.arena=1;
     campaignAction=ASTRO_CAMPAIGN_NONE;changingStage=YES;playerCombat.hit_points=200;
-    astro_transition_begin(&transition,campaign.half==1?ASTRO_TRANSITION_MID:ASTRO_TRANSITION_END,simulationTick,0);
+    astro_transition_begin(&transition,campaign.half==1?ASTRO_TRANSITION_MID:ASTRO_TRANSITION_END,simulationTick,tickedScroll);
 }
 - (void)waitForTransitionTicks:(uint32_t)ticks {
     uint32_t start=[self playerClockTick];
@@ -1743,7 +1743,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [audio serviceMusic];[self pollMapSpawns];if(flow.phase==ASTRO_FLOW_PLAY){[self readGameKeys];[self completeGameLoopIfRequested];}specialReturnPending=NO;
 }
 - (void)advanceWorldForWait:(BOOL)waiting {
-    tickedScroll=changingStage&&transition.simulate_world?transition.scroll_x:
+    // Pending stage dispatch inherits the last CALC scroll, including moving arenas.
+    if(changingStage||campaignAction==ASTRO_CAMPAIGN_NONE)tickedScroll=changingStage&&transition.simulate_world?transition.scroll_x:
         (!changingStage&&automatic&&!campaign.arena&&campaignAction==ASTRO_CAMPAIGN_NONE?1:0);
     simulationTick=observedWallTick-1;
     if(waiting)[self stepWorldWithoutFlow];else [self stepEnemies];

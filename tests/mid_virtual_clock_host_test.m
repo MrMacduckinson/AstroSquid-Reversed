@@ -25,7 +25,7 @@ static BOOL cardKey;
 - (void)checkMidClock {
     [timer invalidate];timer=nil;[audio stop];audio=[MidClockAudio new];
     campaignTestPath=@"controlled-clock";simulationTick=700;observedWallTick=worldRenderTick=699;
-    campaign=(AstroCampaign){1,2,0,0};selectedLevel=[levels indexOfObject:@"Data 1A"];
+    campaign=(AstroCampaign){1,2,0,0};pendingCampaign=campaign;selectedLevel=[levels indexOfObject:@"Data 1A"];
     menuVisible=paused=gameOver=NO;flow.phase=ASTRO_FLOW_PLAY;automatic=YES;
     world=[NSMutableArray array];enemies=[NSMutableArray array];mapPlacements=[NSMutableArray array];
     backgrounds=@[];parallaxData=[NSMutableData data];worldTop=0;worldBottom=380;camera=0;
@@ -35,7 +35,7 @@ static BOOL cardKey;
     assert(flow.phase==ASTRO_FLOW_READY&&campaign.half==2&&!world.count&&!backgrounds.count);
     assert([self playerClockTick]==simulationTick);
     // Enter END through the real outer poll, retaining the inherited clock routing.
-    selectedLevel=[levels indexOfObject:@"Data 1B"];campaign=(AstroCampaign){2,1,0,0};
+    selectedLevel=[levels indexOfObject:@"Data 1B"];campaign=(AstroCampaign){2,1,0,0};pendingCampaign=campaign;
     readyLoadPending=NO;flow.phase=ASTRO_FLOW_PLAY;simulationTick=700;observedWallTick=worldRenderTick=699;
     worldTop=0;worldBottom=380;camera=0;[self createPlayerAtX:30 y:190];[self finishPlayerStart];
     campaignAction=ASTRO_CAMPAIGN_LOAD;[self pollGame];
