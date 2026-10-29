@@ -3,7 +3,7 @@
 #include "world_trace_host.m"
 static const char *retainedStarPath;
 static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode,resumeMode,midMode,midFull,endMode,endFull,resumeLong,gameoverEntry,gameoverReached,warmMode;
-static BOOL realHUD;
+static BOOL realHUD,panelMode;
 @interface CompositeHUD:AstroHUDRenderer
 @end
 @implementation CompositeHUD
@@ -27,6 +27,8 @@ static __weak AstroView *midView;
 @interface CompositeArenaView:AstroTraceView
 @end
 @implementation CompositeArenaView
+- (uint32_t)currentGameTick {if(panelMode&&warmFrames==10)return [self playerClockTick];return [super currentGameTick];}
+- (void)flushGameEvents {if(panelMode&&warmFrames==10){[self dumpWorldTrace:@"panel-ready"];printf("K\tpanel\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);gameoverReached=YES;puts("W\tpanel-complete");@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super flushGameEvents];}
 - (void)beginGameOver {if(gameoverEntry&&!warmMode){gameoverReached=YES;[self dumpWorldTrace:@"gameover-entry"];printf("K\tentry\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super beginGameOver];}
 - (void)delayGameTicks:(uint32_t)ticks {
  if(!warmMode){[super delayGameTicks:ticks];return;}
@@ -34,8 +36,8 @@ static __weak AstroView *midView;
  snprintf(resumeLabel,sizeof resumeLabel,"warm%u",warmFrames);tracePhase=resumeLabel;[self dumpWorldTrace:[NSString stringWithUTF8String:tracePhase]];
  printf("D\t%u\t%u\t%u\n",warmFrames++,ticks,compositeClocks);compositeClocks+=ticks;
 }
-- (void)setGameCursorHidden:(BOOL)hidden {if(warmMode){assert(!hidden&&warmFrames==10);gameoverReached=YES;puts("W\tcomplete");@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super setGameCursorHidden:hidden];}
-- (void)display {if(loopMode||midMode){if(realHUD)[self drawHUD:YES];else if(hudRedraws)hudRedraws--;}else [super display];}
+- (void)setGameCursorHidden:(BOOL)hidden {if(warmMode){assert(!hidden&&warmFrames==10);if(panelMode){puts("W\twarm-complete");return;}gameoverReached=YES;puts("W\tcomplete");@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super setGameCursorHidden:hidden];}
+- (void)display {if(loopMode||midMode){if(realHUD)[self drawHUD:!panelTransitionRender];else if(hudRedraws)hudRedraws--;}else [super display];}
 - (void)copyKeyMap:(unsigned char *)bytes {
     if(midMode){memset(bytes,0,16);return;}
     if(!loopMode){[super copyKeyMap:bytes];return;}
@@ -65,8 +67,9 @@ static __weak AstroView *midView;
     snprintf(resumeLabel,sizeof resumeLabel,"mid%u",loopStep);tracePhase=resumeLabel;
 }
 - (void)runCompositeArena:(const char *)phaseOutput {
-    realHUD=getenv("ASTRO_WORLD_REAL_HUD")!=NULL;if(realHUD){CompositeHUD *observer=[[CompositeHUD alloc]initWithGame:game ui:ui];observer.didDrawSprite=hud.didDrawSprite;hud=observer;}
+    realHUD=getenv("ASTRO_WORLD_REAL_HUD")!=NULL;panelMode=getenv("ASTRO_WORLD_PANEL")!=NULL;assert(!panelMode||realHUD);if(realHUD){CompositeHUD *observer=[[CompositeHUD alloc]initWithGame:game ui:ui];observer.didDrawSprite=hud.didDrawSprite;hud=observer;}
     warmMode=phaseOutput&&!strncmp(phaseOutput,"resumewarm",10);gameoverEntry=warmMode||(phaseOutput&&!strncmp(phaseOutput,"resumegameover",14));resumeLong=gameoverEntry||(phaseOutput&&!strncmp(phaseOutput,"resumelong",10));endFull=phaseOutput&&!strncmp(phaseOutput,"endfull",7);endMode=phaseOutput&&!strncmp(phaseOutput,"end",3);midFull=phaseOutput&&!strncmp(phaseOutput,"midfull",7);midMode=endMode||(phaseOutput&&!strncmp(phaseOutput,"mid",3));resumeMode=phaseOutput&&!strncmp(phaseOutput,"resume",6);loopMode=resumeMode||(phaseOutput&&!strncmp(phaseOutput,"loop",4));
+    if(panelMode)assert(warmMode);
     BOOL chainMode=phaseOutput&&!strcmp(phaseOutput,"chain");
     BOOL runMode=phaseOutput&&!strncmp(phaseOutput,"run",3);
     BOOL startMode=midMode||loopMode||chainMode||runMode||(phaseOutput&&!strncmp(phaseOutput,"start",5));
