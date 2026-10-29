@@ -105,7 +105,7 @@ static __weak AstroView *midView;
         [self resetLevelWorld];
         if(startMode){inventory.lives=1;playerTraceID=++nextEntityID;[self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;inventory.specials=1;}
         if(getenv("ASTRO_WORLD_BOSS")){inventory.weapon=40;inventory.upgrade=3;playerWeapon=43;}
-        if(getenv("ASTRO_WORLD_FLIGHT")){playerCombat.hit_points=30000;int controls[6]={55,58,126,125,123,124};memcpy(controlKeys,controls,sizeof controls);}
+        if(getenv("ASTRO_WORLD_FLIGHT")){if(!getenv("ASTRO_WORLD_NORMAL_HEALTH"))playerCombat.hit_points=30000;int controls[6]={55,58,126,125,123,124};memcpy(controlKeys,controls,sizeof controls);}
         if(getenv("ASTRO_WORLD_FRACTIONAL_CAMERA")){camera=worldLeft=.25;worldRight=640.25;}
         [self dumpWorldTrace:[NSString stringWithUTF8String:tracePhase]];
         unsigned index=0;unsigned char bytes[38];

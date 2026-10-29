@@ -131,7 +131,7 @@ int main(int argc,char **argv){
         invoke_fb(code+0x510c8,g,toc,(void *)(uintptr_t)level,NULL,NULL);
         if(start_mode){memcpy(ready_entry,code+0x4e004,16);jump_to(code+0x4e004,arena_ready_fb);MakeDataExecutable(code+0x4e004,16);*(int32_t *)(g+0xa86)=1;invoke_fb(code+0x50bfc,g,toc,(void *)(uintptr_t)(chain?2:1),NULL,NULL);}
         if(getenv("ASTRO_WORLD_BOSS")){set_short(g,0xa8a,40);set_short(g,0xa8c,3);}
-        if(getenv("ASTRO_WORLD_FLIGHT"))set_short(*(unsigned char **)(g+0xa7a),88,30000);
+        if(getenv("ASTRO_WORLD_FLIGHT")&&!getenv("ASTRO_WORLD_NORMAL_HEALTH"))set_short(*(unsigned char **)(g+0xa7a),88,30000);
         if(getenv("ASTRO_WORLD_FRACTIONAL_CAMERA")){set_double(g,0xea2,-.25);set_double(g,0xa1e,.25);set_double(g,0xa26,640.25);}
         snapshot();
         unsigned index=0;for(unsigned char *m=*(void **)(g+0x5ae);m;m=*(void **)(m+42)){
