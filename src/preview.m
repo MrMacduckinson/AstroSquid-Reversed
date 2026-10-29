@@ -2475,7 +2475,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self destroyGameWorld];gameLoopActive=NO;
     paused=gameOver=gameOverPending=NO;menuVisible=YES;
     [self reloadMainMenu];[ui show:gameEndHighscores?@"Highscores Menu":@"Play Menu"];
-    [self display];gameEndHighscores=NO;[self flushGameEvents];
+    [self display];ui.activeRegistrationField=-1;gameEndHighscores=NO;[self flushGameEvents];
     [audio setPaused:NO];[audio stopMusic];[audio playMusic:1];
     gameEndRequested=NO;
 }

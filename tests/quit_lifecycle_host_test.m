@@ -21,7 +21,7 @@ static BOOL rawQuit;
 - (uint32_t)currentGameTick {if(observing){clockReads++;[actual addObject:@"clock"];}return fixedTick;}
 - (uint32_t)playerClockTick {return [self currentGameTick];}
 - (uint32_t)cardDelayClockTick {return cardTick;}
-- (void)display {if(observing){menuCode=[ui.anchor isEqual:@"Highscores Menu"]?2:1;[actual addObject:@"menu"];}}
+- (void)display {if(observing){assert(ui.activeRegistrationField==(currentCase==5?0:-1));menuCode=[ui.anchor isEqual:@"Highscores Menu"]?2:1;[actual addObject:@"menu"];}}
 - (void)presentFrame {}
 - (void)copyKeyMap:(unsigned char *)bytes {
     memset(bytes,0,16);keyPolls++;
@@ -37,7 +37,7 @@ static BOOL rawQuit;
     // The native quit fixture observes PUTCONTROLS as one boundary; menu_setup covers its clocks.
     BOOL previous=observing;observing=NO;[super reloadMainMenu];observing=previous;
 }
-- (void)flushGameEvents {if(observing)[actual addObject:@"flush"];}
+- (void)flushGameEvents {if(observing){assert(ui.activeRegistrationField==-1);[actual addObject:@"flush"];}}
 - (void)completeGameLoopIfRequested {
     BOOL wasActive=gameLoopActive;[super completeGameLoopIfRequested];
     if(observing&&wasActive&&!gameLoopActive)[actual addObject:@"return"];
@@ -65,7 +65,7 @@ static BOOL rawQuit;
         // Signed quit=-1 and game-end already1 at GAMELOOP entry are diagnostics,
         // not STARTNEWGAME states; their native records remain separately retained.
         if(c==2||c==3||c==7)continue;
-        [self resetQuit];currentCase=c;quitRequested=c==1;respawnPending=c==4;gameEndHighscores=c==5;
+        [self resetQuit];currentCase=c;quitRequested=c==1;respawnPending=c==4;gameEndHighscores=c==5;ui.activeRegistrationField=c==5?0:-1;
         FILE *f=fopen("tests/quit_loop_native.csv","r");assert(f);char line[256];assert(fgets(line,sizeof(line),f));
         expected=[NSMutableArray array];unsigned nativeReads=0,nativePolls=0,nativeMenu=0;
         while(fgets(line,sizeof(line),f)){
