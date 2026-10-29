@@ -46,6 +46,12 @@ Current bounded evidence:
   hashes with the same annotation-only normalization. This stops before the
   ending transition and does not establish an ordinary-health campaign win.
 
+- Continuing that final route with BOSS_END matches 2,738,045 records through
+  the transition to the pre-end-card boundary (FINAL8_END_VERIFIED). The final
+  K/end clock tuple is 2132130/2131836/2132229 on both systems. This extends the
+  coupled world comparison beyond boss destruction; it does not include the
+  subsequent card presentation, four ending pages or return to GameOver.
+
 - `tests/gameover_held_host.sh` matches171 records from three original GAMEOVER
   schedules with held mouse and queued A/B/Enter at intervals1/2/3. The original
   TRANS and DOMOUSE body execute; a validated PC-independent prologue trampoline
