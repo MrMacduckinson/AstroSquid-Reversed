@@ -2370,8 +2370,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     flow.phase=savedPhase;simulationTick=[self currentGameTick];
     menuVisible=YES;[ui show:@"GameOver"];[self drawPanelTransition];
     ui.editingHighscore=astro_scores_qualifies(highscores,score)?1:0;
-    if(ui.editingHighscore>0)[ui prepareScoreField];
-    astro_score_editor_begin(&scoreEditor);[ui beginScoreClock:[self currentGameTick]];[self refreshScoreEditor];
+    if(ui.editingHighscore>0){
+        [ui prepareScoreField];astro_score_editor_begin(&scoreEditor);
+        [ui beginScoreClock:[self currentGameTick]];[self refreshScoreEditor];
+    }
     scoreKeyEvents=nil;[self flushGameEvents];
 }
 - (void)finishGameOver {

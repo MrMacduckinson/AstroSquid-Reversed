@@ -8,7 +8,8 @@
 static unsigned char *exit_globals;
 static unsigned exit_case,recording,records;
 static unsigned char button_node[312],fade_node[312];
-static unsigned clock_reads,key_polls,queued;
+static unsigned clock_reads,key_polls,queued,setup_reads;
+static unsigned char saved_fields[0x454];
 static Handle strings;
 static const unsigned char input[]={'A','B',28,'C',13};
 static void event_value(char code,unsigned value){
@@ -17,13 +18,13 @@ static void event_value(char code,unsigned value){
     for(unsigned i=0;i<exit_globals[0x6da];i++)printf("%02x",exit_globals[0x6db+i]);printf(",%d\n",*(int16_t *)(exit_globals+0x5d6));
 }
 static void event(char code){event_value(code,0);}
-static uint32_t clock_tick(void){if(!recording)return 1000;uint32_t value=1000+clock_reads++;event_value('T',value);return value;}
+static uint32_t clock_tick(void){if(!recording){setup_reads++;return 1000;}uint32_t value=1000+clock_reads++;event_value('T',value);return value;}
 static int zero(void){return 0;}
 static Handle input_resource(ResType type,short id){assert(type=='STR#'&&id==25000);return strings;}
 static Boolean input_event(EventMask mask,EventRecord *record){
     assert(mask==0x28&&queued<sizeof(input));memset(record,0,sizeof(*record));record->what=keyDown;record->message=input[queued++];event_value('E',record->message);return true;
 }
-void exit_flush(void){recording=1;clock_reads=key_polls=queued=0;*(uint32_t *)(exit_globals+0xa4a)=1000;}
+void exit_flush(void){assert(setup_reads==1+(exit_case>=3));if(exit_case<3)assert(!memcmp(exit_globals+0x5b2,saved_fields,sizeof(saved_fields)));recording=1;clock_reads=key_polls=queued=0;*(uint32_t *)(exit_globals+0xa4a)=1000;}
 void exit_keys(void){unsigned any=exit_case>=3||++key_polls>=2;*(int16_t *)(exit_globals+0xab6)=any;event_value('K',any);}
 void exit_animate(void){event('A');}void exit_music(void){event('S');}
 void exit_world(void){event('R');}void exit_panel(void){event('O');}void exit_hud(void){event('H');}void exit_swap(void){event('W');}
@@ -51,7 +52,10 @@ int main(int argc,char **argv){
         memset(g,0,0x1300);memset(button_node,0,sizeof(button_node));memset(fade_node,0,sizeof(fade_node));
         int values[12]={0};*(void **)(g+0xa72)=values;*(int *)(g+0xa7e)=exit_case>=3?100:0;*(int16_t *)(g+0xa52)=exit_case%3+1;
         *(void **)(g+0x21c)=lit;*(void **)(g+0x388)=heap;*(void **)(g+0x38c)=heap;*(double *)(g+0x378)=4503601774854144.;*(uint32_t *)(g+0x380)=0x43300000;
+        if(exit_case<3)for(unsigned i=0;i<sizeof(saved_fields);i++)g[0x5b2+i]=(i*17+exit_case+31)&255;
+        if(exit_case<3){g[0x6da]=0;*(short *)(g+0x5d6)=0;*(short *)(g+0x7da)=0;}
+        memcpy(saved_fields,g+0x5b2,sizeof(saved_fields));setup_reads=0;
         *(int16_t *)(button_node+38)=900;recording=records=0;invoke_fb(code+0x4cef0,g,toc,NULL,NULL,NULL);event('Z');assert(clock_reads>1&&queued==(exit_case>=3?sizeof(input):0));
     }
-    DisposeHandle(strings);fputs("PASS6 actual GAMEOVER frame/input schedules; real GetNextEvent and field editing at intervals1/2/3\n",stderr);return 0;
+    DisposeHandle(strings);fputs("PASS6 actual GAMEOVER frame/input schedules; real GetNextEvent and field editing at intervals1/2/3; nonqualifying fields unchanged and no field initialization clock\n",stderr);return 0;
 }
