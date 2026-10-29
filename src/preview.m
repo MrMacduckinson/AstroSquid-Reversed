@@ -1890,10 +1890,16 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     else event=[NSApp nextEventMatchingMask:NSEventMaskAny untilDate:[NSDate dateWithTimeIntervalSinceNow:2.0/60.0] inMode:NSDefaultRunLoopMode dequeue:YES];
     // shortcut: Command/window dispatch still uses AppKit; verify mixed OS events before replacing it.
     if(event.type==NSEventTypeKeyDown){
-        if(event.modifierFlags&NSEventModifierFlagCommand)[NSApp.mainMenu performKeyEquivalent:event];
+        NSData *characters=[self fieldCharacters:event];unsigned ch=characters.length?*(const unsigned char *)characters.bytes:0;
+        if((event.modifierFlags&NSEventModifierFlagCommand)&&ch!=16){
+            BOOL handled=[NSApp.mainMenu performKeyEquivalent:event];
+            // shortcut: unmatched Q/dot use separate original stop/quit paths still under audit.
+            if(!handled&&ch!='q'&&ch!='Q'&&ch!='.')[self signalUnhandledCommand];
+        }
     }else if(event)[NSApp sendEvent:event];
     lastMainEventTick=[self cardDelayClockTick];
 }
+- (void)signalUnhandledCommand {NSBeep();}
 - (void)consumePendingFieldEvent {
     NSEvent *event=[NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast]
         inMode:NSDefaultRunLoopMode dequeue:YES];

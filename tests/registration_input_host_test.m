@@ -2,7 +2,7 @@
 #include "../src/preview.m"
 #undef main
 #import <objc/runtime.h>
-static uint32_t serviceTick=1000;static unsigned serviceClockReads,serviceTickStep;
+static uint32_t serviceTick=1000;static unsigned serviceClockReads,serviceTickStep,commandBeeps;
 static NSMutableString *events;static BOOL observing,checkRegisterFocus,autoTest,autoHeld;
 static BOOL observeIdleWait;static NSTimeInterval idleWait;
 @interface MainWaitApplication:NSApplication @end
@@ -11,6 +11,11 @@ static BOOL observeIdleWait;static NSTimeInterval idleWait;
     if(observeIdleWait){assert(mask==NSEventMaskAny&&dequeue&&[mode isEqual:NSDefaultRunLoopMode]);idleWait=[expiration timeIntervalSinceNow];return nil;}
     return [super nextEventMatchingMask:mask untilDate:expiration inMode:mode dequeue:dequeue];
 }
+@end
+static unsigned commandMenuCalls;
+@interface CommandProbeMenu:NSMenu @end
+@implementation CommandProbeMenu
+- (BOOL)performKeyEquivalent:(NSEvent *)event {assert(event.modifierFlags&NSEventModifierFlagCommand);commandMenuCalls++;return YES;}
 @end
 @interface RegistrationInputUI:AstroUIRenderer @end
 @implementation RegistrationInputUI
@@ -26,6 +31,7 @@ static BOOL observeIdleWait;static NSTimeInterval idleWait;
 @interface RegistrationInputView:AstroView @end
 @implementation RegistrationInputView
 - (uint32_t)currentGameTick {return 1000;}
+- (void)signalUnhandledCommand {commandBeeps++;}
 - (uint32_t)cardDelayClockTick {serviceClockReads++;uint32_t tick=serviceTick;serviceTick+=serviceTickStep;return tick;}
 - (void)copyKeyMap:(unsigned char *)map {memset(map,0,16);}
 - (BOOL)menuMouseButtonPressed {return autoTest?autoHeld:NO;}
@@ -105,6 +111,16 @@ static BOOL observeIdleWait;static NSTimeInterval idleWait;
     Class appClass=object_setClass(NSApp,[MainWaitApplication class]);observeIdleWait=YES;
     [self pollMainMenu];observeIdleWait=NO;object_setClass(NSApp,appClass);
     assert(idleWait>0.02&&idleWait<=2.0/60.0&&lastMainEventTick==3000);
+    NSMenu *savedMenu=NSApp.mainMenu;NSApp.mainMenu=nil;[self flushGameEvents];
+    for(unsigned i=0;i<2;i++){
+        NSString *text=i?[NSString stringWithFormat:@"%C",(unichar)NSF1FunctionKey]:@"x";
+        NSEvent *command=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:NSEventModifierFlagCommand timestamp:0 windowNumber:0 context:nil characters:text charactersIgnoringModifiers:text isARepeat:i!=0 keyCode:i?122:7];
+        [self keyDown:command];serviceTick+=60;[self pollMainMenu];assert(commandBeeps==1&&!queuedKeyEvents.count);
+    }
+    NSApp.mainMenu=[CommandProbeMenu new];
+    NSEvent *matched=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:NSEventModifierFlagCommand timestamp:0 windowNumber:0 context:nil characters:@"x" charactersIgnoringModifiers:@"x" isARepeat:NO keyCode:7];
+    [self keyDown:matched];serviceTick+=60;[self pollMainMenu];assert(commandMenuCalls==1&&commandBeeps==1);
+    NSApp.mainMenu=savedMenu;
     [self flushGameEvents];puts("PASS outer Main field/periodic shared consumption AC,59/60 boundary,closed frame gate,and nested/pause exclusion");
     observing=NO;
     for(NSString *button in @[@"Back3",@"Back4",@"Back5",@"Back6",@"Back7"]){
