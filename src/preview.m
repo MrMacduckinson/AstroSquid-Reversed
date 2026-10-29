@@ -117,7 +117,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     AstroTransitionRect departureGlow,trailRect,engineGlowRect;
     AstroScore highscores[10];
     AstroScoreEditor scoreEditor;
-    NSMutableData *scoreKeyEvents;
+    NSMutableArray<NSEvent *> *scoreKeyEvents;
     int campaignAction;
     uint32_t respawnTick,invulnerableUntil; // Active markers, not deadlines: elapsed comparisons must survive wrap.
     uint32_t respawnWaitStartTick;
@@ -146,7 +146,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     AstroAudio *audio;
     AstroUIRenderer *ui;
     NSString *navigationButton,*registeredSerial;
-    NSMutableData *registrationKeyEvents;
+    NSMutableArray<NSEvent *> *registrationKeyEvents;
     AstroHUDRenderer *hud;
     BOOL menuVisible,splashVisible;
     uint64_t renderClock,playerRenderBirth;
@@ -1852,10 +1852,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     BOOL finishGameOver=NO;
     if(gameOverPanel){
         if(ui.editingHighscore>0){
-            if(!scoreKeyEvents.length)[self consumePendingFieldEvent];
-            if(scoreKeyEvents.length){
-                unsigned char ch=*(const unsigned char *)scoreKeyEvents.bytes;
-                [scoreKeyEvents replaceBytesInRange:NSMakeRange(0,1) withBytes:NULL length:0];
+            if(!scoreKeyEvents.count)[self consumePendingFieldEvent];
+            if(scoreKeyEvents.count){
+                NSData *characters=[self fieldCharacters:scoreKeyEvents[0]];
+                [scoreKeyEvents removeObjectAtIndex:0];
+                unsigned char ch=characters.length?*(const unsigned char *)characters.bytes:0;
                 if(![self editScoreByte:ch])return;
                 [self refreshScoreEditor];
             }
@@ -1882,10 +1883,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(event)[self keyDown:event];
 }
 - (BOOL)pollRegistrationInput {
-    if(!registrationKeyEvents.length)[self consumePendingFieldEvent];
-    if(!registrationKeyEvents.length)return YES;
-    unsigned char ch=*(const unsigned char *)registrationKeyEvents.bytes;
-    [registrationKeyEvents replaceBytesInRange:NSMakeRange(0,1) withBytes:NULL length:0];
+    if(!registrationKeyEvents.count)[self consumePendingFieldEvent];
+    if(!registrationKeyEvents.count)return YES;
+    NSData *characters=[self fieldCharacters:registrationKeyEvents[0]];
+    [registrationKeyEvents removeObjectAtIndex:0];
+    unsigned char ch=characters.length?*(const unsigned char *)characters.bytes:0;
     if([ui editRegistrationByte:ch]==ASTRO_SCORE_EDIT_ALERT)return [self resolveTextOverflow:&[ui registrationFields][ui.activeRegistrationField] byte:ch];
     return YES;
 }
@@ -2165,10 +2167,15 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     assert(controlKeys[0]==58&&editingKey==-1);[self testModifier:58 flags:0];controlKeys[0]=fire;
     AstroScore saved[10];memcpy(saved,highscores,sizeof(saved));astro_scores_clear(highscores);
     int oldScore=score;score=12345;[self beginGameOver];assert(ui.editingHighscore>0);assert((int)ui.scoreField.origin.y==183);
-    NSEvent *text=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0
-        timestamp:0 windowNumber:self.window.windowNumber context:nil characters:@"TEST"
-        charactersIgnoringModifiers:@"TEST" isARepeat:NO keyCode:17];
-    [self keyDown:text];assert(!scoreEditor.name[0]);
+    const unsigned codes[]={17,14,1,17};
+    for(unsigned i=0;i<4;i++){
+        NSString *character=[@"TEST" substringWithRange:NSMakeRange(i,1)];
+        NSEvent *text=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0
+            timestamp:0 windowNumber:self.window.windowNumber context:nil characters:character
+            charactersIgnoringModifiers:character isARepeat:NO keyCode:codes[i]];
+        [self keyDown:text];
+    }
+    assert(!scoreEditor.name[0]);
     for(unsigned i=0;i<4;i++){observedWallTick=[self currentGameTick]-(uint32_t)ui.frameInterval;[self pollMenu];}
     assert(!strcmp(scoreEditor.name,"TEST"));
     [self keyDown:[self testEvent:NSKeyDown code:36]];assert(!gameEndRequested);
@@ -2275,13 +2282,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(splashVisible){if(key<128){keys[key]=YES;[self acceptSplash];}return;}
     if(key<128) keys[key]=YES;
     if(menuVisible&&!gameOver&&!paused&&editingKey<0&&ui.activeRegistrationField>=0){
-        if(!registrationKeyEvents)registrationKeyEvents=[NSMutableData data];
-        NSData *bytes=[self fieldCharacters:event];if(bytes)[registrationKeyEvents appendData:bytes];
+        if(!registrationKeyEvents)registrationKeyEvents=[NSMutableArray array];
+        [registrationKeyEvents addObject:event];
         return;
     }
     if(menuVisible&&[ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0) {
-        if(!scoreKeyEvents)scoreKeyEvents=[NSMutableData data];
-        NSData *bytes=[self fieldCharacters:event];if(bytes)[scoreKeyEvents appendData:bytes];
+        if(!scoreKeyEvents)scoreKeyEvents=[NSMutableArray array];
+        [scoreKeyEvents addObject:event];
         return;
     }
     if(menuVisible&&gameOver)return;

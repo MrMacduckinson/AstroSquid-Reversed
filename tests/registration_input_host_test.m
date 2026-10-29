@@ -41,14 +41,14 @@ static NSMutableString *events;static BOOL observing,checkRegisterFocus,autoTest
     [ui show:@"Register Menu"];while(ui.transitioning)[ui advanceMenuCamera];ui.activeRegistrationField=0;
     observing=YES;AstroScoreEditor *fields=[ui registrationFields];
     [self queueCharacter:@"A" code:0 repeat:NO];[self queueCharacter:@"\t" code:48 repeat:NO];[self queueCharacter:@"B" code:11 repeat:NO];
-    assert(!fields[0].name[0]&&!fields[1].name[0]&&registrationKeyEvents.length==3);
-    [events setString:@""];observedWallTick=1000;[self pollMenu];assert(!events.length&&registrationKeyEvents.length==3);
-    [self frameExpect:@"DWSKE"];assert(!strcmp(fields[0].name,"A")&&registrationKeyEvents.length==2);
-    [self frameExpect:@"DWSKE"];assert(ui.activeRegistrationField==1&&registrationKeyEvents.length==1);
-    [self frameExpect:@"DWSKE"];assert(!strcmp(fields[1].name,"B")&&!registrationKeyEvents.length);
+    assert(!fields[0].name[0]&&!fields[1].name[0]&&registrationKeyEvents.count==3);
+    [events setString:@""];observedWallTick=1000;[self pollMenu];assert(!events.length&&registrationKeyEvents.count==3);
+    [self frameExpect:@"DWSKE"];assert(!strcmp(fields[0].name,"A")&&registrationKeyEvents.count==2);
+    [self frameExpect:@"DWSKE"];assert(ui.activeRegistrationField==1&&registrationKeyEvents.count==1);
+    [self frameExpect:@"DWSKE"];assert(!strcmp(fields[1].name,"B")&&!registrationKeyEvents.count);
     [self queueCharacter:@"C" code:8 repeat:YES];[self frameExpect:@"DWSKE"];assert(!strcmp(fields[1].name,"BC"));
-    [self queueCharacter:@"D" code:2 repeat:NO];ui.activeRegistrationField=-1;[self frameExpect:@"DWSK"];assert(registrationKeyEvents.length==1);
-    ui.activeRegistrationField=1;[ui show:@"Main Menu"];[self frameExpect:@"DWSK"];assert(registrationKeyEvents.length==1);
+    [self queueCharacter:@"D" code:2 repeat:NO];ui.activeRegistrationField=-1;[self frameExpect:@"DWSK"];assert(registrationKeyEvents.count==1);
+    ui.activeRegistrationField=1;[ui show:@"Main Menu"];[self frameExpect:@"DWSK"];assert(registrationKeyEvents.count==1);
     while(ui.transitioning)[ui advanceMenuCamera];[self frameExpect:@"DWSKE"];assert(!strcmp(fields[1].name,"BCD"));
     memset(fields[1].name,'A',255);fields[1].name[255]=0;fields[1].cursor=255;
     [self queueCharacter:@"B" code:11 repeat:NO];[self frameExpect:@"DWSKEC"];assert(strlen(fields[1].name)==255&&fields[1].cursor==256&&!fields[1].alert);
@@ -56,8 +56,13 @@ static NSMutableString *events;static BOOL observing,checkRegisterFocus,autoTest
     const unsigned codes[]={115,119,116,121,114,71,126,125};const unsigned bytes[]={1,4,11,12,5,27,30,31};
     for(unsigned i=0;i<8;i++){NSEvent *event=[self testEvent:NSKeyDown code:codes[i]];NSData *mapped=[self fieldCharacters:event];assert(mapped.length==1&&*(const unsigned char *)mapped.bytes==bytes[i]);}
     fields[1].submitted=0;fields[1].cursor=2;[self queueCharacter:@"" code:115 repeat:NO];[self queueCharacter:@"" code:119 repeat:NO];
-    [self frameExpect:@"DWSKE"];assert(fields[1].cursor==2&&registrationKeyEvents.length==1);[self frameExpect:@"DWSKE"];assert(fields[1].cursor==2);
+    [self frameExpect:@"DWSKE"];assert(fields[1].cursor==2&&registrationKeyEvents.count==1);[self frameExpect:@"DWSKE"];assert(fields[1].cursor==2);
     [self queueCharacter:[NSString stringWithFormat:@"%C",(unichar)NSF1FunctionKey] code:122 repeat:NO];[self frameExpect:@"DWSKE"];assert(fields[1].cursor==2);
+    [ui resetRegistrationFields];ui.activeRegistrationField=0;
+    NSEvent *compound=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:NSEventModifierFlagCommand timestamp:123 windowNumber:0 context:nil characters:@"YZ" charactersIgnoringModifiers:@"yz" isARepeat:YES keyCode:16];
+    [self keyDown:compound];assert(registrationKeyEvents.count==1&&registrationKeyEvents[0]==compound);
+    assert(registrationKeyEvents[0].isARepeat&&registrationKeyEvents[0].modifierFlags==NSEventModifierFlagCommand&&registrationKeyEvents[0].timestamp==123);
+    [self frameExpect:@"DWSKE"];assert(!strcmp(fields[0].name,"Y")&&!registrationKeyEvents.count);
     [ui resetRegistrationFields];ui.activeRegistrationField=-1;registrationKeyEvents=nil;
     [NSApp discardEventsMatchingMask:NSEventMaskAny beforeEvent:nil];
     for(unsigned i=0;i<2;i++)[NSApp postEvent:[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:i windowNumber:0 context:nil characters:i?@"B":@"A" charactersIgnoringModifiers:i?@"B":@"A" isARepeat:i!=0 keyCode:i?11:0] atStart:NO];

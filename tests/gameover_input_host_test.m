@@ -60,7 +60,7 @@ static void event(char code){eventValue(code,0);}
         [ui show:@"GameOver"];[ui animateTicks:60];ui.editingHighscore=exit_case>=3;ui.frameInterval=exit_case%3+1;ui.editingName=@"TEST";
         score=exit_case>=3?100:0;astro_score_editor_begin(&scoreEditor);[self refreshScoreEditor];astro_scores_clear(highscores);menuVisible=gameOver=YES;gameEndRequested=gameEndHighscores=NO;deferPresent=NO;records=clockReads=keyPolls=0;observedWallTick=1000;
         if(exit_case>=3){
-            for(NSDictionary *input in @[@{@"code":@0,@"text":@"AB"},@{@"code":@123,@"text":@""},@{@"code":@8,@"text":@"C"},@{@"code":@36,@"text":@""}]){
+            for(NSDictionary *input in @[@{@"code":@0,@"text":@"A"},@{@"code":@11,@"text":@"B"},@{@"code":@123,@"text":@""},@{@"code":@8,@"text":@"C"},@{@"code":@36,@"text":@""}]){
                 NSEvent *key=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:0 windowNumber:0 context:nil characters:input[@"text"] charactersIgnoringModifiers:input[@"text"] isARepeat:NO keyCode:[input[@"code"]unsignedShortValue]];[self keyDown:key];
             }
             assert(!scoreEditor.name[0]&&!scoreEditor.submitted&&!gameEndRequested);
@@ -74,20 +74,20 @@ static void event(char code){eventValue(code,0);}
     menuVisible=gameOver=YES;gameEndRequested=NO;scoreKeyEvents=nil;astro_score_editor_begin(&scoreEditor);
     memset(scoreEditor.name,'A',255);scoreEditor.name[255]=0;scoreEditor.cursor=255;[self refreshScoreEditor];
     NSEvent *overflow=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:0 windowNumber:0 context:nil characters:@"BC" charactersIgnoringModifiers:@"BC" isARepeat:NO keyCode:0];
-    [self keyDown:overflow];assert(!alerts&&scoreEditor.cursor==255);observedWallTick=1000;[self pollMenu];assert(!alerts&&scoreKeyEvents.length==2);
-    for(unsigned i=1;i<=2;i++){observedWallTick=999;[self pollMenu];assert(alerts==i&&scoreKeyEvents.length==2-i&&scoreEditor.cursor==255+(int)i&&strlen(scoreEditor.name)==255&&!scoreEditor.alert);}
-    fputs("PASS queued overflow waits for eligible frame and resolves once perbyte\n",stderr);
-    astro_score_editor_begin(&scoreEditor);[self refreshScoreEditor];scoreKeyEvents=[NSMutableData dataWithBytes:"X" length:1];
+    [self keyDown:overflow];[self keyDown:overflow];assert(!alerts&&scoreEditor.cursor==255);observedWallTick=1000;[self pollMenu];assert(!alerts&&scoreKeyEvents.count==2);
+    for(unsigned i=1;i<=2;i++){observedWallTick=999;[self pollMenu];assert(alerts==i&&scoreKeyEvents.count==2-i&&scoreEditor.cursor==255+(int)i&&strlen(scoreEditor.name)==255&&!scoreEditor.alert);}
+    fputs("PASS queued overflow waits for eligible frame and resolves once per event\n",stderr);
+    astro_score_editor_begin(&scoreEditor);[self refreshScoreEditor];scoreKeyEvents=[NSMutableArray arrayWithObject:[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:0 windowNumber:0 context:nil characters:@"X" charactersIgnoringModifiers:@"X" isARepeat:NO keyCode:7]];
     [NSApp discardEventsMatchingMask:NSEventMaskAny beforeEvent:nil];
     for(unsigned i=0;i<2;i++)[NSApp postEvent:[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:i windowNumber:0 context:nil characters:i?@"B":@"A" charactersIgnoringModifiers:i?@"B":@"A" isARepeat:i!=0 keyCode:i?11:0] atStart:NO];
-    observedWallTick=1000;[self pollMenu];assert(!scoreEditor.name[0]&&scoreKeyEvents.length==1);
+    observedWallTick=1000;[self pollMenu];assert(!scoreEditor.name[0]&&scoreKeyEvents.count==1);
     observedWallTick=999;[self pollMenu];assert(!strcmp(scoreEditor.name,"X"));
     assert([NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO].keyCode==0);
     observedWallTick=999;[self pollMenu];assert(!strcmp(scoreEditor.name,"XA"));
     assert([NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO].keyCode==11);
     observedWallTick=999;[self pollMenu];assert(!strcmp(scoreEditor.name,"XAB"));
     assert(![NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO]);
-    fputs("PASS GameOver pending Cocoa keys/repeat consumed at eligible field phase after earlier delivered bytes\n",stderr);
+    fputs("PASS GameOver pending Cocoa keys/repeat consumed at eligible field phase after earlier delivered events\n",stderr);
     glDeleteFramebuffersEXT(1,&framebuffer);glDeleteTextures(1,&color);
 }
 @end
