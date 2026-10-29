@@ -16,6 +16,14 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- Independent 2B victory through the end card and 3A player/world creation
+  matches 2,187,877 records (BOSS2_NEXT_VERIFIED), terminal clocks
+  2190443/2190032/2190425. Captured inventory, stage, RNG and 3000 stars match;
+  only G/E/R/S annotation ticks are normalized. The boss-next fixture now
+  derives the next level from its initial stage instead of assuming level2.
+  Initial HP30000/Laser4 and held fire/Y95 remain controlled test conditions.
+
+
 - On 2026-10-30, independent full-stage native G5/Intel comparisons matched
   through victory on 4B (3,954,811 records), 5B (4,402,142 records), and 6B
   (2,065,930 records). The actual targets were attribute153 (Drill-Killah),
