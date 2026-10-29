@@ -3,7 +3,7 @@
 #include "world_trace_host.m"
 static const char *retainedStarPath;
 static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode,resumeMode,midMode,midFull,endMode,endFull,resumeLong,gameoverEntry,gameoverReached,warmMode;
-static BOOL realHUD,panelMode;
+static BOOL realHUD,panelMode,panelInput;
 @interface CompositeHUD:AstroHUDRenderer
 @end
 @implementation CompositeHUD
@@ -32,7 +32,13 @@ static __weak AstroView *midView;
  NSDictionary *states=[ui valueForKey:@"orbStates"],*deadlines=[ui valueForKey:@"hoverDeadlines"];unsigned index=0;
  for(NSDictionary *object in [ui valueForKey:@"objects"]){NSString *name=object[@"name"];AstroUIMotion *state=[states[name] mutableBytes];NSData *label=[name dataUsingEncoding:NSMacOSRomanStringEncoding];printf("U\t%u\t",index++);dump(label.bytes,label.length);printf("\t%d\t%d\t%u\t%d",[object[@"kind"]intValue],state->sprite,[deadlines[name]unsignedIntValue],state->counter);double values[]={state->x,state->y,state->width,state->height};for(unsigned i=0;i<4;i++){unsigned char bytes[8];be64(bytes,values[i]);putchar('\t');dump(bytes,8);}putchar('\n');}assert(index==3);
  NSRect field=ui.scoreField;AstroScoreCaret caret;[[ui valueForKey:@"caret"]getValue:&caret];double values[]={field.origin.x,field.origin.y,field.size.width,field.size.height};printf("F");for(unsigned i=0;i<4;i++){unsigned char bytes[8];be64(bytes,values[i]);putchar('\t');dump(bytes,8);}printf("\t%u\n",caret.deadline);
- printf("K\tpanel\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);gameoverReached=YES;puts("W\tpanel-complete");@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super flushGameEvents];}
+ printf("K\tpanel\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);gameoverReached=YES;puts("W\tpanel-complete");if(panelInput){splashVisible=NO;
+ for(NSDictionary *item in @[@{@"code":@0,@"text":@"A"},@{@"code":@11,@"text":@"B"},@{@"code":@123,@"text":@""},@{@"code":@8,@"text":@"C"},@{@"code":@36,@"text":@""}]){[self keyDown:[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:0 windowNumber:0 context:nil characters:item[@"text"] charactersIgnoringModifiers:item[@"text"] isARepeat:NO keyCode:[item[@"code"]unsignedShortValue]]];}
+ for(unsigned i=0;i<100;i++)[self pollMenu];assert(0);
+ }@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super flushGameEvents];}
+- (void)saveScores {if(panelInput){[self dumpWorldTrace:@"panel-submit"];printf("V\t%u\t%u\t",compositeClocks,observedWallTick);dump((const unsigned char *)scoreEditor.name,strlen(scoreEditor.name));puts("\nW\tinput-complete");@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super saveScores];}
+- (BOOL)menuMouseButtonPressed {return panelInput?NO:[super menuMouseButtonPressed];}
+- (void)pollMenuMouse {if(!panelInput)[super pollMenuMouse];}
 - (void)beginGameOver {if(gameoverEntry&&!warmMode){gameoverReached=YES;[self dumpWorldTrace:@"gameover-entry"];printf("K\tentry\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super beginGameOver];}
 - (void)delayGameTicks:(uint32_t)ticks {
  if(!warmMode){[super delayGameTicks:ticks];return;}
@@ -41,7 +47,7 @@ static __weak AstroView *midView;
  printf("D\t%u\t%u\t%u\n",warmFrames++,ticks,compositeClocks);compositeClocks+=ticks;
 }
 - (void)setGameCursorHidden:(BOOL)hidden {if(warmMode){assert(!hidden&&warmFrames==10);if(panelMode){puts("W\twarm-complete");return;}gameoverReached=YES;puts("W\tcomplete");@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super setGameCursorHidden:hidden];}
-- (void)display {if(loopMode||midMode){if(realHUD)[self drawHUD:!panelTransitionRender];else if(hudRedraws)hudRedraws--;}else [super display];}
+- (void)display {if(loopMode||midMode){if(realHUD)[self drawHUD:!(panelTransitionRender||(panelInput&&warmFrames==10))];else if(hudRedraws)hudRedraws--;}else [super display];}
 - (void)copyKeyMap:(unsigned char *)bytes {
     if(midMode){memset(bytes,0,16);return;}
     if(!loopMode){[super copyKeyMap:bytes];return;}
@@ -71,7 +77,7 @@ static __weak AstroView *midView;
     snprintf(resumeLabel,sizeof resumeLabel,"mid%u",loopStep);tracePhase=resumeLabel;
 }
 - (void)runCompositeArena:(const char *)phaseOutput {
-    realHUD=getenv("ASTRO_WORLD_REAL_HUD")!=NULL;panelMode=getenv("ASTRO_WORLD_PANEL")!=NULL;assert(!panelMode||realHUD);if(realHUD){CompositeHUD *observer=[[CompositeHUD alloc]initWithGame:game ui:ui];observer.didDrawSprite=hud.didDrawSprite;hud=observer;}
+    realHUD=getenv("ASTRO_WORLD_REAL_HUD")!=NULL;panelMode=getenv("ASTRO_WORLD_PANEL")!=NULL;panelInput=getenv("ASTRO_WORLD_PANEL_INPUT")!=NULL;assert(!panelInput||panelMode);assert(!panelMode||realHUD);if(realHUD){CompositeHUD *observer=[[CompositeHUD alloc]initWithGame:game ui:ui];observer.didDrawSprite=hud.didDrawSprite;hud=observer;}
     warmMode=phaseOutput&&!strncmp(phaseOutput,"resumewarm",10);gameoverEntry=warmMode||(phaseOutput&&!strncmp(phaseOutput,"resumegameover",14));resumeLong=gameoverEntry||(phaseOutput&&!strncmp(phaseOutput,"resumelong",10));endFull=phaseOutput&&!strncmp(phaseOutput,"endfull",7);endMode=phaseOutput&&!strncmp(phaseOutput,"end",3);midFull=phaseOutput&&!strncmp(phaseOutput,"midfull",7);midMode=endMode||(phaseOutput&&!strncmp(phaseOutput,"mid",3));resumeMode=phaseOutput&&!strncmp(phaseOutput,"resume",6);loopMode=resumeMode||(phaseOutput&&!strncmp(phaseOutput,"loop",4));
     if(panelMode)assert(warmMode);
     BOOL chainMode=phaseOutput&&!strcmp(phaseOutput,"chain");

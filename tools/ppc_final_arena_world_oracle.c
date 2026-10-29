@@ -8,7 +8,11 @@ static FILE *input_file;static long input_size;static const char *data_directory
 static unsigned clock_reads,opens,records,map_records,scene_records;
 static int advancing,load_mode,start_mode,run_mode,chain_mode,loop_mode,resume_mode,mid_mode,mid_full,end_mode,end_full,resume_long,gameover_entry,gameover_reached,warm_mode;
 static unsigned warm_frames,panel_world_birth;
-static int real_hud,panel_mode;
+static int real_hud,panel_mode,input_mode,panel_active;
+static unsigned input_index;
+static const unsigned char panel_input[]={65,66,28,67,13};
+static Boolean panel_event(EventMask mask,EventRecord *event){assert(panel_active&&mask==0x28&&input_index<sizeof(panel_input));memset(event,0,sizeof(*event));event->what=keyDown;event->message=panel_input[input_index++];return true;}
+static int panel_button(void){return 0;}
 static double hud_font_widths[257];
 static jmp_buf loop_done;static unsigned loop_step;static char loop_label[32];
 void loop_noop(void){}
@@ -26,8 +30,9 @@ void panel_ready(void){
   for(unsigned i=0;i<4;i++){double v=*(double *)(node+i*8);if(i<2&&node[40]>=8&&!memcmp(node+41,"GameOver",8))v+=*(double *)(g+0xea2+i*8);printf("\t%016llx",(unsigned long long)ieee_word(v));}putchar('\n');
  }assert(count==3);
  printf("F");for(unsigned i=0;i<4;i++){double v=*(double *)(g+0x5b2+i*8);if(i<2)v+=*(double *)(g+0xea2+i*8);printf("\t%016llx",(unsigned long long)ieee_word(v));}printf("\t%u\n",*(unsigned *)(g+0x5d2));
- printf("K\tpanel\t%u\t%u\t%u\n",clock_reads,*(unsigned *)(g+0xa4a),*(unsigned *)(g+0xa4e));gameover_reached=1;puts("W\tpanel-complete");longjmp(loop_done,1);
+ printf("K\tpanel\t%u\t%u\t%u\n",clock_reads,*(unsigned *)(g+0xa4a),*(unsigned *)(g+0xa4e));gameover_reached=1;puts("W\tpanel-complete");if(input_mode){panel_active=1;return;}longjmp(loop_done,1);
 }
+void panel_save(void){assert(input_mode&&input_index==5);phase="panel-submit";snapshot();printf("V\t%u\t%u\t",clock_reads,*(unsigned *)(world_globals+0xa4a));hex(world_globals+0x6db,world_globals[0x6da]);putchar('\n');puts("W\tinput-complete");longjmp(loop_done,1);}
 void gameover_enter(void){gameover_reached=1;phase="gameover-entry";snapshot();printf("K\tentry\t%u\t%u\t%u\n",clock_reads,*(unsigned *)(world_globals+0xa4a),*(unsigned *)(world_globals+0xa4e));longjmp(loop_done,1);}
 void end_sound(unsigned char *name){double pan=NAN;world_sound(name,&pan);}
 void loop_keys(void){unsigned k=(loop_step/8)%16;unsigned char *g=world_globals;set_short(g,0xaac,k&1?-1:0);set_short(g,0xaae,k&2?-1:0);set_short(g,0xaa8,k&4?-1:0);set_short(g,0xaaa,k&8?-1:0);set_short(g,0xab2,loop_step%7==0?-1:0);}
@@ -63,11 +68,11 @@ void arena_close(int number){assert(number==1&&input_file&&!fclose(input_file));
 void arena_stop(void){puts("A\tstop");}
 void arena_play(unsigned handle){if((mid_full||end_full)&&handle==0x4321)puts("A\tplay1");else {assert(handle==0x1234);puts("A\tplay2");}if(end_full&&handle==0x4321){phase="end-pre-card";snapshot();printf("K\tend\t%u\t%u\t%u\n",clock_reads,*(unsigned *)(world_globals+0xa4a),*(unsigned *)(world_globals+0xa4e));longjmp(loop_done,1);}}
 #define WRAP(name) extern void name##_fb(void); __asm__(".text\n.align 2\n.globl _" #name "_fb\n_" #name "_fb:\nmflr r0\nstw r0,8(r1)\nstwu r1,-64(r1)\nstw r2,20(r1)\nbl _" #name "\nlwz r2,20(r1)\naddi r1,r1,64\nlwz r0,8(r1)\nmtlr r0\nblr\n");
-WRAP(panel_ready) WRAP(gameover_enter) WRAP(end_sound) WRAP(mid_observe) WRAP(loop_noop) WRAP(loop_keys) WRAP(loop_misc)
+WRAP(panel_save) WRAP(panel_ready) WRAP(gameover_enter) WRAP(end_sound) WRAP(mid_observe) WRAP(loop_noop) WRAP(loop_keys) WRAP(loop_misc)
 WRAP(arena_ready) WRAP(arena_system) WRAP(arena_folder) WRAP(arena_open) WRAP(arena_read) WRAP(arena_readfile)
 WRAP(arena_eof) WRAP(arena_length) WRAP(arena_close) WRAP(arena_stop) WRAP(arena_play)
 int main(int argc,char **argv){
-    real_hud=getenv("ASTRO_WORLD_REAL_HUD")!=NULL;panel_mode=getenv("ASTRO_WORLD_PANEL")!=NULL;assert(!panel_mode||real_hud);
+    real_hud=getenv("ASTRO_WORLD_REAL_HUD")!=NULL;panel_mode=getenv("ASTRO_WORLD_PANEL")!=NULL;input_mode=getenv("ASTRO_WORLD_PANEL_INPUT")!=NULL;assert(!input_mode||panel_mode);assert(!panel_mode||real_hud);
     if(argc<6||argc>9)return 2;alarm(30);data_directory=argv[5];advancing=argc>=7;if(advancing)assert(!strcmp(argv[6],"advancing"));
     warm_mode=argc>=8&&!strncmp(argv[7],"resumewarm",10);gameover_entry=warm_mode||(argc>=8&&!strncmp(argv[7],"resumegameover",14));resume_long=gameover_entry||(argc>=8&&!strncmp(argv[7],"resumelong",10));end_full=argc>=8&&!strncmp(argv[7],"endfull",7);end_mode=argc>=8&&!strncmp(argv[7],"end",3);mid_full=argc>=8&&!strncmp(argv[7],"midfull",7);mid_mode=end_mode||(argc>=8&&!strncmp(argv[7],"mid",3));resume_mode=argc>=8&&!strncmp(argv[7],"resume",6);loop_mode=resume_mode||(argc>=8&&!strncmp(argv[7],"loop",4));chain_mode=argc>=8&&!strcmp(argv[7],"chain");run_mode=argc>=8&&!strncmp(argv[7],"run",3);start_mode=mid_mode||loop_mode||chain_mode||run_mode||(argc>=8&&!strncmp(argv[7],"start",5));load_mode=argc>=8&&(!strncmp(argv[7],"load",4)||start_mode);
     if(resume_long)alarm(180);if(panel_mode)assert(warm_mode);
@@ -75,6 +80,7 @@ int main(int argc,char **argv){
     unsigned char *code=read_file(argv[1])+128,*g=calloc(1,0x1300),*heap=calloc(1,0x100000);assert(g&&heap);world_globals=g;
     uint32_t toc[489]={0};for(int i=0;i<484;i++){
         void *fn=dlsym(RTLD_DEFAULT,import_names[i]);
+        if(input_mode&&!strcmp(import_names[i],"GetNextEvent"))fn=panel_event;if(input_mode&&!strcmp(import_names[i],"Button"))fn=panel_button;
         if(real_hud&&!strncmp(import_names[i],"gl",2))fn=loop_noop;
         if(!strcmp(import_names[i],"TickCount"))fn=arena_tick;
         if(warm_mode&&!strcmp(import_names[i],"Delay"))fn=warm_delay;
@@ -96,6 +102,7 @@ int main(int argc,char **argv){
         {0x31af4,arena_stop_fb},{0x31edc,arena_play_fb},{0x3ce84,world_sound_fb}};
     for(unsigned i=0;i<sizeof(hooks)/sizeof(hooks[0]);i++)jump_to(code+hooks[i].at,hooks[i].fn);MakeDataExecutable(code,433284);
     if(panel_mode){set_pointer(g,0xa72,calloc(12,sizeof(int)));jump_to(code+0x2b290,panel_ready_fb);jump_to(code+0x44e10,loop_noop_fb);MakeDataExecutable(code,433284);}
+    if(input_mode){jump_to(code+0x3ed88,panel_save_fb);jump_to(code+0x41448,loop_noop_fb);MakeDataExecutable(code,433284);}
     FSRef ref;ResFileRefNum rf;HFSUniStr255 fork;assert(!FSPathMakeRef((const UInt8 *)argv[3],&ref,NULL));assert(!FSGetResourceForkName(&fork));assert(!FSOpenResourceFile(&ref,fork.length,fork.unicode,fsRdPerm,&rf));UseResFile(rf);
     if(real_hud){Str255 text;for(int i=1;i<=256;i++){GetIndString(text,129,i);text[text[0]+1]=0;hud_font_widths[i]=atof((char *)text+1)/32;}hud_font_widths[32]=.2;set_pointer(g,0xeb6,hud_font_widths);
         unsigned drawing[]={0x3a278,0x41730,0x3572c,0x342b4};for(unsigned i=0;i<4;i++)jump_to(code+drawing[i],loop_noop_fb);MakeDataExecutable(code,433284);}
