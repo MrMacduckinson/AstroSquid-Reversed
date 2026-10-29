@@ -2,7 +2,7 @@
 #define ASTRO_WORLD_TRACE_LIBRARY
 #include "world_trace_host.m"
 static const char *retainedStarPath;
-static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode;static unsigned loopStep;
+static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode,resumeMode;static unsigned loopStep;static char resumeLabel[32];
 @interface CompositeArenaAudio:AstroTraceAudio
 @end
 @implementation CompositeArenaAudio
@@ -18,13 +18,21 @@ static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode;static
     memset(bytes,0,16);unsigned input=(loopStep/8)%16;int codes[5]={126,125,123,124,55};
     for(unsigned i=0;i<5;i++)if(i==4?loopStep%7==0:(input&(1u<<i)))bytes[codes[i]>>3]|=1u<<(codes[i]&7);
 }
-- (void)handleMiscKeys {if(!loopMode)[super handleMiscKeys];}
+- (void)createPlayerAtX:(double)x y:(double)y {if(resumeMode&&loopStep)playerTraceID=++nextEntityID;[super createPlayerAtX:x y:y];}
+- (void)handleMiscKeys {
+    if(!loopMode){[super handleMiscKeys];return;}
+    if(resumeMode){[self dumpWorldTrace:[NSString stringWithUTF8String:tracePhase]];
+        printf("K\t%u\t%u\t%u\t%u\n",loopStep,compositeClocks,observedWallTick,worldRenderTick);
+        if(++loopStep==256)@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];
+        snprintf(resumeLabel,sizeof resumeLabel,"loop%u",loopStep);tracePhase=resumeLabel;
+    }
+}
 - (uint32_t)playerClockTick {unsigned index=compositeClocks++;return 100+(advancing&&tracePhase&&strcmp(tracePhase,"before")?index:0);}
 - (void)renderTick {if(!outerFrame)[super renderTick];}
 @end
 @implementation AstroView(CompositeArena)
 - (void)runCompositeArena:(const char *)phaseOutput {
-    loopMode=phaseOutput&&!strncmp(phaseOutput,"loop",4);
+    resumeMode=phaseOutput&&!strncmp(phaseOutput,"resume",6);loopMode=resumeMode||(phaseOutput&&!strncmp(phaseOutput,"loop",4));
     BOOL chainMode=phaseOutput&&!strcmp(phaseOutput,"chain");
     BOOL runMode=phaseOutput&&!strncmp(phaseOutput,"run",3);
     BOOL startMode=loopMode||chainMode||runMode||(phaseOutput&&!strncmp(phaseOutput,"start",5));
@@ -35,7 +43,7 @@ static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode;static
     backgrounds=@[];parallaxData=[NSMutableData data];starsInitialized=YES;renderClock=0;simulationTick=100;
     campaign=(AstroCampaign){8,2,0,0};inventory=(AstroInventory){0};selectedLevel=[levels indexOfObject:@"Data 8B"];
     if(phaseOutput&&(!strncmp(phaseOutput,"load",4)||startMode)){for(unsigned chain=0;chain<(chainMode?17u:1u);chain++){
-        unsigned level=0;char half=0,extra=0;if(chainMode){level=chain/2+1;half=chain==16?'B':chain%2?'B':'A';}else assert(sscanf(phaseOutput+(loopMode?4:runMode?3:startMode?5:4),"%u%c%c",&level,&half,&extra)==2&&level>=1&&level<=9&&(half=='A'||half=='B'));
+        unsigned level=0;char half=0,extra=0;if(chainMode){level=chain/2+1;half=chain==16?'B':chain%2?'B':'A';}else assert(sscanf(phaseOutput+(resumeMode?6:loopMode?4:runMode?3:startMode?5:4),"%u%c%c",&level,&half,&extra)==2&&level>=1&&level<=9&&(half=='A'||half=='B'));
         selectedLevel=[levels indexOfObject:[NSString stringWithFormat:@"Data %u%c",level,half]];assert(selectedLevel!=NSNotFound);
         if(!chain){randomSeed=123;compositeClocks=0;}camera=-0.0;traceTick=100;char label[24];snprintf(label,sizeof label,"load%u%c",level,half);tracePhase=chainMode?label:"load";nextEntityID=playerTraceID=0;entityIDs=[NSMapTable strongToStrongObjectsMapTable];
         if(retainedStarPath&&!chain){NSData *d=[NSData dataWithContentsOfFile:[NSString stringWithUTF8String:retainedStarPath]];assert(d.length==96004);const unsigned char *b=d.bytes;
@@ -50,7 +58,8 @@ static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode;static
             menuVisible=paused=gameOver=changingStage=NO;flow.phase=ASTRO_FLOW_PLAY;automatic=YES;campaign.arena=0;
             int controls[6]={55,58,126,125,123,124};memcpy(controlKeys,controls,sizeof controls);memset(keys,0,sizeof keys);
             tracePhase="loop0";[self beginGameLoop];
-            for(loopStep=0;loopStep<256;loopStep++){char label[32];snprintf(label,sizeof label,"loop%u",loopStep);tracePhase=label;[self pollGame];[self dumpWorldTrace:[NSString stringWithUTF8String:label]];
+            if(resumeMode){loopStep=0;@try {while(loopStep<256)[self pollGame];}@catch(NSException *e){assert([e.name isEqual:@"TraceFinished"]);}}
+            else for(loopStep=0;loopStep<256;loopStep++){char label[32];snprintf(label,sizeof label,"loop%u",loopStep);tracePhase=label;[self pollGame];[self dumpWorldTrace:[NSString stringWithUTF8String:label]];
                 printf("K\t%u\t%u\t%u\t%u\n",loopStep,compositeClocks,observedWallTick,worldRenderTick);if(respawnPending||gameEndRequested||campaignAction!=ASTRO_CAMPAIGN_NONE){printf("B\t%u\t%d\t%d\n",loopStep,gameEndRequested?1:respawnPending?-1:0,campaignAction!=ASTRO_CAMPAIGN_NONE);break;}}
         }
         if(runMode){tickedScroll=1;for(unsigned step=0;step<256;step++){
