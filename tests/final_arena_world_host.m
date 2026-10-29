@@ -29,13 +29,15 @@ static unsigned compositeClocks;static BOOL advancing,outerFrame;
         e->active=YES;if(!i)e->state.remove=-1;else e->hitPoints=71;[self prependEnemy:e];
     }
     camera=1234.25;ui.musicVolume=1;traceTick=100;tracePhase="before";[self dumpWorldTrace:@"before"];
-    outerFrame=phaseOutput&&(!strcmp(phaseOutput,"outer")||!strcmp(phaseOutput,"outer64"));
+    outerFrame=phaseOutput&&(!strcmp(phaseOutput,"outer")||!strcmp(phaseOutput,"outer64")||!strcmp(phaseOutput,"outer-map256"));
     if(outerFrame){
         campaign.arena=1;observedWallTick=100;compositeClocks=0;tracePhase="outer";[self advanceWorldForWait:NO];[self dumpWorldTrace:@"outer"];
         assert(compositeClocks==211&&camera==1&&randomSeed==0xf8ce7428&&nextEntityID==33&&renderClock==52);
-        fprintf(stderr,"HOST outerbody camera%.17g clocks%u RNG%08x entities%u images%llu\n",camera,compositeClocks,randomSeed,nextEntityID,(unsigned long long)renderClock);if(!strcmp(phaseOutput,"outer64"))for(unsigned step=1;step<64;step++){
+        fprintf(stderr,"HOST outerbody camera%.17g clocks%u RNG%08x entities%u images%llu\n",camera,compositeClocks,randomSeed,nextEntityID,(unsigned long long)renderClock);if(strcmp(phaseOutput,"outer"))for(unsigned step=1;step<(!strcmp(phaseOutput,"outer-map256")?256u:64u);step++){
             char label[32];snprintf(label,sizeof label,"follow%u",step);tracePhase=label;
-            [self cleanupWorld];[self calculateActors];[self handleVisualEffects];[self dumpWorldTrace:[NSString stringWithUTF8String:label]];
+            [self cleanupWorld];[self calculateActors];[self handleVisualEffects];
+            if(!strcmp(phaseOutput,"outer-map256"))[self makeNewSprites];
+            [self dumpWorldTrace:[NSString stringWithUTF8String:label]];
         }
         return;
     }

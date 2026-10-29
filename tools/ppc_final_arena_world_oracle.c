@@ -64,14 +64,16 @@ int main(int argc,char **argv){
     unsigned char *survivor=spawn(code,toc,7,3,1600,100);set_short(survivor,88,71);
     set_double(g,0xea2,-1234.25);set_double(g,0xa1e,1234.25);set_double(g,0xa26,1874.25);set_double(g,0xa2e,-0.0);set_double(g,0xa36,380);
     set_double(g,0xaa0,.3);snapshot();clock_reads=0;
-    if(argc==8&&(!strcmp(argv[7],"outer")||!strcmp(argv[7],"outer64"))){
+    if(argc==8&&(!strcmp(argv[7],"outer")||!strcmp(argv[7],"outer64")||!strcmp(argv[7],"outer-map256"))){
         phase="outer";invoke_fb(code+0x539b8,g,toc,NULL,NULL,NULL);invoke_fb(code+0x54c64,g,toc,NULL,NULL,NULL);snapshot();
         assert(opens==2&&map_records==247&&scene_records==3);
         assert(clock_reads==211&&-*(double *)(g+0xea2)==1&&*(unsigned *)(g+0x244)==0xf8ce7428&&entity_birth==33&&render_birth==52);
-        fprintf(stderr,"NATIVE outerbody camera%.17g clocks%u RNG%08x entities%u images%u\n",-*(double *)(g+0xea2),clock_reads,*(unsigned *)(g+0x244),entity_birth,render_birth);if(!strcmp(argv[7],"outer64"))for(unsigned step=1;step<64;step++){
+        fprintf(stderr,"NATIVE outerbody camera%.17g clocks%u RNG%08x entities%u images%u\n",-*(double *)(g+0xea2),clock_reads,*(unsigned *)(g+0x244),entity_birth,render_birth);if(strcmp(argv[7],"outer"))for(unsigned step=1;step<(!strcmp(argv[7],"outer-map256")?256u:64u);step++){
             char label[32];snprintf(label,sizeof label,"follow%u",step);phase=label;
             invoke_fb(code+0x539b8,g,toc,NULL,NULL,NULL);invoke_fb(code+0x54c64,g,toc,NULL,NULL,NULL);
-            invoke_fb(code+0x3b55c,g,toc,NULL,NULL,NULL);snapshot();
+            invoke_fb(code+0x3b55c,g,toc,NULL,NULL,NULL);
+            if(!strcmp(argv[7],"outer-map256"))invoke_fb(code+0x4c854,g,toc,NULL,NULL,NULL);
+            snapshot();
         }
         return 0;
     }
