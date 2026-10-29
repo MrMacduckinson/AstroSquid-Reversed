@@ -24,6 +24,12 @@ Current bounded evidence:
   Initial HP30000/Laser4 and held fire/Y95 remain controlled test conditions.
 
 
+- The corresponding 3B victory through 4A creation matches 2,491,503 records
+  (BOSS3_NEXT_VERIFIED), terminal clocks 2966341/2965901/2966293, including
+  next-stage RNG569a46a1, inventory and all stars. Same controlled HP30000,
+  Laser4/Y95 scope and annotation-only normalization; no continuous campaign
+  or ordinary-health completion claim.
+
 - On 2026-10-30, independent full-stage native G5/Intel comparisons matched
   through victory on 4B (3,954,811 records), 5B (4,402,142 records), and 6B
   (2,065,930 records). The actual targets were attribute153 (Drill-Killah),
