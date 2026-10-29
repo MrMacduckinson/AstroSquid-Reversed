@@ -119,6 +119,7 @@ static __weak AstroView *midView;
             midView=self;loopStep=0;@try {if(endMode){[self runEndlevelTransition];}else [self runMidlevelTransition];}@catch(NSException *e){assert([e.name isEqual:@"MidTraceFinished"]);}
             if(endFull){[self dumpWorldTrace:@"end-pre-card"];printf("K\tend\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);}
             if(midFull){[self dumpWorldTrace:@"mid-end"];printf("K\tend\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);}
+            if(getenv("ASTRO_WORLD_NEXT_LOAD")){assert(midFull&&!endMode);nextEntityID=playerTraceID=0;entityIDs=[NSMapTable strongToStrongObjectsMapTable];[self loadCampaignStage:pendingCampaign];playerTraceID=++nextEntityID;[self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;tracePhase="next-load";[self dumpWorldTrace:@"next-load"];}
         }
         if(loopMode){
             gameLoopActive=YES;menuVisible=paused=gameOver=changingStage=NO;flow.phase=ASTRO_FLOW_PLAY;automatic=YES;campaign.arena=0;

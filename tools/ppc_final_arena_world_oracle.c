@@ -140,6 +140,7 @@ int main(int argc,char **argv){
             strcpy(loop_label,"mid0");phase=loop_label;(void)arena_tick();*(unsigned *)(g+0xa4a)=arena_tick();*(unsigned *)(g+0xa4e)=arena_tick();set_double(g,0xa58,0);set_short(g,0x5ac,1);*(unsigned *)(g+0xa3e)=0x4321;
             if(!setjmp(loop_done))invoke_fb(code+(end_mode?0x4eda0:0x4e9c4),g,toc,NULL,NULL,NULL);
             if(mid_full){set_short(g,0xa84,2);phase="mid-end";snapshot();printf("K\tend\t%u\t%u\t%u\n",clock_reads,*(unsigned *)(g+0xa4a),*(unsigned *)(g+0xa4e));}
+            if(getenv("ASTRO_WORLD_NEXT_LOAD")){assert(mid_full&&!end_mode);entity_birth=render_birth=0;invoke_fb(code+0x510c8,g,toc,(void *)(uintptr_t)level,NULL,NULL);invoke_fb(code+0x50bfc,g,toc,(void *)(uintptr_t)2,NULL,NULL);phase="next-load";snapshot();}
         }
         if(loop_mode){
             const struct {unsigned at;void *fn;} lh[]={{0x57afc,loop_noop_fb},{0x35eb8,loop_noop_fb},{0x43134,loop_noop_fb},{0x334bc,loop_noop_fb},{0x4cb28,loop_keys_fb},{0x4de74,loop_misc_fb}};
