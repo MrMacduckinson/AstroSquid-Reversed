@@ -156,7 +156,7 @@ int main(int argc,char **argv){
             memcpy(code+0x4e004,ready_entry,16);
             jump_to(code+0x3bb58,loop_noop_fb);jump_to(code+0x57afc,loop_noop_fb);jump_to(code+0x35eb8,loop_noop_fb);
             jump_to(code+0x334bc,mid_observe_fb);jump_to(code+0x4cb28,ready_keys_fb);jump_to(code+0x4de74,dispatch_done_fb);MakeDataExecutable(code,433284);
-            if(getenv("ASTRO_WORLD_BOSS")){set_pointer(g,0xcd6,calloc(1,8));render_code=code;render_toc=toc;jump_to(code+0x57afc,world_beams_fb);MakeDataExecutable(code,433284);}
+            if(getenv("ASTRO_WORLD_FLIGHT")){set_pointer(g,0xcd6,calloc(1,8));render_code=code;render_toc=toc;jump_to(code+0x57afc,world_beams_fb);MakeDataExecutable(code,433284);}
             if(getenv("ASTRO_WORLD_BOSS_END")){jump_to(code+0x3ccd8,end_sound_fb);MakeDataExecutable(code,433284);}
             strcpy(loop_label,"mid0");phase=loop_label;*(unsigned *)(g+0xa3e)=0x4321;
             if(!setjmp(loop_done))invoke_fb(code+0x51a68,g,toc,NULL,NULL,NULL);return 0;
