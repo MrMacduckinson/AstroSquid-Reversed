@@ -9,12 +9,13 @@ def selected(path):
     lines = Path(path).read_text().splitlines()
     counts = Counter(line.split('\t', 1)[0] for line in lines)
     for tag, expected in [('MENU', 1), ('MS', 3000), ('MU', 52),
-                          ('RETURN-FLUSH', 1), ('RETURN', 1)]:
+                          ('RETURN-FLUSH', 1), ('RETURN', 1), ('CF', 2)]:
         if counts[tag] != expected:
             raise AssertionError(f'{path}: {tag}: {counts[tag]}, expected {expected}')
-    if lines[-4:-1] != ['RETURN-FLUSH', 'A\tstop', 'A\tplay1'] or not lines[-1].startswith('RETURN\t'):
+    protocol = [line for line in lines if not line.startswith('CF\t')]
+    if protocol[-4:-1] != ['RETURN-FLUSH', 'A\tstop', 'A\tplay1'] or not lines[-1].startswith('RETURN\t'):
         raise AssertionError(f'{path}: missing completed return protocol')
-    tags = {'MENU', 'MS', 'MU', 'RETURN-FLUSH', 'RETURN', 'A'}
+    tags = {'MENU', 'MS', 'MU', 'RETURN-FLUSH', 'RETURN', 'A', 'CF'}
     return [line for line in lines if line.split('\t', 1)[0] in tags]
 
 

@@ -21,7 +21,7 @@ static void warm_delay(unsigned ticks,unsigned *final){
  snprintf(loop_label,sizeof loop_label,"warm%u",warm_frames);phase=loop_label;snapshot();
  printf("D\t%u\t%u\t%u\n",warm_frames++,ticks,clock_reads);clock_reads+=ticks;*final=100+clock_reads;
 }
-static void warm_cursor(void){if(menu_return&&cleanup_done){printf("RETURN\t%u\n",clock_reads);longjmp(loop_done,1);return;}assert(warm_frames==10);if(panel_mode){panel_world_birth=render_birth;puts("W\twarm-complete");return;}gameover_reached=1;puts("W\tcomplete");longjmp(loop_done,1);}
+static void warm_cursor(void){if(menu_return&&cleanup_done){for(unsigned i=0;i<2;i++){unsigned char *f=world_globals+0x5b2+i*0x22a;printf("CF\t%u\t%u\t%d\n",i,*(unsigned *)(f+32),*(short *)(f+38));}printf("RETURN\t%u\n",clock_reads);longjmp(loop_done,1);return;}assert(warm_frames==10);if(panel_mode){panel_world_birth=render_birth;puts("W\twarm-complete");return;}gameover_reached=1;puts("W\tcomplete");longjmp(loop_done,1);}
 
 void panel_ready(void){
  if(menu_return&&cleanup_done){assert(!*(void **)(world_globals+0xa06));puts("RETURN-FLUSH");return;}
