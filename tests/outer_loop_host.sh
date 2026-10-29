@@ -13,4 +13,6 @@ for initial in 0 1 2; do
   if [ "$initial" = 0 ]; then fixture=tests/outer_loop_native.csv; else fixture="tests/outer_loop_hud${initial}_native.csv"; fi
   cmp "$fixture" "$scratch"
 done
-echo 'PASS30 original/host outer-loop and HUD-countdown schedules'
+build/outer_loop_host assets 2 repeat > "$scratch"
+cmp tests/outer_loop_repeat_native.csv "$scratch"
+echo 'PASS30 single-iteration and 10x64 repeated original/host outer-loop schedules'

@@ -13,7 +13,7 @@
 #include "imports.h"
 #include "../tests/outer_loop_cases.h"
 static unsigned char *globals;
-static unsigned scenario,reads;
+static unsigned scenario,reads,iterations;static int repeated;
 static jmp_buf finished;
 static uint32_t descriptors[484][2];
 static void event(char name,uint32_t value){
@@ -21,8 +21,8 @@ static void event(char name,uint32_t value){
         *(uint32_t *)(globals+0xa4a),*(uint32_t *)(globals+0xa4e));
 }
 static uint32_t clock_value(void){
-    assert(reads<loop_cases[scenario].count);
-    uint32_t value=loop_cases[scenario].clocks[reads++];event('C',value);return value;
+    assert(repeated||reads<loop_cases[scenario].count);
+    uint32_t value=repeated?(scenario>=8?0xfffffff0u:1000u)+reads++*(scenario%4):loop_cases[scenario].clocks[reads++];event('C',value);return value;
 }
 void cleanup(void){event('U',0);if(loop_cases[scenario].world_clock)clock_value();}
 void calculate(void){event('A',0);if(loop_cases[scenario].world_clock)clock_value();}
@@ -31,7 +31,7 @@ void hud(void){event('V',*(uint16_t *)(globals+0xa6a));}
 void handle(void){event('H',0);} void music(void){event('S',0);}
 void factory(void){event('F',0);if(loop_cases[scenario].factory_clock)clock_value();}
 void keys(void){event('K',0);}
-void misc(void){event('M',0);longjmp(finished,1);}
+void misc(void){event('M',0);if(++iterations==(repeated?64u:1u))longjmp(finished,1);}
 #define WRAP(name) extern void name##_fb(void); \
 __asm__(".text\n.align 2\n.globl _" #name "_fb\n_" #name "_fb:\n" \
 "mflr r0\nstw r0,8(r1)\nstwu r1,-64(r1)\nstw r2,20(r1)\nbl _" #name "\nlwz r2,20(r1)\naddi r1,r1,64\nlwz r0,8(r1)\nmtlr r0\nblr\n");
@@ -47,8 +47,8 @@ static void jump_to(unsigned char *at,void *destination){
     w[0]=0x3d800000|(uint32_t)(p>>16);w[1]=0x618c0000|(p&65535);w[2]=0x7d8903a6;w[3]=0x4e800420;
 }
 int main(int argc,char **argv){
-    if(argc<3||argc>4)return 2;
-    unsigned overlay=argc==4?(unsigned)strtoul(argv[3],NULL,10):0;assert(overlay<=2);alarm(15);
+    if(argc<3||argc>5)return 2;repeated=argc==5;assert(!repeated||!strcmp(argv[4],"repeat"));
+    unsigned overlay=argc>=4?(unsigned)strtoul(argv[3],NULL,10):0;assert(overlay<=2);alarm(15);
     unsigned char *code=read_file(argv[1],455780)+128,*literals=read_file(argv[2],11812),*heap=calloc(1,65536);
     globals=calloc(1,0x1300);assert(globals&&heap);uint32_t toc[489]={0};
     for(unsigned i=0;i<484;i++){
@@ -61,12 +61,12 @@ int main(int argc,char **argv){
     for(unsigned i=0;i<sizeof(hooks)/sizeof(hooks[0]);i++)jump_to(code+hooks[i].offset,hooks[i].fn);
     MakeDataExecutable(code,433284);
     for(scenario=0;scenario<sizeof(loop_cases)/sizeof(loop_cases[0]);scenario++){
-        memset(globals,0,0x1300);reads=0;
+        memset(globals,0,0x1300);reads=iterations=0;
         *(void **)(globals+0x21c)=literals;*(void **)(globals+0x388)=heap;*(void **)(globals+0x38c)=heap;
         *(int16_t *)(globals+0xa52)=loop_cases[scenario].interval;
         *(int16_t *)(globals+0xa6a)=overlay;
         if(!setjmp(finished))invoke_fb(code+0x51a68,globals,toc,NULL,NULL,NULL);
-        assert(reads==loop_cases[scenario].count);event('Z',*(uint16_t *)(globals+0xa6a));
+        assert(repeated||reads==loop_cases[scenario].count);event('Z',*(uint16_t *)(globals+0xa6a));
     }
-    fputs("PASS10 original outer-loop clock/order schedules\n",stderr);return 0;
+    fprintf(stderr,"PASS10 original outer-loop clock/order schedules, %u iterations each\n",repeated?64u:1u);return 0;
 }
