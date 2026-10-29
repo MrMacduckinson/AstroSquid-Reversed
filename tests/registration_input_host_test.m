@@ -123,6 +123,21 @@ static NSModalResponse commandModal(NSAlert *alert,SEL selector){
         [app sendEvent:command];assert(commandMenuCalls==before&&queuedKeyEvents.count==1&&queuedKeyEvents[0]==command);
         assert(command.isARepeat==repeat&&command.timestamp==123);[queuedKeyEvents removeAllObjects];
     }
+    [ui resetRegistrationFields];ui.activeRegistrationField=0;
+    NSArray *typed=@[@"A",@"\t",@"B"];unsigned typedCodes[]={0,48,11};
+    unsigned menuBeforeTyping=commandMenuCalls;
+    for(unsigned i=0;i<3;i++){
+        NSEvent *event=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:200+i windowNumber:dispatchWindow.windowNumber context:nil characters:typed[i] charactersIgnoringModifiers:typed[i] isARepeat:i==2 keyCode:typedCodes[i]];
+        [app sendEvent:event];assert(queuedKeyEvents[i]==event);
+    }
+    assert(commandMenuCalls==menuBeforeTyping&&queuedKeyEvents.count==3);
+    observedWallTick=1000;[self pollMenu];assert(queuedKeyEvents.count==3&&!fields[0].name[0]);
+    [self frameExpect:@"DWSKE"];assert(!strcmp(fields[0].name,"A")&&queuedKeyEvents.count==2);
+    [self frameExpect:@"DWSKE"];assert(ui.activeRegistrationField==1&&queuedKeyEvents.count==1);
+    assert([queuedKeyEvents[0] isARepeat]);
+    [self frameExpect:@"DWSKE"];assert(!strcmp(fields[1].name,"B")&&!queuedKeyEvents.count);
+    [ui resetRegistrationFields];ui.activeRegistrationField=-1;
+    puts("PASS ordinary application sendEvent typing, Tab, repeat and closed-gate retention through actual field frames");
     NSWindow *other=[[NSWindow alloc]initWithContentRect:NSMakeRect(0,0,64,64) styleMask:NSWindowStyleMaskTitled backing:NSBackingStoreBuffered defer:NO];
     unsigned before=commandMenuCalls;
     [app sendEvent:[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:NSEventModifierFlagCommand timestamp:0 windowNumber:other.windowNumber context:nil characters:@"q" charactersIgnoringModifiers:@"q" isARepeat:NO keyCode:12]];
