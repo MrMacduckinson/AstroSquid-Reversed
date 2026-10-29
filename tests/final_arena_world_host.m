@@ -67,6 +67,7 @@ static __weak AstroView *midView;
     if(!loopMode&&!midMode){[super copyKeyMap:bytes];return;}
     memset(bytes,0,16);unsigned input=(loopStep/8)%16;int codes[5]={126,125,123,124,55};
     for(unsigned i=0;i<5;i++)if(i==4?loopStep%7==0:(input&(1u<<i)))bytes[codes[i]>>3]|=1u<<(codes[i]&7);
+    if(getenv("ASTRO_WORLD_SPECIAL_INPUT")&&loopStep%11==0)bytes[58>>3]|=1u<<(58&7);
 }
 - (void)createPlayerAtX:(double)x y:(double)y {if(readyActive||((resumeMode||midMode)&&loopStep))playerTraceID=++nextEntityID;[super createPlayerAtX:x y:y];}
 - (void)handleMiscKeys {
