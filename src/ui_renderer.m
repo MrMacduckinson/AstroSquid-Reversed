@@ -106,8 +106,11 @@
     }
     _cameraX=0;_cameraY=0;
     if(initializeBackground)initializeBackground();
-    // MOVEMENUTO(Main,0) retains its clock gate while skipping rendered frames.
-    uint32_t previous=self.readTick?self.readTick():0;_transitioning=YES;
+    _transitioning=YES;[self finishMenuCameraMove];
+}
+- (void)finishMenuCameraMove {
+    // MOVEMENUTO(anchor,0) samples the clock even without rendered frames.
+    uint32_t previous=self.readTick?self.readTick():0;
     while(_transitioning){
         uint32_t now=self.readTick?self.readTick():0;
         if((int32_t)(now-previous)<0)continue;

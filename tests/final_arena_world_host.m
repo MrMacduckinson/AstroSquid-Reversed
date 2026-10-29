@@ -3,7 +3,7 @@
 #include "world_trace_host.m"
 static const char *retainedStarPath;
 static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode,resumeMode,midMode,midFull,endMode,endFull,resumeLong,gameoverEntry,gameoverReached,warmMode;
-static BOOL realHUD,panelMode,panelInput,panelCleanup,panelTail,cleanupDone,destroyMode;
+static BOOL realHUD,panelMode,panelInput,panelCleanup,panelTail,cleanupDone,destroyMode,menuMode;
 @interface CompositeHUD:AstroHUDRenderer
 @end
 @implementation CompositeHUD
@@ -40,7 +40,7 @@ static __weak AstroView *midView;
 - (void)finishGameOver {[super finishGameOver];if(panelCleanup){NSArray *objects=[ui valueForKey:@"objects"];assert(objects.count==1&&[objects[0][@"name"]isEqual:@"Unnamed"]);[self dumpWorldTrace:@"panel-cleanup"];printf("Z\t%u\t%u\n",compositeClocks,observedWallTick);puts("W\tcleanup-complete");cleanupDone=YES;if(panelTail)return;@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}}
 - (BOOL)menuMouseButtonPressed {return panelInput?NO:[super menuMouseButtonPressed];}
 - (void)pollMenuMouse {if(!panelInput)[super pollMenuMouse];}
-- (void)reloadMainMenu {if(destroyMode&&cleanupDone){assert(!world.count&&!enemies.count&&!mapPlacements.count);printf("DEND\t%u\t0\t0\n",compositeClocks);puts("W\tdestroy-complete");@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super reloadMainMenu];}
+- (void)reloadMainMenu {if(destroyMode&&!menuMode&&cleanupDone){assert(!world.count&&!enemies.count&&!mapPlacements.count);printf("DEND\t%u\t0\t0\n",compositeClocks);puts("W\tdestroy-complete");@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super reloadMainMenu];}
 - (void)beginGameOver {if(gameoverEntry&&!warmMode){gameoverReached=YES;[self dumpWorldTrace:@"gameover-entry"];printf("K\tentry\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super beginGameOver];}
 - (void)delayGameTicks:(uint32_t)ticks {
  if(!warmMode){[super delayGameTicks:ticks];return;}
@@ -49,7 +49,7 @@ static __weak AstroView *midView;
  printf("D\t%u\t%u\t%u\n",warmFrames++,ticks,compositeClocks);compositeClocks+=ticks;
 }
 - (void)setGameCursorHidden:(BOOL)hidden {if(warmMode){assert(!hidden&&warmFrames==10);if(panelMode){puts("W\twarm-complete");return;}gameoverReached=YES;puts("W\tcomplete");@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}[super setGameCursorHidden:hidden];}
-- (void)display {if(loopMode||midMode){if(realHUD)[self drawHUD:!(panelTransitionRender||(panelInput&&warmFrames==10))];else if(hudRedraws)hudRedraws--;}else [super display];}
+- (void)display {if(menuMode&&cleanupDone&&!gameLoopActive){unsigned char bytes[32];printf("MENU\t%u\t%08x\t",compositeClocks,randomSeed);be64(bytes,ui.cameraX);be64(bytes+8,ui.cameraY);dump(bytes,16);putchar('\t');be64(bytes,menuScroll.x);be64(bytes+8,menuScroll.y);dump(bytes,16);putchar('\n');for(unsigned i=0;i<3000;i++){printf("MS\t%u\t",i);be64(bytes,stars[i].brightness);be64(bytes+8,stars[i].x);be64(bytes+16,stars[i].y);be64(bytes+24,stars[i].speed);dump(bytes,32);putchar('\n');}puts("W\tmenu-constructed");@throw [NSException exceptionWithName:@"TraceFinished" reason:nil userInfo:nil];}if(loopMode||midMode){if(realHUD)[self drawHUD:!(panelTransitionRender||(panelInput&&warmFrames==10))];else if(hudRedraws)hudRedraws--;}else [super display];}
 - (void)copyKeyMap:(unsigned char *)bytes {
     if(midMode){memset(bytes,0,16);return;}
     if(!loopMode){[super copyKeyMap:bytes];return;}
@@ -80,7 +80,7 @@ static __weak AstroView *midView;
     snprintf(resumeLabel,sizeof resumeLabel,"mid%u",loopStep);tracePhase=resumeLabel;
 }
 - (void)runCompositeArena:(const char *)phaseOutput {
-    realHUD=getenv("ASTRO_WORLD_REAL_HUD")!=NULL;panelMode=getenv("ASTRO_WORLD_PANEL")!=NULL;panelInput=getenv("ASTRO_WORLD_PANEL_INPUT")!=NULL;panelCleanup=getenv("ASTRO_WORLD_PANEL_CLEANUP")!=NULL;panelTail=getenv("ASTRO_WORLD_PANEL_TAIL")!=NULL;destroyMode=getenv("ASTRO_WORLD_DESTROY")!=NULL;assert(!destroyMode||panelTail);assert(!panelTail||panelCleanup);assert(!panelCleanup||panelInput);assert(!panelInput||panelMode);if(panelInput)memset(highscores,0,sizeof(highscores));assert(!panelMode||realHUD);if(realHUD){CompositeHUD *observer=[[CompositeHUD alloc]initWithGame:game ui:ui];observer.didDrawSprite=hud.didDrawSprite;hud=observer;}
+    realHUD=getenv("ASTRO_WORLD_REAL_HUD")!=NULL;panelMode=getenv("ASTRO_WORLD_PANEL")!=NULL;panelInput=getenv("ASTRO_WORLD_PANEL_INPUT")!=NULL;panelCleanup=getenv("ASTRO_WORLD_PANEL_CLEANUP")!=NULL;panelTail=getenv("ASTRO_WORLD_PANEL_TAIL")!=NULL;destroyMode=getenv("ASTRO_WORLD_DESTROY")!=NULL;menuMode=getenv("ASTRO_WORLD_MENU")!=NULL;assert(!menuMode||destroyMode);if(menuMode){ui.unlockedLevel=16;ui.registered=NO;}assert(!destroyMode||panelTail);assert(!panelTail||panelCleanup);assert(!panelCleanup||panelInput);assert(!panelInput||panelMode);if(panelInput)memset(highscores,0,sizeof(highscores));assert(!panelMode||realHUD);if(realHUD){CompositeHUD *observer=[[CompositeHUD alloc]initWithGame:game ui:ui];observer.didDrawSprite=hud.didDrawSprite;hud=observer;}
     warmMode=phaseOutput&&!strncmp(phaseOutput,"resumewarm",10);gameoverEntry=warmMode||(phaseOutput&&!strncmp(phaseOutput,"resumegameover",14));resumeLong=gameoverEntry||(phaseOutput&&!strncmp(phaseOutput,"resumelong",10));endFull=phaseOutput&&!strncmp(phaseOutput,"endfull",7);endMode=phaseOutput&&!strncmp(phaseOutput,"end",3);midFull=phaseOutput&&!strncmp(phaseOutput,"midfull",7);midMode=endMode||(phaseOutput&&!strncmp(phaseOutput,"mid",3));resumeMode=phaseOutput&&!strncmp(phaseOutput,"resume",6);loopMode=resumeMode||(phaseOutput&&!strncmp(phaseOutput,"loop",4));
     if(panelMode)assert(warmMode);
     BOOL chainMode=phaseOutput&&!strcmp(phaseOutput,"chain");

@@ -8,7 +8,7 @@ static FILE *input_file;static long input_size;static const char *data_directory
 static unsigned clock_reads,opens,records,map_records,scene_records;
 static int advancing,load_mode,start_mode,run_mode,chain_mode,loop_mode,resume_mode,mid_mode,mid_full,end_mode,end_full,resume_long,gameover_entry,gameover_reached,warm_mode;
 static unsigned warm_frames,panel_world_birth;
-static int real_hud,panel_mode,input_mode,panel_active,cleanup_mode,tail_mode,cleanup_done,destroy_mode;
+static int real_hud,panel_mode,input_mode,panel_active,cleanup_mode,tail_mode,cleanup_done,destroy_mode,menu_mode;
 static unsigned input_index;
 static const unsigned char panel_input[]={65,66,28,67,13};
 static Boolean panel_event(EventMask mask,EventRecord *event){assert(panel_active&&mask==0x28&&input_index<sizeof(panel_input));memset(event,0,sizeof(*event));event->what=keyDown;event->message=panel_input[input_index++];return true;}
@@ -34,6 +34,7 @@ void panel_ready(void){
 }
 void panel_save(void){assert(input_mode&&input_index==5);phase="panel-submit";snapshot();printf("V\t%u\t%u\t",clock_reads,*(unsigned *)(world_globals+0xa4a));hex(world_globals+0x6db,world_globals[0x6da]);putchar('\n');printf("Q\t%d\n",*(short *)(world_globals+0xa6c));for(unsigned i=1;i<=10;i++){unsigned char *name=*(unsigned char **)(world_globals+0xa6e)+i*256;printf("H\t%u\t%d\t",i,(*(int **)(world_globals+0xa72))[i]);hex(name+1,name[0]);putchar('\n');}puts("W\tinput-complete");if(cleanup_mode)return;longjmp(loop_done,1);}
 static void panel_dispose(void *pointer){unsigned char *node=pointer;int done=cleanup_mode&&panel_active&&allocation(pointer)&&allocation(pointer)->size==308&&node[40]==12&&!memcmp(node+41,"GameOverFade",12);world_dispose(pointer);if(done){phase="panel-cleanup";snapshot();printf("Z\t%u\t%u\n",clock_reads,*(unsigned *)(world_globals+0xa4a));puts("W\tcleanup-complete");cleanup_done=1;if(tail_mode)return;longjmp(loop_done,1);}}
+void menu_constructed(void){unsigned char *g=world_globals;assert(menu_mode&&!*(void **)(g+0xa76)&&!*(void **)(g+0x5ae));printf("MENU\t%u\t%08x\t",clock_reads,*(unsigned *)(g+0x244));hex(g+0xea2,16);putchar('\t');hex(g+0xa58,16);putchar('\n');for(unsigned i=0;i<3000;i++){printf("MS\t%u\t",i);hex(*(unsigned char **)(g+0xa54)+32+i*32,32);putchar('\n');}puts("W\tmenu-constructed");longjmp(loop_done,1);}
 void world_destroyed(void){assert(destroy_mode&&!*(void **)(world_globals+0xa76)&&!*(void **)(world_globals+0x5ae));printf("DEND\t%u\t0\t0\n",clock_reads);puts("W\tdestroy-complete");longjmp(loop_done,1);}
 void gameover_enter(void){gameover_reached=1;phase="gameover-entry";snapshot();printf("K\tentry\t%u\t%u\t%u\n",clock_reads,*(unsigned *)(world_globals+0xa4a),*(unsigned *)(world_globals+0xa4e));longjmp(loop_done,1);}
 void end_sound(unsigned char *name){double pan=NAN;world_sound(name,&pan);}
@@ -70,11 +71,11 @@ void arena_close(int number){assert(number==1&&input_file&&!fclose(input_file));
 void arena_stop(void){puts("A\tstop");}
 void arena_play(unsigned handle){if((mid_full||end_full)&&handle==0x4321)puts("A\tplay1");else {assert(handle==0x1234);puts("A\tplay2");}if(end_full&&handle==0x4321){phase="end-pre-card";snapshot();printf("K\tend\t%u\t%u\t%u\n",clock_reads,*(unsigned *)(world_globals+0xa4a),*(unsigned *)(world_globals+0xa4e));longjmp(loop_done,1);}}
 #define WRAP(name) extern void name##_fb(void); __asm__(".text\n.align 2\n.globl _" #name "_fb\n_" #name "_fb:\nmflr r0\nstw r0,8(r1)\nstwu r1,-64(r1)\nstw r2,20(r1)\nbl _" #name "\nlwz r2,20(r1)\naddi r1,r1,64\nlwz r0,8(r1)\nmtlr r0\nblr\n");
-WRAP(world_destroyed) WRAP(panel_save) WRAP(panel_ready) WRAP(gameover_enter) WRAP(end_sound) WRAP(mid_observe) WRAP(loop_noop) WRAP(loop_keys) WRAP(loop_misc)
+WRAP(menu_constructed) WRAP(world_destroyed) WRAP(panel_save) WRAP(panel_ready) WRAP(gameover_enter) WRAP(end_sound) WRAP(mid_observe) WRAP(loop_noop) WRAP(loop_keys) WRAP(loop_misc)
 WRAP(arena_ready) WRAP(arena_system) WRAP(arena_folder) WRAP(arena_open) WRAP(arena_read) WRAP(arena_readfile)
 WRAP(arena_eof) WRAP(arena_length) WRAP(arena_close) WRAP(arena_stop) WRAP(arena_play)
 int main(int argc,char **argv){
-    real_hud=getenv("ASTRO_WORLD_REAL_HUD")!=NULL;panel_mode=getenv("ASTRO_WORLD_PANEL")!=NULL;input_mode=getenv("ASTRO_WORLD_PANEL_INPUT")!=NULL;cleanup_mode=getenv("ASTRO_WORLD_PANEL_CLEANUP")!=NULL;tail_mode=getenv("ASTRO_WORLD_PANEL_TAIL")!=NULL;destroy_mode=getenv("ASTRO_WORLD_DESTROY")!=NULL;assert(!destroy_mode||tail_mode);assert(!tail_mode||cleanup_mode);assert(!cleanup_mode||input_mode);assert(!input_mode||panel_mode);assert(!panel_mode||real_hud);
+    real_hud=getenv("ASTRO_WORLD_REAL_HUD")!=NULL;panel_mode=getenv("ASTRO_WORLD_PANEL")!=NULL;input_mode=getenv("ASTRO_WORLD_PANEL_INPUT")!=NULL;cleanup_mode=getenv("ASTRO_WORLD_PANEL_CLEANUP")!=NULL;tail_mode=getenv("ASTRO_WORLD_PANEL_TAIL")!=NULL;destroy_mode=getenv("ASTRO_WORLD_DESTROY")!=NULL;menu_mode=getenv("ASTRO_WORLD_MENU")!=NULL;assert(!menu_mode||destroy_mode);assert(!destroy_mode||tail_mode);assert(!tail_mode||cleanup_mode);assert(!cleanup_mode||input_mode);assert(!input_mode||panel_mode);assert(!panel_mode||real_hud);
     if(argc<6||argc>9)return 2;alarm(30);data_directory=argv[5];advancing=argc>=7;if(advancing)assert(!strcmp(argv[6],"advancing"));
     warm_mode=argc>=8&&!strncmp(argv[7],"resumewarm",10);gameover_entry=warm_mode||(argc>=8&&!strncmp(argv[7],"resumegameover",14));resume_long=gameover_entry||(argc>=8&&!strncmp(argv[7],"resumelong",10));end_full=argc>=8&&!strncmp(argv[7],"endfull",7);end_mode=argc>=8&&!strncmp(argv[7],"end",3);mid_full=argc>=8&&!strncmp(argv[7],"midfull",7);mid_mode=end_mode||(argc>=8&&!strncmp(argv[7],"mid",3));resume_mode=argc>=8&&!strncmp(argv[7],"resume",6);loop_mode=resume_mode||(argc>=8&&!strncmp(argv[7],"loop",4));chain_mode=argc>=8&&!strcmp(argv[7],"chain");run_mode=argc>=8&&!strncmp(argv[7],"run",3);start_mode=mid_mode||loop_mode||chain_mode||run_mode||(argc>=8&&!strncmp(argv[7],"start",5));load_mode=argc>=8&&(!strncmp(argv[7],"load",4)||start_mode);
     if(resume_long)alarm(180);if(panel_mode)assert(warm_mode);
@@ -105,7 +106,8 @@ int main(int argc,char **argv){
     for(unsigned i=0;i<sizeof(hooks)/sizeof(hooks[0]);i++)jump_to(code+hooks[i].at,hooks[i].fn);MakeDataExecutable(code,433284);
     if(panel_mode){set_pointer(g,0xa72,calloc(12,sizeof(int)));jump_to(code+0x2b290,panel_ready_fb);jump_to(code+0x44e10,loop_noop_fb);MakeDataExecutable(code,433284);}
     if(input_mode){set_pointer(g,0xa6e,calloc(12,256));jump_to(code+0x63dc4,panel_save_fb);jump_to(code+0x41448,loop_noop_fb);MakeDataExecutable(code,433284);}
-    if(destroy_mode){jump_to(code+0x64154,world_destroyed_fb);MakeDataExecutable(code,433284);}
+    if(menu_mode){set_short(g,0xcce,16);jump_to(code+0x45af0,menu_constructed_fb);MakeDataExecutable(code,433284);}
+    if(destroy_mode&&!menu_mode){jump_to(code+0x64154,world_destroyed_fb);MakeDataExecutable(code,433284);}
     FSRef ref;ResFileRefNum rf;HFSUniStr255 fork;assert(!FSPathMakeRef((const UInt8 *)argv[3],&ref,NULL));assert(!FSGetResourceForkName(&fork));assert(!FSOpenResourceFile(&ref,fork.length,fork.unicode,fsRdPerm,&rf));UseResFile(rf);
     if(real_hud){Str255 text;for(int i=1;i<=256;i++){GetIndString(text,129,i);text[text[0]+1]=0;hud_font_widths[i]=atof((char *)text+1)/32;}hud_font_widths[32]=.2;set_pointer(g,0xeb6,hud_font_widths);
         unsigned drawing[]={0x3a278,0x41730,0x3572c,0x342b4};for(unsigned i=0;i<4;i++)jump_to(code+drawing[i],loop_noop_fb);MakeDataExecutable(code,433284);}

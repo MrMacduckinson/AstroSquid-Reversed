@@ -13,6 +13,7 @@ typedef GLuint (^AstroUITextureLoader)(NSInteger texture);
 @property(nonatomic,readonly) double panelOffset;
 @property(nonatomic,readonly) double cameraX,cameraY,cameraStepX,cameraStepY;
 - (void)advanceMenuCamera;
+- (void)finishMenuCameraMove;
 - (void)animateMenuObjects;
 - (void)handleSpritesAtTick:(uint32_t)tick;
 - (void)beginPauseExit;
