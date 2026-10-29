@@ -133,7 +133,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     BOOL simulationRender,deferPresent,menuFrameActive;
     uint32_t worldRenderTick,visualRateTick;
     int16_t visualFrames,hudRedraws;
-    BOOL panelTransitionRender;
+    BOOL panelTransitionRender,hudClockActive;
     int32_t visualSprites;
     double visualRate;
     BOOL visualDebug,wallClockPoll,nestedWorldRender,stringOverflowActive;
@@ -384,7 +384,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self refreshKeyLabels];
     [self loadScores];
     hud=[[AstroHUDRenderer alloc] initWithGame:game ui:ui];
-    hud.didDrawSprite=^(NSInteger sprite,double x,double y,double w,double h){[weakView countSpriteX:x y:y width:w height:h];};
+    hud.didDrawSprite=^(NSInteger sprite,double x,double y,double w,double h){[weakView recordHUDSpriteX:x y:y width:w height:h];};
     menuVisible=YES;splashVisible=YES;
     return self;
 }
@@ -499,6 +499,10 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     glEnable(GL_TEXTURE_2D);glBindTexture(GL_TEXTURE_2D,texture);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     glColor4d(1,1,1,scene->alpha);glBegin(GL_QUADS);
     for(int i=0;i<4;i++) {glTexCoord2d(uv[i*2],uv[i*2+1]);glVertex2d(scene->xy[i*2],scene->xy[i*2+1]);}glEnd();
+}
+- (void)recordHUDSpriteX:(double)x y:(double)y width:(double)w height:(double)h {
+    if(simulationRender||panelTransitionRender||hudClockActive){++renderClock;(void)[self playerClockTick];}
+    [self countSpriteX:x y:y width:w height:h];
 }
 - (void)drawHUD:(BOOL)consume {
     if(consume&&!hudRedraws)return;
@@ -1927,13 +1931,13 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             menuScroll.x,menuScroll.y,ui.cameraStepX,ui.cameraStepY,ui.frameInterval,&randomSeed,NULL,0,1);
     }
     if(overlay)[self pollMenuMouse];
-    BOOL previous=deferPresent,previousMenuFrame=menuFrameActive;deferPresent=YES;menuFrameActive=!overlay;
+    BOOL previous=deferPresent,previousMenuFrame=menuFrameActive,previousHUDClock=hudClockActive;deferPresent=YES;menuFrameActive=!overlay;hudClockActive=overlay;
     @try {
         [self display];
         if([ui.anchor isEqual:@"Pause"])[audio serviceMusic];
         if(overlay)[ui animateTicks:1];else [ui animateMenuObjects];
         if(!previous)[self presentFrame];
-    } @finally {deferPresent=previous;menuFrameActive=previousMenuFrame;}
+    } @finally {deferPresent=previous;menuFrameActive=previousMenuFrame;hudClockActive=previousHUDClock;}
 }
 - (void)finishMenuNavigation {
     if(!navigationButton)return;
@@ -2529,11 +2533,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)finishGameOver {
     BOOL entered=ui.editingHighscore>0;
-    [ui beginGameOverExit];BOOL previous=deferPresent;
+    [ui beginGameOverExit];BOOL previous=deferPresent,previousHUDClock=hudClockActive;hudClockActive=YES;
     @try {
         deferPresent=NO;[self display];
         deferPresent=YES;[self display];
-    } @finally {deferPresent=previous;}
+    } @finally {deferPresent=previous;hudClockActive=previousHUDClock;}
     gameEndRequested=YES;gameEndHighscores=entered;
     if(entered){ui.editingHighscore=astro_scores_insert(highscores,score,scoreEditor.name);[self saveScores];}
     [ui finishGameOverExit];
