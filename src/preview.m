@@ -501,7 +501,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     for(int i=0;i<4;i++) {glTexCoord2d(uv[i*2],uv[i*2+1]);glVertex2d(scene->xy[i*2],scene->xy[i*2+1]);}glEnd();
 }
 - (void)recordHUDSpriteX:(double)x y:(double)y width:(double)w height:(double)h {
-    if(simulationRender||panelTransitionRender||hudClockActive){++renderClock;(void)[self playerClockTick];}
+    // ENDDIALOGCLEAR also creates timed temporary HUD sprites on every page.
+    if(simulationRender||panelTransitionRender||hudClockActive||(!menuVisible&&flow.phase==ASTRO_FLOW_ENDING)){++renderClock;(void)[self playerClockTick];}
     [self countSpriteX:x y:y width:w height:h];
 }
 - (void)drawHUD:(BOOL)consume {
@@ -512,7 +513,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [hud drawState:&overlay texture:^GLuint(NSInteger n){return [self texture:n];}
         framebufferWidth:(GLsizei)bounds.size.width height:(GLsizei)bounds.size.height];
     // DRAWOVERLAY restores render offsets through int32; CALC refreshes bounds later.
-    if(consume||simulationRender||panelTransitionRender||hudClockActive)camera=-(double)astro_ppc_i32(-camera);
+    if(consume||simulationRender||panelTransitionRender||hudClockActive||(!menuVisible&&flow.phase==ASTRO_FLOW_ENDING))camera=-(double)astro_ppc_i32(-camera);
     if(consume)hudRedraws--;
 }
 - (void)drawRect:(NSRect)dirty {

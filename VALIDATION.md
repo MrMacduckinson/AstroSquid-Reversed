@@ -52,6 +52,17 @@ Current bounded evidence:
   coupled world comparison beyond boss destruction; it does not include the
   subsequent card presentation, four ending pages or return to GameOver.
 
+- Extending the final route through the end card, four ending pages and
+  GameOver entry matches 2,738,066 records (ENDING_VERIFIED). The held-key
+  sequence includes five presentations and four Delay60 intervals. This found
+  68 missing clock reads: original ENDDIALOGCLEAR creates 17 temporary HUD
+  sprites per ending page. Production now accounts for actual ending HUD sprite
+  births/clocks and its integer camera restoration; the fixture draws that HUD
+  rather than adding a fixed clock correction. Final K/entry clocks match
+  2132438/2131836/2132229. The separate card-delay regression passes. This is
+  still a controlled high-health route and stops before the GameOver panel;
+  text/glyph/pixel coverage remains as scoped in the separate card tests.
+
 - `tests/gameover_held_host.sh` matches171 records from three original GAMEOVER
   schedules with held mouse and queued A/B/Enter at intervals1/2/3. The original
   TRANS and DOMOUSE body execute; a validated PC-independent prologue trampoline
