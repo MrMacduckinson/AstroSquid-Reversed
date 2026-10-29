@@ -11,3 +11,7 @@ trap 'rm "$scratch"' EXIT
 build/gameover_input_host_test assets > "$scratch"
 cmp tests/gameover_input_native.csv "$scratch"
 echo 'PASS6 original/host GameOver input/gate schedules with real queued editing'
+
+ASTRO_HUD_CLOCK_MODEL=1 build/gameover_input_host_test assets > "$scratch"
+cmp tests/gameover_input_hud_clock_native.csv "$scratch"
+echo "PASS804 input/exit records with native-proven HUD clock model"

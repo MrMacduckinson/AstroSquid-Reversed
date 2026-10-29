@@ -7,6 +7,8 @@
 #include <sys/stat.h>
 static unsigned char *exit_globals;
 static unsigned exit_case,recording,records;
+/* Clock-only HUD observer:17 reads verified with original LMNEWSPRITE separately. */
+static int hud_clock_model;
 static unsigned char button_node[312],fade_node[312];
 static unsigned clock_reads,key_polls,queued,setup_reads;
 static unsigned char saved_fields[0x454];
@@ -27,13 +29,14 @@ static Boolean input_event(EventMask mask,EventRecord *record){
 void exit_flush(void){assert(setup_reads==1+(exit_case>=3));assert(*(void **)(exit_globals+0xa06)==(exit_case>=3?exit_globals+0x5b2:NULL));if(exit_case>=3)assert(*(double *)(exit_globals+0x7ec)==0);if(exit_case<3)assert(!memcmp(exit_globals+0x5b2,saved_fields,sizeof(saved_fields)));recording=1;clock_reads=key_polls=queued=0;*(uint32_t *)(exit_globals+0xa4a)=1000;}
 void exit_keys(void){unsigned any=exit_case>=3||++key_polls>=2;*(int16_t *)(exit_globals+0xab6)=any;event_value('K',any);}
 void exit_animate(void){event('A');}void exit_music(void){event('S');}
-void exit_world(void){event('R');}void exit_panel(void){event('O');}void exit_hud(void){event('H');}void exit_swap(void){event('W');}
+void exit_world(void){event('R');}void exit_panel(void){event('O');}void exit_hud(void){event('H');if(recording&&hud_clock_model)for(unsigned i=0;i<17;i++)clock_tick();}void exit_swap(void){event('W');}
 void exit_score(void){event('I');}
 void *exit_lookup(unsigned char *name){assert(name);if(name[0]==10&&!memcmp(name+1,"GameOverOK",10))return button_node;assert(name[0]==12&&!memcmp(name+1,"GameOverFade",12));return fade_node;}
 void exit_change(unsigned char *node,unsigned id){assert(node==button_node&&id==901);*(int16_t *)(node+38)=id;event('P');}
 void exit_kill(void *node){assert(node==button_node||node==fade_node);event(node==button_node?'B':'F');}
 BRIDGE(exit_keys) BRIDGE(exit_flush) BRIDGE(exit_animate) BRIDGE(exit_music) BRIDGE(exit_world) BRIDGE(exit_panel) BRIDGE(exit_hud) BRIDGE(exit_swap) BRIDGE(exit_score) BRIDGE(exit_lookup) BRIDGE(exit_change) BRIDGE(exit_kill)
 int main(int argc,char **argv){
+    hud_clock_model=getenv("ASTRO_HUD_CLOCK_MODEL")!=NULL;
     if(argc!=4)return 2;alarm(15);struct stat input_stat;assert(!stat(argv[1],&input_stat)&&input_stat.st_size==455780&&!stat(argv[2],&input_stat)&&input_stat.st_size==11812);unsigned char *code=read_file(argv[1])+128,*lit=read_file(argv[2]),*g=calloc(1,0x1300),*heap=calloc(1,0x100000);assert(g&&heap);exit_globals=g;
     uint32_t toc[489]={0};for(unsigned i=0;i<484;i++){
         void *fn=dlsym(RTLD_DEFAULT,import_names[i]);if(!strcmp(import_names[i],"TickCount"))fn=clock_tick;

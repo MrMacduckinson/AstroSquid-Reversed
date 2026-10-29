@@ -6,7 +6,7 @@
 static unsigned exit_case,records,clockReads,keyPolls,alerts;
 static AstroScoreEditor *observedEditor;
 static uint32_t *observedWall;
-static BOOL observing;
+static BOOL observing,hudClockModel;
 static AstroUIRenderer *observedUI;
 static void eventValue(char code,unsigned value){
     if(!observing)return;records++;
@@ -31,7 +31,7 @@ static void event(char code){eventValue(code,0);}
 @interface ExitHUD:AstroHUDRenderer
 @end
 @implementation ExitHUD
-- (void)drawState:(const AstroHUDState *)state texture:(AstroUITextureLoader)texture framebufferWidth:(GLsizei)w height:(GLsizei)h {event('H');}
+- (void)drawState:(const AstroHUDState *)state texture:(AstroUITextureLoader)texture framebufferWidth:(GLsizei)w height:(GLsizei)h {event('H');if(observing&&hudClockModel){AstroHUDCommand c[32];size_t n=astro_hud_commands(state,c,32);for(size_t i=0;i<n;i++)if(c[i].kind==ASTRO_HUD_SPRITE)self.didDrawSprite(c[i].sprite,c[i].x,c[i].y,c[i].width,c[i].height);}}
 @end
 @interface InputAudio:AstroAudio
 @end
@@ -54,7 +54,7 @@ static void event(char code){eventValue(code,0);}
 - (void)checkExit {
     [timer invalidate];timer=nil;[audio stop];audio=[InputAudio new];selftestPath=campaignTestPath=nil;spriteMapsPreloaded=YES;splashVisible=NO;flow.phase=ASTRO_FLOW_PLAY;campaign.level=4;
     backgrounds=@[];parallaxData=[NSMutableData data];memset(stars,0,sizeof(stars));enemies=[NSMutableArray array];world=[NSMutableArray array];visualEffects=[NSMutableArray array];specialPolygons=[NSMutableArray array];specialFlashes=[NSMutableArray array];playerVisualDeleted=YES;playerHitVisual.active=NO;engineGlow=departureTrail=NO;
-    ui=[[ExitUI alloc]initWithAssets:assetPath error:NULL];hud=[[ExitHUD alloc]initWithGame:game ui:ui];observedUI=ui;observedEditor=&scoreEditor;observedWall=&observedWallTick;
+    hudClockModel=getenv("ASTRO_HUD_CLOCK_MODEL")!=NULL;AstroUISpriteDrawer callback=hud.didDrawSprite;ui=[[ExitUI alloc]initWithAssets:assetPath error:NULL];hud=[[ExitHUD alloc]initWithGame:game ui:ui];hud.didDrawSprite=callback;observedUI=ui;observedEditor=&scoreEditor;observedWall=&observedWallTick;
     [[self openGLContext]makeCurrentContext];GLuint framebuffer,color;glGenFramebuffersEXT(1,&framebuffer);glBindFramebufferEXT(GL_FRAMEBUFFER_EXT,framebuffer);glGenTextures(1,&color);glBindTexture(GL_TEXTURE_2D,color);glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,640,480,0,GL_RGBA,GL_UNSIGNED_BYTE,NULL);glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT,GL_COLOR_ATTACHMENT0_EXT,GL_TEXTURE_2D,color,0);assert(glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT)==GL_FRAMEBUFFER_COMPLETE_EXT);while(glGetError()!=GL_NO_ERROR){}
     for(exit_case=0;exit_case<6;exit_case++){
         [ui show:@"GameOver"];[ui animateTicks:60];ui.editingHighscore=exit_case>=3;ui.frameInterval=exit_case%3+1;ui.editingName=@"TEST";
