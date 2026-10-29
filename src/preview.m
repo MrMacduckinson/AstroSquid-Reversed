@@ -142,7 +142,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     NSTimer *timer;
     AstroAudio *audio;
     AstroUIRenderer *ui;
-    NSString *navigationButton;
+    NSString *navigationButton,*registeredSerial;
     NSMutableData *registrationKeyEvents;
     AstroHUDRenderer *hud;
     BOOL menuVisible,splashVisible;
@@ -339,10 +339,20 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     ui=[[AstroUIRenderer alloc] initWithAssets:path error:&error];
     if(!ui) {NSLog(@"Cannot load original interface: %@",error);return nil;}
     __weak AstroView *weakView=self;ui.readTick=^{return [weakView currentGameTick];};
-    ui.registered=YES;ui.registeredName=@"MACSPB";editingKey=-1;
+    ui.registered=YES;ui.registeredName=@"MACSPB";registeredSerial=@"UACHCUFD";editingKey=-1;
     ui.unlockedLevel=MAX(1,MIN(16,[[NSUserDefaults standardUserDefaults] integerForKey:@"AstroSquidUnlockedLevel"]));
     int defaults[6]={55,58,126,125,123,124};memcpy(controlKeys,defaults,sizeof(defaults));
     NSUserDefaults *preferences=[NSUserDefaults standardUserDefaults];
+    NSDictionary *registration=[preferences dictionaryForKey:@"AstroSquidRegistration"];
+    if([registration[@"name"]isKindOfClass:[NSString class]]&&[registration[@"serial"]isKindOfClass:[NSString class]]){
+        NSData *name=[registration[@"name"]dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:NO];
+        NSData *serial=[registration[@"serial"]dataUsingEncoding:NSMacOSRomanStringEncoding allowLossyConversion:NO];
+        if(name&&name.length<=255&&serial&&serial.length<=255){
+            registeredSerial=registration[@"serial"];
+            ui.registered=astro_registration_valid(name.bytes,name.length,serial.bytes,serial.length);
+            ui.registeredName=ui.registered?registration[@"name"]:@"Unregistered";
+        }
+    }
     NSDictionary *settings=[preferences dictionaryForKey:@"AstroSquidSettings"];
     preferenceFPS=settings[@"fps"]?[settings[@"fps"] shortValue]:60;
     ui.frameInterval=astro_frame_interval(preferenceFPS);
@@ -1663,17 +1673,19 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if([stage isEqual:@"write"]) {
         assert(controlKeys[0]==55&&fabs(ui.soundVolume-.6)<.001&&ui.musicVolume==1&&ui.smooth&&ui.unlockedLevel==1);
         assert(highscores[0].score==0&&preferenceFPS==60&&ui.frameInterval==1);splashVisible=NO;
+        [self display];AstroScoreEditor *fields=[ui registrationFields];fields[0].name[0]=0;strcpy(fields[1].name,"AAAAAAAA");
+        [self performMenuAction:@"RegOK"];assert(ui.registered&&ui.registeredName.length==0&&[registeredSerial isEqual:@"AAAAAAAA"]);
         [self testCaptureKey:14];
         [self performMenuAction:@"SetSmooth"];[self performMenuAction:@"SetSVolume"];[self performMenuAction:@"SetMVolume"];
         assert(astro_scores_insert(highscores,650,"Persistence Probe")==1);[self saveScores];
         campaign=(AstroCampaign){4,1,0,0};[self unlockStage];
-        assert(ui.unlockedLevel==7&&[preferences integerForKey:@"AstroSquidUnlockedLevel"]==0);
+        assert(ui.unlockedLevel==7&&[preferences integerForKey:@"AstroSquidUnlockedLevel"]==1);
         preferenceFPS=20;[self saveSettings];assert(ui.frameInterval==1&&[preferences integerForKey:@"AstroSquidUnlockedLevel"]==7);
         assert([preferences synchronize]);puts("PASS isolated preference write through actual UI handlers");
     } else if([stage isEqual:@"read"]) {
         assert(controlKeys[0]==14&&fabs(ui.soundVolume-.7)<.001&&ui.musicVolume==0&&!ui.smooth&&ui.unlockedLevel==7);
         assert(highscores[0].score==650&&!strcmp(highscores[0].name,"Persistence Probe"));
-        assert(preferenceFPS==20&&ui.frameInterval==3);
+        assert(preferenceFPS==20&&ui.frameInterval==3&&ui.registered&&ui.registeredName.length==0&&[registeredSerial isEqual:@"AAAAAAAA"]);
         [preferences removePersistentDomainForName:domain];assert([preferences synchronize]);
         puts("PASS new-process reload of keys, volumes, filter, unlocked stage and score; probe preferences removed");
     } else {fputs("Unknown preference probe stage\n",stderr);exit(2);}
@@ -1839,16 +1851,21 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     [self stepMenu];
     if(![ui.anchor isEqual:@"Pause"])[audio serviceMusic];
     if(overlay)observedWallTick=[self currentGameTick];
+    AstroScoreEditor *fields=[ui registrationFields];
+    if(!overlay&&!moving&&(fields[0].submitted||fields[1].submitted))[self handleMenuAction:@"RegOK" atPoint:[self currentMenuMousePoint]];
     if([ui.anchor isEqual:@"Pause"]&&paused)[self readPauseKeys];
     else if(!gameOverPanel)[self readKeyMap];
-    if(!overlay&&!moving&&ui.activeRegistrationField>=0&&registrationKeyEvents.length){
-        unsigned char ch=*(const unsigned char *)registrationKeyEvents.bytes;
-        [registrationKeyEvents replaceBytesInRange:NSMakeRange(0,1) withBytes:NULL length:0];
-        if([ui editRegistrationByte:ch]==ASTRO_SCORE_EDIT_ALERT&&![self resolveTextOverflow:&[ui registrationFields][ui.activeRegistrationField] byte:ch])return;
-    }
+    if(!overlay&&!moving&&ui.activeRegistrationField>=0&&![self pollRegistrationInput])return;
     [self pollHeldMenuMouse];
     if(navigationButton&&!ui.transitioning)[self finishMenuNavigation];
     if(gameOverPanel&&finishGameOver)[self finishGameOver];
+}
+- (BOOL)pollRegistrationInput {
+    if(!registrationKeyEvents.length)return YES;
+    unsigned char ch=*(const unsigned char *)registrationKeyEvents.bytes;
+    [registrationKeyEvents replaceBytesInRange:NSMakeRange(0,1) withBytes:NULL length:0];
+    if([ui editRegistrationByte:ch]==ASTRO_SCORE_EDIT_ALERT)return [self resolveTextOverflow:&[ui registrationFields][ui.activeRegistrationField] byte:ch];
+    return YES;
 }
 - (uint32_t)cardDelayClockTick {
     return (uint32_t)(uint64_t)floor(NSProcessInfo.processInfo.systemUptime*60);
@@ -2394,6 +2411,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)saveSettings {
     if(selftestPath||campaignTestPath)return;
+    [[NSUserDefaults standardUserDefaults]setObject:@{@"name":ui.registeredName?:@"",@"serial":registeredSerial?:@""} forKey:@"AstroSquidRegistration"];
     [[NSUserDefaults standardUserDefaults] setInteger:ui.unlockedLevel forKey:@"AstroSquidUnlockedLevel"];
     NSMutableArray *codes=[NSMutableArray array];for(int i=0;i<6;i++)[codes addObject:@(controlKeys[i])];
     [[NSUserDefaults standardUserDefaults] setObject:@{@"smooth":@(ui.smooth),@"sound":@(ui.soundVolume),
@@ -2408,16 +2426,17 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     return NSMakePoint(p.x*640/self.bounds.size.width,(self.bounds.size.height-p.y)*480/self.bounds.size.height);
 }
 - (BOOL)menuMouseButtonPressed {return ([NSEvent pressedMouseButtons]&1)!=0;}
-- (void)handleMenuMouseAtPoint:(NSPoint)p {
+- (void)handleMenuMouseAtPoint:(NSPoint)p {[self handleMenuAction:nil atPoint:p];}
+- (void)handleMenuAction:(NSString *)actionName atPoint:(NSPoint)p {
     if(navigationButton)return;
     if([ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0&&[ui scoreFieldContainsX:p.x y:p.y]) {
         scoreEditor.cursor=[ui scoreCursorAtX:p.x];[self refreshScoreEditor];
     }
     if(![ui.anchor isEqual:@"Pause"]&&![ui.anchor isEqual:@"GameOver"])[ui selectRegistrationFieldX:p.x y:p.y];
     if(menuMouseLatched)return;
-    NSString *name=[ui mouseDownX:p.x y:p.y];
+    NSString *name=actionName?:[ui mouseDownX:p.x y:p.y];
     AstroUIAction action=astro_ui_command(name.UTF8String).action;
-    if(action!=ASTRO_UI_NAVIGATE&&action!=ASTRO_UI_KEY)menuMouseLatched=YES;
+    if(action!=ASTRO_UI_NAVIGATE&&action!=ASTRO_UI_KEY&&action!=ASTRO_UI_REGISTER)menuMouseLatched=YES;
     [self performMenuAction:name];
 }
 - (void)pollHeldMenuMouse {
@@ -2452,6 +2471,19 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         if([name isEqual:@"Back"])[self saveSettings];
         [ui show:[NSString stringWithUTF8String:command.destination]];observedWallTick=[self currentGameTick];
         if(!ui.transitioning)[self finishMenuNavigation];
+    }
+    if(command.action==ASTRO_UI_REGISTER){
+        AstroScoreEditor *fields=[ui registrationFields];fields[0].submitted=fields[1].submitted=0;
+        [ui setButton:name pressed:YES];[self display];
+        ui.registeredName=@"Unregistered";
+        if(astro_registration_valid((const unsigned char *)fields[0].name,strlen(fields[0].name),(const unsigned char *)fields[1].name,strlen(fields[1].name))){
+            ui.registered=YES;
+            ui.registeredName=[[NSString alloc]initWithBytes:fields[0].name length:strlen(fields[0].name) encoding:NSMacOSRomanStringEncoding];
+            registeredSerial=[[NSString alloc]initWithBytes:fields[1].name length:strlen(fields[1].name) encoding:NSMacOSRomanStringEncoding];
+            [self saveSettings];navigationButton=[name copy];[ui show:@"Reg Thanks"];observedWallTick=[self currentGameTick];
+            if(!ui.transitioning)[self finishMenuNavigation];
+            while(navigationButton)[self pollMenu];
+        }else{[self delayGameTicks:6];[ui setButton:name pressed:NO];menuMouseLatched=YES;}
     }
     if(command.action==ASTRO_UI_CLEAR_SCORES){
         [ui setButton:name pressed:YES];[self display];[self delayGameTicks:3];

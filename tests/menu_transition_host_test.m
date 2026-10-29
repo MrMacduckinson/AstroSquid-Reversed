@@ -5,14 +5,18 @@
 #undef main
 #undef astro_stars_draw
 #import <OpenGL/glext.h>
+#include "registration_menu_cases.h"
 extern void astro_stars_draw(const AstroStar *,int,int,double,const AstroSceneSink *);
-static unsigned profile,route,reads,frame,actualClockCalls;static BOOL recording;
-static BOOL dispatchMode,routesMode,returnsMode,startupMode,startupInput,heldButton;static NSPoint heldPoint;
+static unsigned profile,route,reads,frame,actualClockCalls,registrationElapsed;static BOOL recording;
+static BOOL dispatchMode,routesMode,returnsMode,registrationMode,startupMode,startupInput,heldButton;static NSPoint heldPoint;
 static NSString *const routeButtons[]={@"Play",@"Continue",@"Back7",@"Back2",@"Highscores",@"Back4",@"Settings",@"SetKeys",@"Back6",@"Back",@"Register",@"Back3"};
 static NSString *const returnButtons[]={@"Yeah",@"Back5"};
+@interface AstroView(RegistrationTrace)
+- (void)registrationState:(char)phase;
+@end
 static FILE *star_dump;static AstroUIRenderer *observedUI;static AstroView *observedView;
 static uint64_t word(double x){uint64_t b;memcpy(&b,&x,8);return b;}
-static void snapshot(unsigned f){unsigned i=0;for(NSDictionary *object in [observedUI valueForKey:@"objects"]){NSString *name=object[@"name"];AstroUIMotion *s=[[[observedUI valueForKey:@"orbStates"]objectForKey:name]mutableBytes];uint32_t deadline=[[[observedUI valueForKey:@"hoverDeadlines"]objectForKey:name]unsignedIntValue];printf("N,%u,%u,%u,%u,%d,%d,%u",profile,route,f,i++,s->sprite,s->counter,deadline);double v[]={s->x,s->y,s->width,s->height};for(unsigned a=0;a<4;a++)printf(",%016llx",word(v[a]));putchar('\n');}assert(i==52);}
+static void snapshot(unsigned f){unsigned i=0;for(NSDictionary *object in [observedUI valueForKey:@"objects"]){NSString *name=object[@"name"];unsigned index=i++;if(registrationMode&&observedUI.registered&&[name isEqual:@"Register"])continue;AstroUIMotion *s=[[[observedUI valueForKey:@"orbStates"]objectForKey:name]mutableBytes];uint32_t deadline=[[[observedUI valueForKey:@"hoverDeadlines"]objectForKey:name]unsignedIntValue];printf("N,%u,%u,%u,%u,%d,%d,%u",profile,route,f,index,s->sprite,s->counter,deadline);double v[]={s->x,s->y,s->width,s->height};for(unsigned a=0;a<4;a++)printf(",%016llx",word(v[a]));putchar('\n');}assert(i==52);}
 void transition_stars_draw(const AstroStar *stars,int menu,int stage,double sx,const AstroSceneSink *sink){
  if(recording&&menu){uint64_t words[3000*4];for(unsigned i=0;i<3000;i++){double v[]={stars[i].brightness,stars[i].x,stars[i].y,stars[i].speed};for(unsigned a=0;a<4;a++)words[i*4+a]=CFSwapInt64HostToBig(word(v[a]));}assert(fwrite(words,8,3000*4,star_dump)==3000*4);
   printf("S,%u,%u,%u,%u,%016llx,%016llx",profile,route,frame,[[observedView valueForKey:@"randomSeed"]unsignedIntValue],word(observedUI.cameraX),word(observedUI.cameraY));double v[]={stars[0].brightness,stars[0].x,stars[0].y,stars[0].speed};for(unsigned a=0;a<4;a++)printf(",%016llx",word(v[a]));putchar('\n');}
@@ -26,19 +30,27 @@ void transition_stars_draw(const AstroStar *stars,int menu,int stage,double sx,c
 @interface TransitionAudio:AstroAudio
 @end
 @implementation TransitionAudio
-- (BOOL)playCue:(NSString *)name position:(double)p {if(recording){assert(dispatchMode&&[name isEqual:@"Click"]);printf("P,%u,%u,%016llx,%d\n",profile,route,word(p),[[observedView valueForKey:@"menuMouseLatched"]boolValue]);}return YES;}
+- (BOOL)playCue:(NSString *)name position:(double)p {if(recording){assert(dispatchMode&&[name isEqual:@"Click"]);printf("P,%u,%u,%016llx,%d\n",profile,route,word(p),[[observedView valueForKey:@"menuMouseLatched"]boolValue]);if(registrationMode)[observedView registrationState:'P'];}return YES;}
 - (void)serviceMusic {if(recording)printf("U,%u,%u,%u\n",profile,route,frame);}
 - (void)stop {}
 @end
 @interface TransitionView:AstroView
 - (void)checkTransitions;
+- (void)registrationState:(char)phase;
 @end
 @implementation TransitionView
-- (uint32_t)currentGameTick {actualClockCalls++;if(!recording)return 1000;assert(reads<10000);uint32_t t=1000+reads++;printf("T,%u,%u,%u",profile,route,t);if(dispatchMode)printf(",%d",menuMouseLatched);putchar('\n');return t;}
+- (uint32_t)currentGameTick {actualClockCalls++;if(!recording)return 1000;assert(reads<10000);uint32_t t=1000+reads+++(registrationMode?registrationElapsed:0);printf("T,%u,%u,%u",profile,route,t);if(dispatchMode)printf(",%d",menuMouseLatched);putchar('\n');return t;}
 - (void)copyKeyMap:(unsigned char *)map {memset(map,0,16);if(startupInput&&profile<3)map[4]=0x10;if(recording)printf("K,%u,%u,%u\n",profile,route,frame);}
 - (NSPoint)currentMenuMousePoint {return profile>=6?heldPoint:NSMakePoint(-30000,-30000);}
 - (BOOL)menuMouseButtonPressed {return heldButton;}
-- (void)saveSettings {if(recording){assert(dispatchMode&&route==(routesMode?9u:1u)&&[ui.anchor isEqual:@"Settings Menu"]);AstroUIMotion *s=[[[ui valueForKey:@"orbStates"]objectForKey:@"Back"]mutableBytes];uint32_t deadline=[[[ui valueForKey:@"hoverDeadlines"]objectForKey:@"Back"]unsignedIntValue];printf("I,%u,%u,%d,%u,%016llx,%016llx\n",profile,route,s->sprite,deadline,word(ui.cameraX),word(ui.cameraY));}}
+- (void)saveSettings {if(recording){if(registrationMode){[self registrationState:'I'];return;}assert(dispatchMode&&route==(routesMode?9u:1u)&&[ui.anchor isEqual:@"Settings Menu"]);AstroUIMotion *s=[[[ui valueForKey:@"orbStates"]objectForKey:@"Back"]mutableBytes];uint32_t deadline=[[[ui valueForKey:@"hoverDeadlines"]objectForKey:@"Back"]unsignedIntValue];printf("I,%u,%u,%d,%u,%016llx,%016llx\n",profile,route,s->sprite,deadline,word(ui.cameraX),word(ui.cameraY));}}
+- (void)registrationState:(char)phase {
+ AstroScoreEditor *fields=[ui registrationFields];AstroUIMotion *node=[[[ui valueForKey:@"orbStates"]objectForKey:@"RegOK"]mutableBytes];
+ printf("R,%u,%c,%u,%d,%d,%ld,%d,%d,%d,",profile,phase,frame,menuMouseLatched,ui.registered,(long)ui.activeRegistrationField,fields[0].submitted,fields[1].submitted,node->sprite);
+ for(NSString *text in @[ui.registeredName,registeredSerial]){NSData *data=[text dataUsingEncoding:NSMacOSRomanStringEncoding];const unsigned char *p=data.bytes;for(NSUInteger i=0;i<data.length;i++)printf("%02x",p[i]);if(text==ui.registeredName)putchar(',');}putchar('\n');
+}
+- (void)delayGameTicks:(uint32_t)ticks {if(registrationMode){assert(ticks==6);registrationElapsed+=ticks;[self registrationState:'L'];}else [super delayGameTicks:ticks];}
+- (BOOL)pollRegistrationInput {if(registrationMode&&recording)printf("V,%u,%u,%u\n",profile,route,frame);return [super pollRegistrationInput];}
 - (void)display {if(recording){[self drawRect:self.bounds];assert(!menuFrameActive);if(frame==0||!ui.transitioning){unsigned clocks=actualClockCalls;uint32_t seed=randomSeed;recording=NO;[self drawRect:self.bounds];recording=YES;assert(actualClockCalls==clocks&&randomSeed==seed);}}}
 - (void)presentFrame {if(recording){visualFrames=(int16_t)((uint16_t)visualFrames+1u);printf("W,%u,%u,%u\n",profile,route,frame++);assert(frame<1000);}}
 - (void)checkTransitions {
@@ -47,14 +59,19 @@ void transition_stars_draw(const AstroStar *stars,int menu,int stage,double sx,c
  for(profile=0;profile<(dispatchMode?9u:3u);profile++){
   recording=NO;ui=[[TransitionUI alloc]initWithAssets:assetPath error:NULL];assert(ui);observedUI=ui;if(routesMode){ui.registered=NO;ui.unlockedLevel=16;}ui.frameInterval=profile%3+1;[ui setValue:@(-599.5) forKey:@"cameraX"];[ui setValue:@(-344) forKey:@"cameraY"];
   for(NSDictionary *object in [ui valueForKey:@"objects"])[[ui valueForKey:@"hoverDeadlines"]setObject:@1000 forKey:object[@"name"]];
-  __weak TransitionView *weakSelf=self;ui.readTick=^{return [weakSelf currentGameTick];};randomSeed=0x12345678;menuScroll=(AstroVelocity){2,-1};visualFrames=0;visualRateTick=1000;visualDebug=NO;reads=0;menuMouseLatched=NO;assert(!navigationButton);
+  __weak TransitionView *weakSelf=self;ui.readTick=^{return [weakSelf currentGameTick];};randomSeed=0x12345678;menuScroll=(AstroVelocity){2,-1};visualFrames=0;visualRateTick=1000;visualDebug=NO;reads=registrationElapsed=0;menuMouseLatched=NO;assert(!navigationButton);
   for(unsigned i=1;i<=3000;i++)stars[i-1]=(AstroStar){80,(i*17)%640,(i*29)%480,i%5+1};
   if(startupMode){[ui setValue:@0 forKey:@"cameraX"];[ui setValue:@0 forKey:@"cameraY"];[ui show:@"Main Menu"];while(ui.transitioning)[ui advanceMenuCamera];splashVisible=YES;}
+  if(registrationMode){ui.registered=profile>=6;ui.registeredName=@"OLDN";registeredSerial=@"OLDC";ui.activeRegistrationField=0;AstroScoreEditor *fields=[ui registrationFields];
+   for(unsigned i=0;i<2;i++){astro_score_editor_begin(&fields[i]);strcpy(fields[i].name,i?(profile/3==1?registration_test_code:"INVALID"):registration_test_name);fields[i].submitted=1;}
+   [ui show:@"Register Menu"];while(ui.transitioning)[ui advanceMenuCamera];heldPoint=NSMakePoint(-30000,-30000);observedWallTick=1000;
+  }
   recording=YES;
-  for(route=0;route<(startupMode?1u:routesMode?12u:2u);route++){
-   frame=0;NSString *button=returnsMode?returnButtons[route]:routesMode?routeButtons[route]:route?@"Back":@"Settings";
+  for(route=0;route<(startupMode||registrationMode?1u:routesMode?12u:2u);route++){
+   frame=0;NSString *button=registrationMode?@"RegOK":returnsMode?returnButtons[route]:routesMode?routeButtons[route]:route?@"Back":@"Settings";
    if(returnsMode){recording=NO;[ui show:route?@"Reg Thanks":@"CreditsMenu"];while(ui.transitioning)[ui advanceMenuCamera];recording=YES;}
-   if(startupMode){heldButton=profile>=3;heldPoint=NSMakePoint(369,175);startupInput=YES;[self pollMenu];startupInput=NO;assert(!splashVisible);for(unsigned poll=0;ui.transitioning;poll++){assert(poll<10000);[self pollMenu];}}
+   if(registrationMode){heldButton=profile>=3;[self handleMenuAction:@"RegOK" atPoint:NSMakePoint(-30000,-30000)];[self registrationState:'Z'];}
+   else if(startupMode){heldButton=profile>=3;heldPoint=NSMakePoint(369,175);startupInput=YES;[self pollMenu];startupInput=NO;assert(!splashVisible);for(unsigned poll=0;ui.transitioning;poll++){assert(poll<10000);[self pollMenu];}}
    else if(dispatchMode){
     heldButton=profile>=3;assert(!menuMouseLatched);AstroUIMotion *s=[[[ui valueForKey:@"orbStates"]objectForKey:button]mutableBytes];NSPoint p=NSMakePoint((int)(ui.cameraX+s->x+s->width/2),(int)(ui.cameraY+s->y+s->height/2));heldPoint=p;[self handleMenuMouseAtPoint:p];assert(navigationButton);
     for(unsigned poll=0;navigationButton;poll++){assert(poll<10000);[self pollMenu];}
@@ -78,5 +95,5 @@ void transition_stars_draw(const AstroStar *stars,int menu,int stage,double sx,c
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
- assert(argc==3||argc==4);dispatchMode=argc==4;routesMode=dispatchMode&&!strcmp(argv[3],"routes");returnsMode=dispatchMode&&!strcmp(argv[3],"returns");startupMode=dispatchMode&&!strcmp(argv[3],"startup");assert(!dispatchMode||routesMode||returnsMode||startupMode||!strcmp(argv[3],"dispatch"));star_dump=fopen(argv[2],"wb");assert(star_dump);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];[[NSUserDefaults standardUserDefaults]setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}}forName:NSArgumentDomain];TransitionView *v=[[TransitionView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(v);[v checkTransitions];assert(!fclose(star_dump));
+ assert(argc==3||argc==4);dispatchMode=argc==4;routesMode=dispatchMode&&!strcmp(argv[3],"routes");returnsMode=dispatchMode&&!strcmp(argv[3],"returns");registrationMode=dispatchMode&&!strcmp(argv[3],"regok");startupMode=dispatchMode&&!strcmp(argv[3],"startup");assert(!dispatchMode||routesMode||returnsMode||registrationMode||startupMode||!strcmp(argv[3],"dispatch"));star_dump=fopen(argv[2],"wb");assert(star_dump);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];[[NSUserDefaults standardUserDefaults]setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}}forName:NSArgumentDomain];TransitionView *v=[[TransitionView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(v);[v checkTransitions];assert(!fclose(star_dump));
 }}

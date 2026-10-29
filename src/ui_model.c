@@ -69,3 +69,14 @@ void astro_ui_animate(AstroUIMotion *s,int32_t interval) {
     s->counter=(int32_t)((uint32_t)s->counter+1);
 }
 void astro_ui_panel_step(AstroUIMotion *s,double step) {s->y=step+s->y;}
+
+int astro_registration_valid(const unsigned char *name,size_t length,const unsigned char *code,size_t code_length){
+    if(length>255||(!name&&length)||!code||code_length!=8)return 0;
+    unsigned first=length?name[0]:0,second=length>1?name[1]:0,third=length>2?name[2]:0;
+    unsigned penultimate=length?name[length>1?length-2:0]:0;
+    unsigned p=penultimate*42%26,q=second*35%26,r=third*24%26,t=third*11%26;
+    unsigned a=(length*128%26+p)%26,b=(q+a)%26,c=(q+b)%26;
+    unsigned digits[]={a,(first*13%26+q)%26,(p+r)%26,b,(first*72%26+r)%26,c,(r+t)%26,(t+c)%26};
+    unsigned char expected[8];for(unsigned i=0;i<8;i++)expected[i]='A'+digits[i];
+    return memcmp(code,expected,8)==0;
+}

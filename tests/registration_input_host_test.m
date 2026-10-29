@@ -2,7 +2,7 @@
 #include "../src/preview.m"
 #undef main
 #import <objc/runtime.h>
-static NSMutableString *events;static BOOL observing,checkRegisterFocus;
+static NSMutableString *events;static BOOL observing,checkRegisterFocus,autoTest,autoHeld;
 @interface RegistrationInputUI:AstroUIRenderer @end
 @implementation RegistrationInputUI
 - (void)setButton:(NSString *)name pressed:(BOOL)pressed {if(checkRegisterFocus&&pressed&&[name isEqual:@"Register"])assert(self.activeRegistrationField==-1);[super setButton:name pressed:pressed];}
@@ -11,24 +11,31 @@ static NSMutableString *events;static BOOL observing,checkRegisterFocus;
 @end
 @interface RegistrationInputAudio:AstroAudio @end
 @implementation RegistrationInputAudio
+- (BOOL)playCue:(NSString *)name position:(double)position {if(observing&&autoTest){assert([name isEqual:@"Click"]);[events appendString:@"C"];}return YES;}
 - (void)serviceMusic {if(observing)[events appendString:@"S"];}
 @end
 @interface RegistrationInputView:AstroView @end
 @implementation RegistrationInputView
 - (uint32_t)currentGameTick {return 1000;}
 - (void)copyKeyMap:(unsigned char *)map {memset(map,0,16);}
-- (BOOL)menuMouseButtonPressed {return NO;}
+- (BOOL)menuMouseButtonPressed {return autoTest?autoHeld:NO;}
+- (NSPoint)currentMenuMousePoint {return NSMakePoint(-30000,-30000);}
 - (void)readKeyMap {if(observing)[events appendString:@"K"];}
-- (void)display {if(observing)[events appendString:@"D"];}
+- (void)display {if(observing)[events appendString:@"D"];if(autoTest){if(menuFrameActive){[self pollMenuMouse];menuFrameActive=NO;}else [self presentFrame];}}
+- (void)delayGameTicks:(uint32_t)ticks {assert(autoTest&&ticks==6);[events appendString:@"L"];}
 - (void)presentFrame {if(observing)[events appendString:@"W"];}
 - (BOOL)continueScoreOverflow:(NSData *)left right:(NSData *)right {assert(left.length==255&&right.length==1);[events appendString:@"C"];return YES;}
 - (void)queueCharacter:(NSString *)text code:(unsigned)code repeat:(BOOL)repeat {
     [self keyDown:[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:0 windowNumber:0 context:nil characters:text charactersIgnoringModifiers:text isARepeat:repeat keyCode:code]];
 }
 - (void)frameExpect:(NSString *)expected {
-    [events setString:@""];observedWallTick=999;[self pollMenu];assert([events isEqual:expected]);
+    [events setString:@""];observedWallTick=999;[self pollMenu];if(![events isEqual:expected]){fprintf(stderr,"expected %s got %s\n",expected.UTF8String,events.UTF8String);abort();}
+}
+- (void)checkLoadedRegistration:(BOOL)active name:(NSString *)name serial:(NSString *)serial {
+    [timer invalidate];timer=nil;assert(ui.registered==active&&[ui.registeredName isEqual:name]&&[registeredSerial isEqual:serial]);[self releaseGraphics];
 }
 - (void)checkInput {
+    NSData *initialName=[ui.registeredName dataUsingEncoding:NSMacOSRomanStringEncoding],*initialCode=[registeredSerial dataUsingEncoding:NSMacOSRomanStringEncoding];assert(astro_registration_valid(initialName.bytes,initialName.length,initialCode.bytes,initialCode.length));
     [timer invalidate];timer=nil;[audio stop];audio=[RegistrationInputAudio new];object_setClass(ui,[RegistrationInputUI class]);
     menuVisible=YES;splashVisible=paused=gameOver=NO;editingKey=-1;
     [ui show:@"Register Menu"];while(ui.transitioning)[ui advanceMenuCamera];ui.activeRegistrationField=0;
@@ -59,7 +66,13 @@ static NSMutableString *events;static BOOL observing,checkRegisterFocus;
     ui.activeRegistrationField=-1;checkRegisterFocus=YES;[self performMenuAction:@"Register"];checkRegisterFocus=NO;assert(ui.activeRegistrationField==0);
     while(ui.transitioning)[ui advanceMenuCamera];[self finishMenuNavigation];
     selftestPath=@"registration-input";[self testCaptureKey:14];assert(ui.activeRegistrationField==-1);selftestPath=nil;
-    [self releaseGraphics];
+    [ui resetRegistrationFields];ui.activeRegistrationField=0;ui.registered=NO;ui.registeredName=@"OLDN";registeredSerial=@"OLDC";
+    fields=[ui registrationFields];strcpy(fields[0].name,"TEST");strcpy(fields[1].name,"INVALID");
+    autoTest=autoHeld=observing=YES;menuMouseLatched=YES;[self queueCharacter:@"\r" code:36 repeat:NO];
+    [self frameExpect:@"DWSKE"];assert(fields[0].submitted);
+    [self frameExpect:@"DWSK"];assert(fields[0].submitted&&[ui.registeredName isEqual:@"OLDN"]);
+    autoHeld=NO;[self frameExpect:@"DWSCDWLK"];assert(!fields[0].submitted&&!fields[1].submitted&&menuMouseLatched&&!ui.registered&&[ui.registeredName isEqual:@"Unregistered"]&&[registeredSerial isEqual:@"OLDC"]);
+    autoTest=observing=NO;[self releaseGraphics];
     puts("PASS actual Root field input: one event after swap/music/keymap, closed gate, Tab, repeat, retained focus/queue, transition exclusion, overflow and deferred submit flag");
 }
 @end
@@ -67,4 +80,10 @@ int main(int argc,const char **argv){@autoreleasepool{
     assert(argc==2);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
     [[NSUserDefaults standardUserDefaults]setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}} forName:NSArgumentDomain];
     events=[NSMutableString string];RegistrationInputView *view=[[RegistrationInputView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(view);[view checkInput];
+    for(unsigned valid=0;valid<2;valid++){
+        [[NSUserDefaults standardUserDefaults]setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0},@"AstroSquidRegistration":@{@"name":valid?@"":@"TEST",@"serial":valid?@"AAAAAAAA":@"INVALID"}} forName:NSArgumentDomain];
+        RegistrationInputView *loaded=[[RegistrationInputView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(loaded);
+        [loaded checkLoadedRegistration:valid name:valid?@"":@"Unregistered" serial:valid?@"AAAAAAAA":@"INVALID"];
+    }
+    puts("PASS automatic Enter waits for the next eligible released-latch frame; valid/invalid stored tuples revalidated on construction");
 }}

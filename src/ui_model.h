@@ -22,6 +22,8 @@ void astro_ui_panel_step(AstroUIMotion *state,double step);
 
 /* Original DOMOUSE names, including the eight paired campaign stages. */
 AstroUICommand astro_ui_command(const char *name);
+/* CHECKREGCODE compares raw Pascal-string bytes; no case or name normalization. */
+int astro_registration_valid(const unsigned char *name,size_t name_length,const unsigned char *code,size_t code_length);
 void astro_ui_camera(const char *anchor,double x,double y,double width,double height,
                      double *camera_x,double *camera_y);
 /* Point test used by LMPOINTSPRITE: rectangular bounds, right/bottom excluded. */
