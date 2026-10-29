@@ -1,6 +1,7 @@
 // Actual production cleanup/death/map path; compare with the original native composite.
 #define ASTRO_WORLD_TRACE_LIBRARY
 #include "world_trace_host.m"
+static const char *retainedStarPath;
 static unsigned compositeClocks;static BOOL advancing,outerFrame;
 @interface CompositeArenaAudio:AstroTraceAudio
 @end
@@ -26,6 +27,8 @@ static unsigned compositeClocks;static BOOL advancing,outerFrame;
         unsigned level=0;char half=0,extra=0;assert(sscanf(phaseOutput,"load%u%c%c",&level,&half,&extra)==2&&level>=1&&level<=9&&(half=='A'||half=='B'));
         selectedLevel=[levels indexOfObject:[NSString stringWithFormat:@"Data %u%c",level,half]];assert(selectedLevel!=NSNotFound);
         randomSeed=123;camera=-0.0;traceTick=100;tracePhase="load";compositeClocks=0;nextEntityID=playerTraceID=0;
+        if(retainedStarPath){NSData *d=[NSData dataWithContentsOfFile:[NSString stringWithUTF8String:retainedStarPath]];assert(d.length==96004);const unsigned char *b=d.bytes;
+            for(unsigned i=0;i<12000;i++){uint64_t v=0;for(unsigned j=0;j<8;j++)v=(v<<8)|b[i*8+j];memcpy((unsigned char *)stars+i*8,&v,8);}randomSeed=((uint32_t)b[96000]<<24)|((uint32_t)b[96001]<<16)|((uint32_t)b[96002]<<8)|b[96003];}
         [self resetLevelWorld];[self dumpWorldTrace:@"load"];
         unsigned index=0;unsigned char bytes[38];
         for(NSDictionary *m in mapPlacements){be64(bytes,number(m,@"x"));be64(bytes+8,number(m,@"y"));be64(bytes+16,number(m,@"width"));be64(bytes+24,number(m,@"height"));be16(bytes+32,[m[@"attribute"] intValue]);be32(bytes+34,[m[@"tag"] intValue]);printf("P\t%u\t",index++);dump(bytes,38);putchar('\n');}
@@ -65,7 +68,7 @@ static unsigned compositeClocks;static BOOL advancing,outerFrame;
 }
 @end
 int main(int argc,char **argv){@autoreleasepool{
-    assert(argc>=2&&argc<=4);advancing=argc>=3;if(advancing)assert(!strcmp(argv[2],"advancing"));[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
+    assert(argc>=2&&argc<=5);if(argc==5)retainedStarPath=argv[4];advancing=argc>=3;if(advancing)assert(!strcmp(argv[2],"advancing"));[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
     [[NSUserDefaults standardUserDefaults]setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}} forName:NSArgumentDomain];
-    CompositeArenaView *view=[[CompositeArenaView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(view);[view runCompositeArena:argc==4?argv[3]:NULL];
+    CompositeArenaView *view=[[CompositeArenaView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(view);[view runCompositeArena:argc>=4?argv[3]:NULL];
 }}
