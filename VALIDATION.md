@@ -649,3 +649,9 @@ changes test inputs, not collision rules or health. The initial 1B remains a
 controlled HP30000/Laser4 setup; no test health refills occur after stage load.
 This verifies the bounded route, not a 2B victory or full ordinary campaign.
 Complete paired traces and hashes: internal FOLLOW1_FALLBACK_VERIFIED.json.
+
+## Authorized correction: death during a midlevel transition (2026-10-30)
+
+The G5 original crashes on a NULL player rectangle read at original code offset 0x4ea80 when the player dies during scripted midlevel movement. The port previously remained in the nested transition loop. The user explicitly approved safe respawn with remaining lives, otherwise Game Over. This is an intentional difference from the original crash.
+
+The transition now returns to the existing death dispatcher and clears scripted controls when death is pending. Its pending destination survives respawn. On the Intel iMac, `mid_virtual_clock_host_test.m` passed both injected-death cases: one remaining life is consumed, the player respawns at 100 HP, and the transition reaches the next half READY; zero lives dispatches Game Over. Existing synchronous MID/END clock and ending checks also passed. This test intercepts Game Over dispatch; it does not verify that panel visually or prove a full campaign playthrough.

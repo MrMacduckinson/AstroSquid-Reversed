@@ -1557,13 +1557,16 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         transition.controls=(x<targetX?ASTRO_KEY_RIGHT:0)|(x>targetX?ASTRO_KEY_LEFT:0)|
             (y<targetY?ASTRO_KEY_DOWN:0)|(y>targetY?ASTRO_KEY_UP:0);
         [self waitForTransitionTicks:1];
+        if(respawnPending||gameOverPending){transition.controls=0;return;}
     } while(fabs(x-targetX)>=20||fabs(y-targetY)>=20);
     double left,right;
     do {
         left=playerBounds.left;right=worldRight;transition.controls=ASTRO_KEY_RIGHT;
         [self waitForTransitionTicks:1];
+        if(respawnPending||gameOverPending){transition.controls=0;return;}
     } while(left<=right+50);
     [self waitForTransitionTicks:20];
+    if(respawnPending||gameOverPending){transition.controls=0;return;}
     [audio stopMusic];if(ui.musicVolume>0)[audio playMusic:1];
     transition.phase=ASTRO_TRANSITION_DONE;transition.pending=transition.events=0;
     [self stepStageTransition];

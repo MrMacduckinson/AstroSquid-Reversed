@@ -4,7 +4,7 @@
 #undef main
 static uint32_t clockTick=100;
 static NSMutableString *cardEvents;
-static BOOL cardKey;
+static BOOL cardKey,injectMidDeath,expectMidGameOver,midGameOverSeen;
 @interface MidClockAudio:AstroAudio
 @end
 @implementation MidClockAudio
@@ -18,6 +18,11 @@ static BOOL cardKey;
 @implementation MidClockView
 - (uint32_t)currentGameTick {assert(clockTick<100000);return clockTick++;}
 - (void)display {}
+- (void)pollNestedWorld {
+    [super pollNestedWorld];
+    if(injectMidDeath&&transitionLoopRunning){injectMidDeath=NO;playerCombat.hit_points=0;playerCombat.remove=-1;[self cleanupWorld];}
+}
+- (void)beginGameOver {if(expectMidGameOver){midGameOverSeen=YES;return;}[super beginGameOver];}
 - (void)copyKeyMap:(unsigned char *)bytes {memset(bytes,0,16);bytes[0]=cardKey?1:0;if(cardEvents)[cardEvents appendString:@"K"];}
 - (void)advanceFlowWithKey:(BOOL)key {if(cardEvents)[cardEvents appendString:@"A"];[super advanceFlowWithKey:key];}
 @end
@@ -61,6 +66,34 @@ static BOOL cardKey;
     assert(flow.phase==ASTRO_FLOW_ENDING&&!changingStage);
     assert(!world.count&&!enemies.count&&!mapPlacements.count&&!visualEffects.count&&!backgrounds.count&&!parallaxData.length);
     assert(!engineGlow&&!departureTrail&&!playerHitVisual.active);
+    // Death during scripted movement must return to the normal death dispatcher.
+    for(int lives=1;lives>=0;lives--){
+        [self loadCampaignStage:(AstroCampaign){1,1,0,0}];
+        [enemies removeAllObjects];[world removeAllObjects];[mapPlacements removeAllObjects];
+        [visualEffects removeAllObjects];backgrounds=@[];parallaxData=[NSMutableData data];
+        camera=worldLeft=0;worldRight=640;worldTop=0;worldBottom=380;
+        [self createPlayerAtX:30 y:190];[self finishPlayerStart];
+        inventory.lives=lives;menuVisible=paused=gameOver=NO;flow.phase=ASTRO_FLOW_PLAY;
+        gameOverPending=gameEndRequested=NO;changingStage=NO;
+        pendingCampaign=(AstroCampaign){1,2,0,0};campaignAction=ASTRO_CAMPAIGN_LOAD;
+        simulationTick=700;observedWallTick=worldRenderTick=699;
+        injectMidDeath=YES;expectMidGameOver=lives==0;midGameOverSeen=NO;
+        [self pollGame];
+        assert(!injectMidDeath&&!transitionLoopRunning&&changingStage);
+        assert(![world containsObject:[NSNull null]]&&inventory.lives==lives);
+        assert(lives?respawnPending:gameOverPending);
+        simulationTick=observedWallTick+1;[self pollGame];
+        if(!lives){assert(midGameOverSeen&&!gameOverPending);continue;}
+        assert(!respawnPending&&inventory.lives==0&&respawnTick);
+        for(unsigned poll=0;respawnTick||invulnerableUntil;poll++){
+            assert(poll<1000);simulationTick+=2;[self pollGame];
+        }
+        assert([world containsObject:[NSNull null]]&&playerCombat.hit_points==100);
+        simulationTick=observedWallTick+1;[self pollGame];
+        assert(flow.phase==ASTRO_FLOW_READY&&!changingStage&&campaign.half==2);
+    }
+    expectMidGameOver=NO;
+    puts("PASS MID death returns for respawn, resumes transition, or dispatches GameOver with no lives");
     puts("PASS synchronous MID and END advance inherited campaign clock; END outer poll reaches card, waits for key, loads next A before READY without primary");
 }
 @end
