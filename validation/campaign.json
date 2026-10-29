@@ -1,8 +1,8 @@
 {
-  "live_entities" : 0,
-  "map_remaining" : 0,
-  "controlled_pilot" : "Replenished shield, weapon53; real world\/AI\/collision\/flow, no stage teleport",
-  "stages" : [
+  "live_entities": 0,
+  "map_remaining": 136,
+  "controlled_pilot": "Replenished shield, weapon53; real world/AI/collision/flow, no stage teleport",
+  "stages": [
     "Data 1A",
     "Data 1B",
     "Data 2A",
@@ -21,15 +21,15 @@
     "Data 8B",
     "Data 9B"
   ],
-  "passed" : true,
-  "current_stage" : "Data 9B",
-  "ticks" : 214398,
-  "camera" : 15209.322359965769,
-  "reason" : "ending reached",
-  "player_x" : 15171.613304892293,
-  "flow" : 4,
-  "player_y" : 170.58726846363334,
-  "finished" : true,
-  "score" : 460576,
-  "transition" : 0
+  "passed": true,
+  "current_stage": "Data 9B",
+  "ticks": 214272,
+  "camera": 17173.480363994207,
+  "reason": "ending reached",
+  "player_x": 15284.493807059873,
+  "flow": 4,
+  "player_y": 162.13371779623827,
+  "finished": true,
+  "score": 460021,
+  "transition": 0
 }

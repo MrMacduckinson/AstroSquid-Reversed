@@ -398,7 +398,7 @@ required assertion fails. Full campaign takes several minutes on the reference
 iMac. Do not run two interactive application checks simultaneously.
 
 The final Intel campaign result is `validation/campaign.json`: 17 stages,
-214398 simulation ticks and ending reached, including the final HUD/world ordering fix. `validation/runtime.json` records
+214272 simulation ticks and ending reached in the 2026-10-29 rerun after the event/field lifecycle fixes. This controlled port route is not a canonical original-versus-port campaign comparison. `validation/runtime.json` records
 the final actual-application self-test; assertions also run for the normal
 lifecycle and input cases described above.
 
