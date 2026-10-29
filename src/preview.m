@@ -1759,7 +1759,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(previous==ASTRO_FLOW_END_CARD&&flow.phase!=previous&&changingStage) {
         AstroCampaign next=pendingCampaign;astro_transition_accept_card(&transition);changingStage=NO;
         if(!next.complete){[self loadCampaignStage:next];if(flow.phase==ASTRO_FLOW_READY)[self unlockStage];}
-        else {campaign=next;[enemies removeAllObjects];[world removeAllObjects];playerNextActor=nil;}
+        else {campaign=next;[self destroyGameWorld];backgrounds=@[];parallaxData=[NSMutableData data];}
     }
     if(previous==ASTRO_FLOW_READY&&flow.phase==ASTRO_FLOW_PLAY){
         [audio stopMusic];if(ui.musicVolume>0)[audio playMusic:2];
