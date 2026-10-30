@@ -667,3 +667,7 @@ This does not prove the ordinary initial level, victory over the second boss, th
 All 9,877,555 records match the G5 original through the second boss victory, END card, actual level 3 load, and early level 3 gameplay. FOLLOW is 30,000; the comparator also counts the END summary K row, yielding 30,001 post-load K rows. Only G/E/R/S annotation ticks are normalized. Full traces and hashes are in internal FOLLOW1_NEXT3_VERIFIED.json.
 
 The subsequent END observer preserves old entity identifiers during card polling and resets them when stage loading begins. Native observers track the next stage and resume music snapshots across later transitions. An initial test-only premature ID reset caused five differing rows; moving that reset to loading resolves the entire comparison without changing production logic or reference records. This still starts from a controlled first-boss fixture and does not prove an ordinary full campaign.
+
+## Continuous early level 3 death route (2026-10-30)
+
+The extended FOLLOW36000 run matches all 10,031,483 G5 original records through early level 3 death, respawn and natural Game Over (30,524 post-load observations). Only G/E/R/S annotation ticks are normalized. Full traces and SHA256 are recorded in internal FOLLOW1_LEVEL3_VERIFIED.json. This extends the controlled first-boss route; it does not prove completion of level 3 or an ordinary campaign start. Optional predictive pilot changes remain unverified separately.

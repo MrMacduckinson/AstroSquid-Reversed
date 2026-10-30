@@ -158,7 +158,7 @@ static __weak AstroView *midView;
             if(getenv("ASTRO_WORLD_NEXT_LOAD")){assert(midFull&&!endMode);if(!getenv("ASTRO_WORLD_BOSS_NEXT")){nextEntityID=playerTraceID=0;entityIDs=[NSMapTable strongToStrongObjectsMapTable];}if(getenv("ASTRO_WORLD_READY")){readyActive=YES;BOOL previousHUDClock=hudClockActive;hudClockActive=YES;[self drawHUD:NO];hudClockActive=previousHUDClock;[self recordCardPresentation];compositeClocks+=60;for(unsigned poll=0;flow.phase==ASTRO_FLOW_READY;poll++){assert(poll<1000);[self pollFlowCard];}readyActive=NO;}else {[self loadCampaignStage:pendingCampaign];playerTraceID=++nextEntityID;[self createPlayerAtX:30 y:190];[self finishPlayerStart];inventory.weapon=playerWeapon=10;}tracePhase="next-load";[self dumpWorldTrace:@"next-load"];
                 for(unsigned i=0;i<3000;i++){printf("NS\t%u\t",i);be64(bytes,stars[i].brightness);be64(bytes+8,stars[i].x);be64(bytes+16,stars[i].y);be64(bytes+24,stars[i].speed);dump(bytes,32);putchar('\n');}
                 if(getenv("ASTRO_WORLD_DISPATCH"))printf("KD\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);
-                if(getenv("ASTRO_WORLD_FOLLOW")){followRemaining=atoi(getenv("ASTRO_WORLD_FOLLOW"));assert(followRemaining>0&&followRemaining<=30000);@try {while(followRemaining){
+                if(getenv("ASTRO_WORLD_FOLLOW")){followRemaining=atoi(getenv("ASTRO_WORLD_FOLLOW"));assert(followRemaining>0&&followRemaining<=36000);@try {while(followRemaining){
                     if(flow.phase==ASTRO_FLOW_PLAY){[self pollGame];continue;}
                     if(flow.phase==ASTRO_FLOW_END_CARD){
                         assert(!flow.complete);int completedLevel=campaign.level;
