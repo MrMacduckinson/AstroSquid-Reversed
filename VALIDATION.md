@@ -671,3 +671,9 @@ The subsequent END observer preserves old entity identifiers during card polling
 ## Continuous early level 3 death route (2026-10-30)
 
 The extended FOLLOW36000 run matches all 10,031,483 G5 original records through early level 3 death, respawn and natural Game Over (30,524 post-load observations). Only G/E/R/S annotation ticks are normalized. Full traces and SHA256 are recorded in internal FOLLOW1_LEVEL3_VERIFIED.json. This extends the controlled first-boss route; it does not prove completion of level 3 or an ordinary campaign start. Optional predictive pilot changes remain unverified separately.
+
+## Continuous predictive-input route into level 3 (2026-10-30)
+
+The complete original G5 and Intel traces match all 10,221,976 records, including 31,179 post-load observations, special ammunition consumption, damage, respawn and natural Game Over in early level 3. Only G/E/R/S diagnostic annotation ticks are normalized. The input pilot predicts enemy/projectile bounds over 16 velocity steps from level 3 and uses the remaining special ammunition at x500; production rules, health and inventory are unchanged. The initial first-boss setup still uses HP30000/weapon43; this does not prove an ordinary campaign start or victory in level 3.
+
+The full native run exited0 with a 30-minute watchdog; its previous 20-minute timeout is retained as incomplete evidence, not a pass. Full comparison and SHA256: internal FOLLOW1_BULLET3_VERIFIED.json. Later near-lookahead, cross-level and beam-route input candidates remain unverified separately.
