@@ -8,7 +8,7 @@
 #include "registration_menu_cases.h"
 extern void astro_stars_draw(const AstroStar *,int,int,double,const AstroSceneSink *);
 static unsigned profile,route,reads,frame,actualClockCalls,registrationElapsed;static BOOL recording;
-static BOOL dispatchMode,routesMode,returnsMode,registrationMode,startupMode,startupInput,heldButton;static NSPoint heldPoint;
+static BOOL dispatchMode,routesMode,returnsMode,registrationMode,startupMode,movingMode,startupInput,heldButton;static NSPoint heldPoint;
 static NSString *const routeButtons[]={@"Play",@"Continue",@"Back7",@"Back2",@"Highscores",@"Back4",@"Settings",@"SetKeys",@"Back6",@"Back",@"Register",@"Back3"};
 static NSString *const returnButtons[]={@"Yeah",@"Back5"};
 @interface AstroView(RegistrationTrace)
@@ -41,7 +41,17 @@ void transition_stars_draw(const AstroStar *stars,int menu,int stage,double sx,c
 @implementation TransitionView
 - (uint32_t)currentGameTick {actualClockCalls++;if(!recording)return 1000;assert(reads<10000);uint32_t t=1000+reads+++(registrationMode?registrationElapsed:0);printf("T,%u,%u,%u",profile,route,t);if(dispatchMode)printf(",%d",menuMouseLatched);putchar('\n');return t;}
 - (void)copyKeyMap:(unsigned char *)map {memset(map,0,16);if(startupInput&&profile<3)map[4]=0x10;if(recording)printf("K,%u,%u,%u\n",profile,route,frame);}
-- (NSPoint)currentMenuMousePoint {return profile>=6?heldPoint:NSMakePoint(-30000,-30000);}
+- (NSPoint)currentMenuMousePoint {
+ /* Moving mode samples current node centers each frame, then leaves the scene. */
+ if(movingMode){
+  static NSString *const targets[]={@"Settings",@"Back",@"Play",@"Highscores"};
+  unsigned phase=(frame+profile/3)%5;
+  if(phase==4)return NSMakePoint(-30000,-30000);
+  AstroUIMotion *s=[[[ui valueForKey:@"orbStates"]objectForKey:targets[phase]]mutableBytes];
+  return NSMakePoint((int)(ui.cameraX+s->x+s->width/2),(int)(ui.cameraY+s->y+s->height/2));
+ }
+ return profile>=6?heldPoint:NSMakePoint(-30000,-30000);
+}
 - (BOOL)menuMouseButtonPressed {return heldButton;}
 - (void)saveSettings {if(recording){if(registrationMode){[self registrationState:'I'];return;}assert(dispatchMode&&route==(routesMode?9u:1u)&&[ui.anchor isEqual:@"Settings Menu"]);AstroUIMotion *s=[[[ui valueForKey:@"orbStates"]objectForKey:@"Back"]mutableBytes];uint32_t deadline=[[[ui valueForKey:@"hoverDeadlines"]objectForKey:@"Back"]unsignedIntValue];printf("I,%u,%u,%d,%u,%016llx,%016llx\n",profile,route,s->sprite,deadline,word(ui.cameraX),word(ui.cameraY));}}
 - (void)registrationState:(char)phase {
@@ -95,5 +105,5 @@ void transition_stars_draw(const AstroStar *stars,int menu,int stage,double sx,c
 }
 @end
 int main(int argc,const char **argv){@autoreleasepool{
- assert(argc==3||argc==4);dispatchMode=argc==4;routesMode=dispatchMode&&!strcmp(argv[3],"routes");returnsMode=dispatchMode&&!strcmp(argv[3],"returns");registrationMode=dispatchMode&&!strcmp(argv[3],"regok");startupMode=dispatchMode&&!strcmp(argv[3],"startup");assert(!dispatchMode||routesMode||returnsMode||registrationMode||startupMode||!strcmp(argv[3],"dispatch"));star_dump=fopen(argv[2],"wb");assert(star_dump);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];[[NSUserDefaults standardUserDefaults]setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}}forName:NSArgumentDomain];TransitionView *v=[[TransitionView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(v);[v checkTransitions];assert(!fclose(star_dump));
+ assert(argc==3||argc==4);dispatchMode=argc==4;routesMode=dispatchMode&&!strcmp(argv[3],"routes");returnsMode=dispatchMode&&!strcmp(argv[3],"returns");registrationMode=dispatchMode&&!strcmp(argv[3],"regok");startupMode=dispatchMode&&!strcmp(argv[3],"startup");movingMode=dispatchMode&&!strcmp(argv[3],"moving");assert(!dispatchMode||routesMode||returnsMode||registrationMode||startupMode||movingMode||!strcmp(argv[3],"dispatch"));star_dump=fopen(argv[2],"wb");assert(star_dump);[NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];[[NSUserDefaults standardUserDefaults]setVolatileDomain:@{@"AstroSquidSettings":@{@"sound":@0,@"music":@0}}forName:NSArgumentDomain];TransitionView *v=[[TransitionView alloc]initWithFrame:NSMakeRect(0,0,640,480) assets:[NSString stringWithUTF8String:argv[1]]];assert(v);[v checkTransitions];assert(!fclose(star_dump));
 }}

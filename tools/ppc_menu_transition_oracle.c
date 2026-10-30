@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include "../tests/registration_menu_cases.h"
 static unsigned profile,route,reads,frame,recording,registration_elapsed;
-static int dispatch_mode,routes_mode,returns_mode,registration_mode,startup_mode,startup_input,click_pending,held_button;static unsigned char *clicked_node;
+static int dispatch_mode,routes_mode,returns_mode,registration_mode,startup_mode,moving_mode,startup_input,click_pending,held_button;static unsigned char *clicked_node;
 static Point held_point;
 static const char *route_buttons[]={"Play","Continue","Back7","Back2","Highscores","Back4","Settings","SetKeys","Back6","Back","Register","Back3"};
 static const char *return_buttons[]={"Yeah","Back5"};
@@ -24,7 +24,16 @@ static Boolean registration_event(EventMask mask,EventRecord *event){assert(mask
 static uint64_t word(double x){uint64_t b;memcpy(&b,&x,8);return b;}
 static uint32_t tick(void){if(!recording)return 1000;assert(reads<10000);uint32_t t=1000+reads+++(registration_mode?registration_elapsed:0);printf("T,%u,%u,%u",profile,route,t);if(dispatch_mode)printf(",%d",*(short *)(gref+0x5aa));putchar('\n');return t;}
 static void keys(void *p){memset(p,0,16);if(startup_input&&profile<3)((unsigned char *)p)[4]=0x10;if(recording)printf("K,%u,%u,%u\n",profile,route,frame);}
-static void mouse(Point *p){if(click_pending){p->h=(short)(*(double *)(gref+0xea2)+*(double *)clicked_node+*(double *)(clicked_node+16)/2);p->v=(short)(*(double *)(gref+0xeaa)+*(double *)(clicked_node+8)+*(double *)(clicked_node+24)/2);click_pending=0;held_point=*p;}else if(profile>=6)*p=held_point;else {p->h=-30000;p->v=-30000;}}
+static void mouse(Point *p){if(click_pending){p->h=(short)(*(double *)(gref+0xea2)+*(double *)clicked_node+*(double *)(clicked_node+16)/2);p->v=(short)(*(double *)(gref+0xeaa)+*(double *)(clicked_node+8)+*(double *)(clicked_node+24)/2);click_pending=0;held_point=*p;}else if(moving_mode){
+ /* Moving mode samples current node centers each frame, then leaves the scene. */
+ static const char *targets[]={"Settings","Back","Play","Highscores"};
+ unsigned phase=(frame+profile/3)%5;
+ if(phase==4){p->h=p->v=-30000;}else{
+  unsigned char *n=find(targets[phase]);
+  p->h=(short)(*(double *)(gref+0xea2)+*(double *)n+*(double *)(n+16)/2);
+  p->v=(short)(*(double *)(gref+0xeaa)+*(double *)(n+8)+*(double *)(n+24)/2);
+ }
+}else if(profile>=6)*p=held_point;else {p->h=-30000;p->v=-30000;}}
 static int zero(void){return 0;}
 static int button(void){return held_button;}
 static Handle resource(ResType type,short id){assert(type=='STR#'&&id==25000);return strings;}
@@ -39,7 +48,7 @@ void saved(void){if(registration_mode){registration_state('I');return;}assert(di
 BRIDGE(sound) BRIDGE(saved) BRIDGE(star_draw) BRIDGE(sprite_draw) BRIDGE(menu_draw) BRIDGE(swap) BRIDGE(music)
 static unsigned char *find(const char *name){for(unsigned i=0;i<52;i++)if(nodes[i]&&nodes[i][40]==strlen(name)&&!memcmp(nodes[i]+41,name,strlen(name)))return nodes[i];abort();}
 int main(int argc,char **argv){
- if(argc!=7&&argc!=8)return 2;dispatch_mode=argc==8;routes_mode=dispatch_mode&&!strcmp(argv[7],"routes");returns_mode=dispatch_mode&&!strcmp(argv[7],"returns");registration_mode=dispatch_mode&&!strcmp(argv[7],"regok");startup_mode=dispatch_mode&&!strcmp(argv[7],"startup");assert(!dispatch_mode||routes_mode||returns_mode||registration_mode||startup_mode||!strcmp(argv[7],"dispatch"));alarm(60);struct stat st;assert(!stat(argv[1],&st)&&st.st_size==455780&&!stat(argv[2],&st)&&st.st_size==11812&&!stat(argv[3],&st)&&st.st_size==6884&&!stat(argv[4],&st)&&st.st_size==14014&&!stat(argv[5],&st)&&st.st_size==52*308);
+ if(argc!=7&&argc!=8)return 2;dispatch_mode=argc==8;routes_mode=dispatch_mode&&!strcmp(argv[7],"routes");returns_mode=dispatch_mode&&!strcmp(argv[7],"returns");registration_mode=dispatch_mode&&!strcmp(argv[7],"regok");startup_mode=dispatch_mode&&!strcmp(argv[7],"startup");moving_mode=dispatch_mode&&!strcmp(argv[7],"moving");assert(!dispatch_mode||routes_mode||returns_mode||registration_mode||startup_mode||moving_mode||!strcmp(argv[7],"dispatch"));alarm(60);struct stat st;assert(!stat(argv[1],&st)&&st.st_size==455780&&!stat(argv[2],&st)&&st.st_size==11812&&!stat(argv[3],&st)&&st.st_size==6884&&!stat(argv[4],&st)&&st.st_size==14014&&!stat(argv[5],&st)&&st.st_size==52*308);
  struct stat output;if(!stat(argv[6],&output))for(unsigned i=1;i<=5;i++){assert(!stat(argv[i],&st));assert(st.st_dev!=output.st_dev||st.st_ino!=output.st_ino);}star_dump=fopen(argv[6],"wb");assert(star_dump);
  unsigned char *code=read_file(argv[1])+128,*lit=read_file(argv[2]),*raw=read_file(argv[3]),*table=read_file(argv[4]),*scene=read_file(argv[5]),*g=calloc(1,0x1400),*heap=calloc(1,0x100000);assert(g&&heap);gref=g;stars=calloc(3001*4,8);assert(stars);strings=NewHandle(6884);assert(strings);memcpy(*strings,raw,6884);for(unsigned i=0;i<52;i++){nodes[i]=calloc(1,308);assert(nodes[i]);}
  uint32_t toc[489]={0};for(unsigned i=0;i<484;i++){void *fn=dlsym(RTLD_DEFAULT,import_names[i]);if(!strcmp(import_names[i],"TickCount"))fn=tick;if(!strcmp(import_names[i],"GetKeys"))fn=keys;if(!strcmp(import_names[i],"GetMouse"))fn=mouse;if(!strcmp(import_names[i],"Button"))fn=button;if(!strcmp(import_names[i],"GetResource"))fn=resource;if(registration_mode&&!strcmp(import_names[i],"DisposePtr"))fn=registration_free;if(registration_mode&&!strcmp(import_names[i],"Delay"))fn=registration_delay;if(registration_mode&&!strcmp(import_names[i],"GetNextEvent"))fn=registration_event;descriptors[i][0]=(uint32_t)(uintptr_t)(fn?fn:missing_import);toc[i]=(uint32_t)(uintptr_t)descriptors[i];}toc[0]=(uint32_t)(uintptr_t)g;
@@ -72,5 +81,5 @@ int main(int argc,char **argv){
 
   }recording=0;
  }
- assert(!fclose(star_dump));fputs(registration_mode?"PASS9 actual DOMOUSE RegOK invalid/valid/priorregistered paths\n":returns_mode?"PASS9 actual DOMOUSE Yeah/Back5 return paths\n":startup_mode?"PASS9 original startup acceptance camera/frame/latch profiles\n":routes_mode?"PASS9 actual DOMOUSE12route menu chains with held/release schedules\n":dispatch_mode?"PASS9 actual DOMOUSE two-way navigation profiles,save order,held drag/stationary hover and released poll\n":"PASS3 whole MOVEMENUTO profiles, two-way52node scenes and3000realstars/RNG, no GPU window\n",stderr);return 0;
+ assert(!fclose(star_dump));fputs(moving_mode?"PASS9 moving-pointer actual DOMOUSE two-way menu frames\n":registration_mode?"PASS9 actual DOMOUSE RegOK invalid/valid/priorregistered paths\n":returns_mode?"PASS9 actual DOMOUSE Yeah/Back5 return paths\n":startup_mode?"PASS9 original startup acceptance camera/frame/latch profiles\n":routes_mode?"PASS9 actual DOMOUSE12route menu chains with held/release schedules\n":dispatch_mode?"PASS9 actual DOMOUSE two-way navigation profiles,save order,held drag/stationary hover and released poll\n":"PASS3 whole MOVEMENUTO profiles, two-way52node scenes and3000realstars/RNG, no GPU window\n",stderr);return 0;
 }
