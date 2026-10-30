@@ -655,3 +655,9 @@ Complete paired traces and hashes: internal FOLLOW1_FALLBACK_VERIFIED.json.
 The G5 original crashes on a NULL player rectangle read at original code offset 0x4ea80 when the player dies during scripted midlevel movement. The port previously remained in the nested transition loop. The user explicitly approved safe respawn with remaining lives, otherwise Game Over. This is an intentional difference from the original crash.
 
 The transition now returns to the existing death dispatcher and clears scripted controls when death is pending. Its pending destination survives respawn. On the Intel iMac, `mid_virtual_clock_host_test.m` passed both injected-death cases: one remaining life is consumed, the player respawns at 100 HP, and the transition reaches the next half READY; zero lives dispatches Game Over. Existing synchronous MID/END clock and ending checks also passed. This test intercepts Game Over dispatch; it does not verify that panel visually or prove a full campaign playthrough.
+
+## Continuous route through late level 2 (2026-10-30)
+
+A scenery-only 100-pixel lookahead fallback lets the input pilot pass the corridor where both 180-pixel searches found no safe choice. Original G5 and production-host Intel traces match all 9,675,872 records across 29,000 observations after the controlled initial boss victory, through level 2 and damage to its boss. Only G/E/R/S annotation ticks are normalized. The native FOLLOW watchdog is 20 minutes because the previous 10-minute run was terminated by SIGALRM; its retained partial trace matched until truncation. Full traces and hashes: internal FOLLOW1_NEAR29_VERIFIED.json.
+
+This does not prove the ordinary initial level, victory over the second boss, the next level transition, or the complete campaign. Subsequent transition observer changes remain pending separately.
