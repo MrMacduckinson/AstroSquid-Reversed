@@ -5,15 +5,25 @@
 #include <assert.h>
 #include <unistd.h>
 #include <sys/stat.h>
-static unsigned char *g;static unsigned profile,reads,frames,queued,step;static uint32_t start;
+static unsigned char *g;static unsigned profile,reads,frames,queued,step;static uint32_t start;static int mixed_mode;static unsigned mixed_consumed;
 static void record(char type,unsigned value){printf("%u,%c,%u,%u,%u,%u\n",profile,type,value,reads,frames,queued);}
 static uint32_t clock_tick(void){uint32_t value=start+reads++*step;if(reads>=80)*(short *)(g+0x58e)=1;record('T',value);return value;}
 static void fill_event(EventRecord *event){assert(event==(void *)(g+0x168)&&queued<128);memset(event,0,sizeof(*event));event->what=queued%2?5:3;event->message='A'+queued++%26;}
-static Boolean field_event(uint32_t mask,EventRecord *event){assert(mask==0x28);fill_event(event);record('F',event->message);return true;}
-static Boolean periodic_event(uint32_t mask,EventRecord *event,UInt32 sleep,RgnHandle region){assert(mask==0xffffffffu&&sleep==2&&!region);fill_event(event);record('P',event->message);return true;}
+/* Finite FIFO: masked field reads skip mouseUp without removing it. */
+static Boolean mixed_event(uint32_t mask,EventRecord *event,char consumer){
+ const unsigned kinds[]={2,3,3},messages[]={'M','A','B'};
+ assert(event==(void *)(g+0x168));memset(event,0,sizeof(*event));
+ for(unsigned i=0;i<3;i++)if(!(mixed_consumed&(1u<<i))&&(mask&(1u<<kinds[i]))){
+  mixed_consumed|=1u<<i;queued++;event->what=kinds[i];event->message=messages[i];record(consumer,event->message);return true;
+ }
+ return false;
+}
+static Boolean field_event(uint32_t mask,EventRecord *event){assert(mask==0x28);if(mixed_mode)return mixed_event(mask,event,'F');fill_event(event);record('F',event->message);return true;}
+static Boolean periodic_event(uint32_t mask,EventRecord *event,UInt32 sleep,RgnHandle region){assert(mask==0xffffffffu&&sleep==2&&!region);if(mixed_mode)return mixed_event(mask,event,'P');fill_event(event);record('P',event->message);return true;}
 static Boolean no_dialog(const EventRecord *event){assert(event==(void *)(g+0x168));return false;}
 static void get_port(GrafPtr *p){*p=(void *)0x12345678;}
 static void set_port(GrafPtr p){assert(p==(void *)0x12345678);}
+static short find_window(Point point,WindowPtr *window){(void)point;*window=NULL;return inDesk;}
 static WindowPtr front(void){return NULL;}
 static Boolean button(void){return false;}
 /* GETKEYMAP scans bit128 too; the fixture explicitly initializes that extra byte. */
@@ -26,7 +36,7 @@ __asm__(".text\n.align 2\n.globl _invoke_loop\n_invoke_loop:\n"
 "mr r12,r3\nmr r14,r4\nmr r2,r5\nmr r19,r6\nli r20,0\nmtctr r12\nbctrl\n"
 "lwz r2,24(r1)\nlfd f14,112(r1)\nlmw r13,32(r1)\naddi r1,r1,256\nlwz r0,8(r1)\nmtlr r0\nblr\n");
 int main(int argc,char **argv){
- if(argc!=3)return 2;alarm(60);struct stat st;assert(!stat(argv[1],&st)&&st.st_size==455780&&!stat(argv[2],&st)&&st.st_size==11812);
+ if(argc!=3&&argc!=4)return 2;mixed_mode=argc==4;assert(!mixed_mode||!strcmp(argv[3],"mixed"));alarm(60);struct stat st;assert(!stat(argv[1],&st)&&st.st_size==455780&&!stat(argv[2],&st)&&st.st_size==11812);
  unsigned char *code=read_file(argv[1])+128,*lit=read_file(argv[2]),*heap=calloc(1,0x100000);g=calloc(1,0x1400);double *stars=calloc(3001*4,8);assert(g&&heap&&stars);uint32_t toc[489]={0};
  for(unsigned i=0;i<484;i++){
   void *fn=missing_import;
@@ -37,6 +47,7 @@ int main(int argc,char **argv){
   if(!strcmp(import_names[i],"GetPort"))fn=get_port;
   if(!strcmp(import_names[i],"SetPort"))fn=set_port;
   if(!strcmp(import_names[i],"FrontWindow"))fn=front;
+  if(mixed_mode&&!strcmp(import_names[i],"FindWindow"))fn=find_window;
   if(!strcmp(import_names[i],"Button"))fn=button;
   if(!strcmp(import_names[i],"GetKeys"))fn=keys;
   if(!strcmp(import_names[i],"BitTst"))fn=bit_test;
@@ -50,10 +61,10 @@ int main(int argc,char **argv){
  const short intervals[]={1,2,3,1000};
  const uint32_t service_ticks[]={1000,940,0};
  for(unsigned seed=0;seed<3;seed++)for(unsigned focus=0;focus<3;focus++)for(unsigned interval=0;interval<4;interval++)for(step=0;step<3;step++){
-  memset(g,0,0x1400);reads=frames=queued=0;start=1000;
+  memset(g,0,0x1400);reads=frames=queued=mixed_consumed=0;start=1000;
   *(uint32_t *)(g+0x160)=2; /* FB runtime initialization: WaitNextEvent sleep. */
   *(void **)(g+0x21c)=lit;*(void **)(g+0x388)=heap;*(void **)(g+0x38c)=heap;*(void **)(g+0xa54)=stars;
-  *(double *)(g+0x378)=4503601774854144.;*(uint32_t *)(g+0x380)=0x43300000;*(short *)(g+0xa52)=intervals[interval];*(uint32_t *)(g+0xa4a)=1000;
+  *(double *)(g+0x378)=4503601774854144.;*(uint32_t *)(g+0x380)=0x43300000;*(short *)(g+0xa52)=intervals[interval];*(uint32_t *)(g+0xa4a)=mixed_mode?999:1000;
   *(void **)(g+0xa06)=focus?g+0x5b2+(focus-1)*0x22a:NULL;
   *(double *)(g+0x5c2)=*(double *)(g+0x7ec)=200;
   for(unsigned i=1;i<=3000;i++){stars[i*4]=80;stars[i*4+1]=(i*17)%640;stars[i*4+2]=(i*29)%480;stars[i*4+3]=i%5+1;}

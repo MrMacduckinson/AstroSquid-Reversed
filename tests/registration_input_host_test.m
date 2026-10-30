@@ -6,13 +6,20 @@ static uint32_t serviceTick=1000;static unsigned serviceClockReads,serviceTickSt
 static NSMutableString *events;static BOOL observing,checkRegisterFocus,autoTest,autoHeld;
 static BOOL injectNestedMenu;
 static NSWindow *dispatchModalWindow;
+static BOOL observeMixedQueue;static NSMutableString *mixedQueueTrace;
 static BOOL observeIdleWait;static NSTimeInterval idleWait;
 @interface MainWaitApplication:AstroApplication @end
 @implementation MainWaitApplication
+- (void)sendEvent:(NSEvent *)event {
+    if(observeMixedQueue&&event.type==NSEventTypeLeftMouseUp){[mixedQueueTrace appendString:@"M"];return;}
+    [super sendEvent:event];
+}
 - (NSWindow *)modalWindow {return dispatchModalWindow ?: [super modalWindow];}
 - (NSEvent *)nextEventMatchingMask:(NSEventMask)mask untilDate:(NSDate *)expiration inMode:(NSRunLoopMode)mode dequeue:(BOOL)dequeue {
     if(observeIdleWait){assert(mask==NSEventMaskAny&&dequeue&&[mode isEqual:NSDefaultRunLoopMode]);idleWait=[expiration timeIntervalSinceNow];return nil;}
-    return [super nextEventMatchingMask:mask untilDate:expiration inMode:mode dequeue:dequeue];
+    NSEvent *event=[super nextEventMatchingMask:mask untilDate:expiration inMode:mode dequeue:dequeue];
+    if(observeMixedQueue&&dequeue&&event.type==NSEventTypeKeyDown)[mixedQueueTrace appendString:event.characters];
+    return event;
 }
 @end
 static unsigned commandMenuCalls,deliveredKeyUps,deliveredFlags;
@@ -168,6 +175,21 @@ static NSModalResponse commandModal(NSAlert *alert,SEL selector){
     [self frameExpect:@"DWSKE"];assert(!strcmp(fields[0].name,"XAB"));
     assert(![NSApp nextEventMatchingMask:NSEventMaskKeyDown untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:NO]);
     puts("PASS pending Cocoa key events retained while unfocused/closed gate and consumed one per eligible field frame, including repeat");
+    // Native finite FIFO is mouseUp,A,B. Field masking skips mouse without consuming it.
+    Class mixedClass=object_setClass(NSApp,[MainWaitApplication class]);
+    for(unsigned focus=0;focus<2;focus++)for(unsigned eligible=0;eligible<2;eligible++){
+        [self flushGameEvents];[ui resetRegistrationFields];ui.activeRegistrationField=focus?0:-1;
+        mixedQueueTrace=[NSMutableString string];observeMixedQueue=YES;
+        [NSApp postEvent:[NSEvent mouseEventWithType:NSEventTypeLeftMouseUp location:NSZeroPoint modifierFlags:0 timestamp:0 windowNumber:0 context:nil eventNumber:1 clickCount:1 pressure:0] atStart:NO];
+        for(NSString *ch in @[@"A",@"B"])[NSApp postEvent:[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:0 timestamp:0 windowNumber:0 context:nil characters:ch charactersIgnoringModifiers:ch isARepeat:NO keyCode:0] atStart:NO];
+        lastMainEventTick=0;serviceTick=1000;serviceTickStep=0;observedWallTick=eligible?999:1000;
+        [self pollMainMenu];
+        assert([mixedQueueTrace isEqual:(focus&&eligible?@"AM":@"M")]);
+        assert(!strcmp(fields[0].name,focus&&eligible?"A":""));
+        observeMixedQueue=NO;
+    }
+    object_setClass(NSApp,mixedClass);[self flushGameEvents];
+    puts("PASS mixed pending FIFO mouseUp,A,B: field mask preserves mouse for periodic Main, focused/unfocused and open/closed gate");
     [ui resetRegistrationFields];ui.activeRegistrationField=0;[self flushGameEvents];lastMainEventTick=0;
     for(NSString *ch in @[@"A",@"B",@"C"])[self queueCharacter:ch code:0 repeat:NO];
     mainMenuFrames=mainMenuRate=0;
