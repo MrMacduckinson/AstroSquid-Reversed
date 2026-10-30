@@ -661,3 +661,9 @@ The transition now returns to the existing death dispatcher and clears scripted 
 A scenery-only 100-pixel lookahead fallback lets the input pilot pass the corridor where both 180-pixel searches found no safe choice. Original G5 and production-host Intel traces match all 9,675,872 records across 29,000 observations after the controlled initial boss victory, through level 2 and damage to its boss. Only G/E/R/S annotation ticks are normalized. The native FOLLOW watchdog is 20 minutes because the previous 10-minute run was terminated by SIGALRM; its retained partial trace matched until truncation. Full traces and hashes: internal FOLLOW1_NEAR29_VERIFIED.json.
 
 This does not prove the ordinary initial level, victory over the second boss, the next level transition, or the complete campaign. Subsequent transition observer changes remain pending separately.
+
+## Continuous victory and transition to level 3 (2026-10-30)
+
+All 9,877,555 records match the G5 original through the second boss victory, END card, actual level 3 load, and early level 3 gameplay. FOLLOW is 30,000; the comparator also counts the END summary K row, yielding 30,001 post-load K rows. Only G/E/R/S annotation ticks are normalized. Full traces and hashes are in internal FOLLOW1_NEXT3_VERIFIED.json.
+
+The subsequent END observer preserves old entity identifiers during card polling and resets them when stage loading begins. Native observers track the next stage and resume music snapshots across later transitions. An initial test-only premature ID reset caused five differing rows; moving that reset to loading resolves the entire comparison without changing production logic or reference records. This still starts from a controlled first-boss fixture and does not prove an ordinary full campaign.
