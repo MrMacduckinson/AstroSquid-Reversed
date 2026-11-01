@@ -703,3 +703,9 @@ The comparator supports plain and gzip traces on Python2.7/3; actual Intel Pytho
 `bash tests/normal_start_host.sh combat` passes on Intel system Python2 against a repeated original G5 trace. The full818,888 records match across256 service boundaries, retaining all subsequent sound events and all star/world payloads. The profile holds ordinary fire and briefly moves upward; it starts with natural100HP/defaultweapon/lives. Positive evidence:255 distinct projectile entities,255 Pellet sounds,1 Bang1 sound, and playerY190→42.979004799180224. HP remains100 throughout: no damage or respawn claim.
 
 Only the established initial Click boundary and diagnostic snapshot ticks are normalized. The test phase bookkeeping now follows native service boundaries for later sound annotations; no payload is filtered. Default native/host first-frame regression passes. Production is unchanged. Service boundaries may include nested lifecycle loops in future longer captures, so they must not automatically be counted as outer gameplay frames.
+
+## Level 3 turret crossing route (2026-11-01)
+
+The complete paired route matches11,100,760 G5/Intel records and34,550 post-load observations through the upper turret encounter, lower-beam damage, death, respawn and natural GameOver. Native actualexit0 and full CRC/hash comparison are recorded internally in FOLLOW1_TURRETROUTE3_VERIFIED.json. Only G/E/R/S diagnostic ticks normalize. The testpilot holds target100 overx4900..5900 and movesright overx5350..5800 in level3; production is unchanged.
+
+This remains a controlled first-boss start, not ordinary campaign or level3 completion. A later lower-target pilot revision and longer ordinary lifecycle tests remain separate pending work.
