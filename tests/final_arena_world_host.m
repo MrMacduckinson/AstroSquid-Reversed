@@ -56,7 +56,7 @@ static __weak AstroView *midView;
  }
 }
 - (uint32_t)cardDelayClockTick {return readyActive?100+compositeClocks:[super cardDelayClockTick];}
-- (void)readKeyMap {if(readyActive&&getenv("ASTRO_WORLD_FOLLOW")&&flow.phase==ASTRO_FLOW_PLAY){[super readKeyMap];return;}if(readyActive){if(getenv("ASTRO_WORLD_ENDING"))puts("I");memset(keys,0,sizeof(keys));keys[0]=YES;return;}if(gameOver&&warmFrames==10&&ui.editingHighscore<=0){memset(keys,0,sizeof(keys));keys[0]=YES;return;}[super readKeyMap];}
+- (void)readKeyMap {if(readyActive&&flow.phase==ASTRO_FLOW_PLAY&&(normalStart||getenv("ASTRO_WORLD_FOLLOW"))){[super readKeyMap];return;}if(readyActive){if(getenv("ASTRO_WORLD_ENDING"))puts("I");memset(keys,0,sizeof(keys));keys[0]=YES;return;}if(gameOver&&warmFrames==10&&ui.editingHighscore<=0){memset(keys,0,sizeof(keys));keys[0]=YES;return;}[super readKeyMap];}
 - (uint32_t)currentGameTick {if(readyActive||(panelMode&&warmFrames==10))return [self playerClockTick];return [super currentGameTick];}
 - (void)flushGameEvents {if(menuReturn&&cleanupDone){assert(ui.activeRegistrationField==-1);puts("RETURN-FLUSH");return;}if(panelMode&&warmFrames==10){tracePhase="panel-ready";[self dumpWorldTrace:@"panel-ready"];
  NSDictionary *states=[ui valueForKey:@"orbStates"],*deadlines=[ui valueForKey:@"hoverDeadlines"];unsigned index=0;

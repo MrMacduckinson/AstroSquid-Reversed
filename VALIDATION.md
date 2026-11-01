@@ -816,6 +816,21 @@ diagnostic tick handling remains. The unchanged 6,025-record native startup
 regression also passes. Full paired evidence is retained internally under
 `fidelity-audit/normal-keepbolt-20261101/`.
 
+### Ordinary play through natural Game Over in 1B (2026-11-01)
+
+The same normal-inventory route was continued on original G5 and Intel through
+1B to natural Game Over. The completed gzip traces match all **48,915,780
+records** through EOF with zero differences: 15,089 complete world states,
+45,267,000 star records, 15,087 music-service checkpoints and 12,742 sounds.
+This includes actual damage, pickups, deaths and respawns after the second
+READY. The host fixture had previously suppressed held fire during READY→PLAY;
+it now reads the scripted game keys at that transition, matching the original's
+two immediate Pellet shots. Production gameplay code did not change. Only the
+established upstream Click and G/E/R/S diagnostic tick annotations are
+normalized. Full paired evidence is retained under
+`fidelity-audit/normal-post1b-20261101/`. This is one ordinary input route
+ending in 1B, not a full-campaign victory or proof for every input sequence.
+
 ### Ordinary first-stage pickups, damage and Game Over (2026-11-01)
 
 A normal New Game input route with the original inventory and no injected stats was
