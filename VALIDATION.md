@@ -677,3 +677,9 @@ The extended FOLLOW36000 run matches all 10,031,483 G5 original records through 
 The complete original G5 and Intel traces match all 10,221,976 records, including 31,179 post-load observations, special ammunition consumption, damage, respawn and natural Game Over in early level 3. Only G/E/R/S diagnostic annotation ticks are normalized. The input pilot predicts enemy/projectile bounds over 16 velocity steps from level 3 and uses the remaining special ammunition at x500; production rules, health and inventory are unchanged. The initial first-boss setup still uses HP30000/weapon43; this does not prove an ordinary campaign start or victory in level 3.
 
 The full native run exited0 with a 30-minute watchdog; its previous 20-minute timeout is retained as incomplete evidence, not a pass. Full comparison and SHA256: internal FOLLOW1_BULLET3_VERIFIED.json. Later near-lookahead, cross-level and beam-route input candidates remain unverified separately.
+
+## Continuous level 3 laser corridor route (2026-11-01)
+
+Complete original G5 and Intel traces match 11,130,022 records, including 34,651 post-load observations. This route survives the first vertical laser corridor, then dies under angled turret beams, respawns and reaches natural Game Over in level 3A. Only G/E/R/S diagnostic annotation ticks are normalized. Full CRC/hash evidence is internal FOLLOW1_BEAMROUTE3_VERIFIED.json; native actual exit was0. The verified test pilot uses shorter hostile lookahead and a bounded level3 crossing/preposition schedule. Production rules are unchanged.
+
+The route still starts at the controlled first boss with HP30000/weapon43; it does not prove ordinary New Game startup or completion of level3. The later turret-route candidate and normal1A bootstrap extension are separate unverified work.
