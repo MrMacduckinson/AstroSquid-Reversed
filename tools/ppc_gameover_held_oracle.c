@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 static unsigned char *exit_globals;
 static unsigned exit_case,recording,records;
-static int composite;static unsigned polls;static const char *scene_path;static FILE *scene_file;
+static int composite;static unsigned polls,hover_frames;static const char *scene_path;static FILE *scene_file;
 static unsigned char button_node[312],fade_node[312];
 static unsigned clock_reads,queued;
 static Handle strings;
@@ -17,7 +17,7 @@ static void composite_event(char kind,unsigned value){
  printf("%u,%c,%u,%u,%u,%d,%d,%d,%d,%d,%d,%u,%d,",exit_case,kind,value,clock_reads,*(uint32_t *)(g+0xa4a),*(short *)(g+0xa68),*(short *)(g+0x58c),*(short *)(g+0x5aa),*(void **)(g+0xa06)!=NULL,*(short *)(g+0x7da),*(short *)(g+0x5d6),*(uint32_t *)(g+0x5d2),*(short *)(g+0x5d8));
  for(unsigned i=0;i<g[0x6da];i++)printf("%02x",g[0x6db+i]);putchar('\n');
  if(kind=='O'||kind=='A'||kind=='Z')for(unsigned char *n=*(void **)(g+0xe86);n;n=*(void **)(n+300)){
-  printf("N,%u,%c,",exit_case,kind);for(unsigned i=0;i<n[40];i++)printf("%02x",n[41+i]);printf(",%d,%d,%u,%d",*(short *)(n+32),*(short *)(n+38),*(uint32_t *)(n+34),*(int *)(n+296));
+  if(kind=='O'&&*(short *)(n+38)==902)hover_frames++;printf("N,%u,%c,",exit_case,kind);for(unsigned i=0;i<n[40];i++)printf("%02x",n[41+i]);printf(",%d,%d,%u,%d",*(short *)(n+32),*(short *)(n+38),*(uint32_t *)(n+34),*(int *)(n+296));
   for(unsigned i=0;i<4;i++){uint64_t v;memcpy(&v,n+8*i,8);printf(",%016llx",v);}putchar('\n');
  }
 }
@@ -40,7 +40,7 @@ static uint32_t clock_tick(void){if(!recording)return 1000;uint32_t value=1000+c
 static int zero(void){return 0;}
 static int held_button(void){return recording&&!(composite&&exit_case>=3&&polls>=8&&polls<=10);}
 static unsigned char *held_entry,*change_entry,*animate_entry,*panel_entry;static uint32_t *held_toc;
-static void held_position(Point *p){p->h=composite&&exit_case>=3&&polls>=16&&polls<=25?413:225;p->v=composite&&exit_case>=3&&polls>=16&&polls<=25?362:260;}
+static void held_position(Point *p){p->h=composite&&exit_case>=3&&polls>=16&&polls<=25?413:225;p->v=composite&&exit_case>=3&&polls>=16&&polls<=25?324:260;}
 void held_dispatch(void){
     unsigned char empty[256]={0};
     invoke_fb(held_entry,exit_globals,held_toc,empty,NULL,NULL);event('D');
@@ -51,7 +51,7 @@ static Handle input_resource(ResType type,short id){assert(type=='STR#'&&id==250
 static Boolean input_event(EventMask mask,EventRecord *record){
     assert(mask==0x28&&queued<sizeof(input));if(composite&&polls<(queued==0?2u:queued==1?4u:35u))return false;memset(record,0,sizeof(*record));record->what=keyDown;record->message=input[queued++];event_value('E',record->message);return true;
 }
-void exit_flush(void){fprintf(stderr,"field %.17g/%.17g/%.17g/%.17g integerY%d\n",*(double *)(exit_globals+0x5b2),*(double *)(exit_globals+0x5ba),*(double *)(exit_globals+0x5c2),*(double *)(exit_globals+0x5ca),(int)*(double *)(exit_globals+0x5ba));recording=1;clock_reads=queued=polls=0;*(int16_t *)(exit_globals+0x5aa)=1;*(uint32_t *)(exit_globals+0xa4a)=1000;}
+void exit_flush(void){fprintf(stderr,"field %.17g/%.17g/%.17g/%.17g integerY%d\n",*(double *)(exit_globals+0x5b2),*(double *)(exit_globals+0x5ba),*(double *)(exit_globals+0x5c2),*(double *)(exit_globals+0x5ca),(int)*(double *)(exit_globals+0x5ba));recording=1;clock_reads=queued=polls=hover_frames=0;*(int16_t *)(exit_globals+0x5aa)=1;*(uint32_t *)(exit_globals+0xa4a)=1000;}
 void exit_keys(void){if(composite)polls++;unsigned any=1;*(int16_t *)(exit_globals+0xab6)=any;event_value('K',any);}
 void exit_animate(void){invoke_fb(animate_entry,exit_globals,held_toc,NULL,NULL,NULL);event('A');}void exit_music(void){event('S');}
 void exit_world(void){event('R');}void exit_panel(void){if(composite)invoke_fb(panel_entry,exit_globals,held_toc,NULL,NULL,NULL);event('O');}void exit_hud(void){event('H');}void exit_swap(void){event('W');}
@@ -100,7 +100,7 @@ int main(int argc,char **argv){
         *(short *)(g+0xed6)=640;*(void **)(g+0x21c)=lit;*(void **)(g+0x388)=heap;*(void **)(g+0x38c)=heap;*(double *)(g+0x378)=4503601774854144.;*(uint32_t *)(g+0x380)=0x43300000;*(void **)(g+0xe82)=sprite_table;*(void **)(g+0xeb6)=font_widths;font_widths[65]=.75;font_widths[66]=.6875;
         double button_bounds[]={381,292,65,65},fade_bounds[]={0,69,640,380};memcpy(button_node,button_bounds,32);memcpy(fade_node,fade_bounds,32);
         if(!composite)*(void **)(g+0xe86)=button_node;*(void **)(button_node+300)=fade_node;*(int16_t *)(button_node+32)=10;*(int16_t *)(fade_node+32)=8;*(int16_t *)(fade_node+38)=998;
-        *(int16_t *)(button_node+38)=900;recording=records=0;invoke_fb(code+0x4cef0,g,toc,NULL,NULL,NULL);event('Z');if(composite){assert(!scene_file);while(*(void **)(g+0xe86))invoke_fb(code+0x34dd8,g,toc,*(void **)(g+0xe86),NULL,NULL);}assert(clock_reads>1&&queued==sizeof(input)&&g[0x6da]==2&&!memcmp(g+0x6db,"BA",2));
+        *(int16_t *)(button_node+38)=900;recording=records=0;invoke_fb(code+0x4cef0,g,toc,NULL,NULL,NULL);event('Z');if(composite){assert((hover_frames>0)==(exit_case>=3));assert(!scene_file);while(*(void **)(g+0xe86))invoke_fb(code+0x34dd8,g,toc,*(void **)(g+0xe86),NULL,NULL);}assert(clock_reads>1&&queued==sizeof(input)&&g[0x6da]==2&&!memcmp(g+0x6db,"BA",2));
     }
     DisposeHandle(strings);fputs("PASS3 held GAMEOVER frame schedules; real field keys and DOMOUSE body, controlled empty-name adapter, real terminal LMCHANGESPRITEID\n",stderr);return 0;
 }

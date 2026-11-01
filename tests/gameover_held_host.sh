@@ -13,4 +13,4 @@ cmp tests/gameover_held_native.csv "$scratch"
 echo 'PASS3 original/host held GameOver schedules, closed/open gates and reversed insertion'
 build/gameover_held_host_test assets composite > "$scratch"
 cmp tests/gameover_composite_native.csv "$scratch"
-echo 'PASS6 real GameOver overlay/hover/field composites, 2550 complete boundary and geometry rows'
+echo 'PASS6 real GameOver overlay/hover/field composites, 2570 complete boundary and geometry rows'
