@@ -124,10 +124,12 @@ if(realHUD)[self drawHUD:!(panelTransitionRender||(panelInput&&warmFrames==10))]
                 bytes[55>>3]&=~(1u<<(55&7));bytes[58>>3]|=1u<<(58&7);
             }
             if(getenv("ASTRO_WORLD_NORMAL_PILOT")){
-                int target=[self normalPilotTarget];double y=playerEntityY+9*playerVelocity.y;
                 bytes[126>>3]&=~(1u<<(126&7));
-                if(y>target+5)bytes[126>>3]|=1u<<(126&7);
-                if(y<target-5)bytes[125>>3]|=1u<<(125&7);
+                if([world containsObject:[NSNull null]]){
+                    int target=[self normalPilotTarget];double y=playerEntityY+9*playerVelocity.y;
+                    if(y>target+5)bytes[126>>3]|=1u<<(126&7);
+                    if(y<target-5)bytes[125>>3]|=1u<<(125&7);
+                }
             }
         }
         return;

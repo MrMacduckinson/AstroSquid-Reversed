@@ -860,3 +860,19 @@ the actual shield, weapon upgrades, spent special, later Bolt-to-Pellet pickup,
 damage, death and respawn. It stops in 1A before a stage transition; this is
 evidence for that route only. Full captures and streaming comparison result are
 retained under internal `fidelity-audit/normal-pickups-20261101/`.
+
+### Second ordinary 1A to Game Over in 1B route (2026-11-01)
+
+The G5 original and Intel port both ran New Game with normal 100 HP, inventory,
+spawns, pickups, damage, death and respawn to natural Game Over in 1B. This
+alternate input route suppresses seeking pickups at 1B x=1100..1800 and targets
+y=275 at 1B x=4050..4650; it changes no game rule or starting resource.
+Complete traces match all 51,779,097 records through EOF after normalizing
+only diagnostic G/E/R/S clock annotations. The Intel input fixture now emits
+no vertical direction while the player is absent during respawn; otherwise its
+pilot moved the newly created player one frame earlier than the G5 input path.
+The original and final host archives passed gzip CRC checks. The full traces,
+source copies and comparator result are retained in the internal
+`fidelity-audit/normal1b-gap2-pair-20261101/` evidence directory and on the
+authorized test machines. This verifies this ordinary route through Game Over,
+not a complete ordinary-health campaign victory.
