@@ -916,3 +916,20 @@ also matches the G5 source MD5 after an interrupted transfer was resumed.
 The comparison result and original archive are retained under internal
 `fidelity-audit/normal-fps-20261101/`. This verifies this complete route to
 Game Over at 30 FPS, not an ordinary-health campaign victory or every input.
+
+### Full ordinary 20 FPS route to Game Over in 1B (2026-11-02)
+
+The corresponding ordinary New Game route at frame interval 3 (20 FPS) matches
+the G5 original through natural Game Over in 1B: 25,934,982 records, zero
+differences through EOF, with final clocks 2428622/2428721/2428677. Both gzip
+archives passed CRC and the transferred original matches its G5 MD5. The
+input fixture now mirrors the original pilot's key state across respawn: it
+clears Down on every poll while Up remains held if no player exists. The first
+host capture had diverged on the first frame after a late respawn because it
+cleared Up too. A diagnostic original run confirmed both the Down reset and
+the retained Up around separate deaths. The full comparison and diagnostic
+evidence are retained under internal `fidelity-audit/normal-fps-20261101/`.
+This validates this route, not an ordinary-health victory across all stages.
+With this input change, the complete 30 FPS route was rerun and still matched
+all 48,923,105 records. The earlier ordinary 60 FPS route was also rerun and
+matched all 48,915,780 records through Game Over; both gzip pairs passed CRC.

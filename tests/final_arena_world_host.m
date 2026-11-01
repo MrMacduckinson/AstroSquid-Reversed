@@ -6,7 +6,7 @@ static const char *retainedStarPath;
 static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode,resumeMode,midMode,midFull,endMode,endFull,resumeLong,gameoverEntry,gameoverReached,warmMode;
 static unsigned followRemaining;
 static unsigned panelOverlay,panelOverlayKeys;static BOOL panelOverlayActive;
-static BOOL normalStart;static unsigned normalFrames,normalLimit=1,normalReadyCount;
+static BOOL normalStart;static unsigned normalFrames,normalLimit=1,normalReadyCount;static unsigned char normalPilotUp;
 static BOOL resetTraceIDsOnLoad;
 static BOOL realHUD,panelMode,panelInput,panelCleanup,panelTail,cleanupDone,destroyMode,menuMode,noScore,menuReturn,readyActive;
 @interface CompositeHUD:AstroHUDRenderer
@@ -129,7 +129,8 @@ if(realHUD)[self drawHUD:!(panelTransitionRender||(panelInput&&warmFrames==10))]
                     int target=[self normalPilotTarget];double y=playerEntityY+9*playerVelocity.y;
                     if(y>target+5)bytes[126>>3]|=1u<<(126&7);
                     if(y<target-5)bytes[125>>3]|=1u<<(125&7);
-                }
+                    normalPilotUp=bytes[125>>3]&(1u<<(125&7));
+                }else bytes[125>>3]|=normalPilotUp;
             }
         }
         return;
@@ -197,7 +198,7 @@ if(realHUD)[self drawHUD:!(panelTransitionRender||(panelInput&&warmFrames==10))]
         assert(flow.phase==ASTRO_FLOW_PLAY&&gameLoopActive);
         @try {for(unsigned poll=0;poll<normalLimit*16+1000;poll++){
             if(flow.phase==ASTRO_FLOW_READY){
-                readyActive=YES;normalReadyCount++;static char readyPhase[32];snprintf(readyPhase,sizeof(readyPhase),"normal-ready%u",normalReadyCount);tracePhase=readyPhase;
+                readyActive=YES;normalPilotUp=0;normalReadyCount++;static char readyPhase[32];snprintf(readyPhase,sizeof(readyPhase),"normal-ready%u",normalReadyCount);tracePhase=readyPhase;
                 BOOL old=hudClockActive;hudClockActive=YES;[self drawHUD:NO];hudClockActive=old;
                 [self dumpWorldTrace:[NSString stringWithUTF8String:tracePhase]];printf("ND\t60\t%u\n",compositeClocks);
                 [self recordCardPresentation];compositeClocks+=60;[self pollFlowCard];readyActive=NO;
