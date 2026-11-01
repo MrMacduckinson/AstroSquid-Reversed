@@ -10,7 +10,7 @@ static int advancing,load_mode,start_mode,run_mode,chain_mode,loop_mode,resume_m
 static unsigned warm_frames,panel_world_birth;
 static int real_hud,panel_mode,input_mode,panel_active,cleanup_mode,tail_mode,cleanup_done,destroy_mode,menu_mode,no_score,menu_return;
 static unsigned input_index;
-static int normal_start;static unsigned normal_services;
+static int normal_start;static unsigned normal_services,normal_limit=1;
 static int dispatch_mode,boss_seen,end_card_active,next_ids_reset;
 static unsigned boss_next_level;
 static unsigned follow_remaining;
@@ -58,9 +58,9 @@ void dispatch_done(void){if(follow_started)return;if(end_card_active&&getenv("AS
 static void normal_snapshot(void){snapshot();for(unsigned i=0;i<3000;i++){printf("NS\t%s\t%u\t",phase,i);hex(*(unsigned char **)(world_globals+0xa54)+32+i*32,32);putchar('\n');}}
 void normal_music(void){
  if(++normal_services==1)return; /* GETREADY service, then first actual GAMELOOP frame. */
- assert(normal_services==2);phase="normal-first-game";normal_snapshot();
+ assert(normal_services<=normal_limit+1);static char normal_label[32];snprintf(normal_label,sizeof(normal_label),"normal-game%u",normal_services-1);phase=normal_limit==1?"normal-first-game":normal_label;normal_snapshot();
  printf("NK\t%u\t%u\t%u\n",clock_reads,*(unsigned *)(world_globals+0xa4a),*(unsigned *)(world_globals+0xa4e));
- puts("W\tnormal-first-game");longjmp(loop_done,1);
+ if(normal_services==normal_limit+1){puts("W\tnormal-first-game");longjmp(loop_done,1);}
 }
 void arena_ready(void){}
 static void ready_delay(unsigned ticks,unsigned *final){if(normal_start){unsigned char *p=*(void **)(world_globals+0xa7a);assert(p&&*(short *)(p+88)==100&&*(int *)(world_globals+0xa86)==1&&*(short *)(world_globals+0xa8a)==10&&!*(short *)(world_globals+0xa8c)&&*(short *)(world_globals+0xa8e)==1&&!*(int *)(world_globals+0xa7e));phase="normal-ready";normal_snapshot();printf("ND\t%u\t%u\n",ticks,clock_reads);}if(dispatch_mode&&!end_card_active)entity_birth=render_birth=0;assert(ticks==60);if(end_card_active&&getenv("ASTRO_WORLD_ENDING"))puts("CD\t60");clock_reads+=ticks;*final=tick+clock_reads;}
@@ -104,7 +104,7 @@ int main(int argc,char **argv){
     if(argc<6||argc>9)return 2;alarm(30);data_directory=argv[5];advancing=argc>=7;if(advancing)assert(!strcmp(argv[6],"advancing"));
     warm_mode=argc>=8&&!strncmp(argv[7],"resumewarm",10);gameover_entry=warm_mode||(argc>=8&&!strncmp(argv[7],"resumegameover",14));resume_long=gameover_entry||(argc>=8&&!strncmp(argv[7],"resumelong",10));end_full=argc>=8&&!strncmp(argv[7],"endfull",7);end_mode=argc>=8&&!strncmp(argv[7],"end",3);mid_full=argc>=8&&!strncmp(argv[7],"midfull",7);mid_mode=end_mode||(argc>=8&&!strncmp(argv[7],"mid",3));resume_mode=argc>=8&&!strncmp(argv[7],"resume",6);loop_mode=resume_mode||(argc>=8&&!strncmp(argv[7],"loop",4));chain_mode=argc>=8&&!strcmp(argv[7],"chain");run_mode=argc>=8&&!strncmp(argv[7],"run",3);start_mode=mid_mode||loop_mode||chain_mode||run_mode||(argc>=8&&!strncmp(argv[7],"start",5));load_mode=argc>=8&&(!strncmp(argv[7],"load",4)||start_mode);
     if(resume_long)alarm(180);if(getenv("ASTRO_WORLD_FLIGHT"))alarm(getenv("ASTRO_WORLD_FOLLOW")?1800:600);if(panel_mode)assert(warm_mode||getenv("ASTRO_WORLD_GAMEOVER_WARM"));
-    if(normal_start){assert(real_hud&&!panel_mode&&!getenv("ASTRO_WORLD_BOSS")&&!getenv("ASTRO_WORLD_FLIGHT"));load_mode=1;assert(getenv("ASTRO_WORLD_READY"));}
+    if(normal_start){if(getenv("ASTRO_WORLD_NORMAL_FOLLOW")){normal_limit=atoi(getenv("ASTRO_WORLD_NORMAL_FOLLOW"));assert(normal_limit>=1&&normal_limit<=256);}assert(real_hud&&!panel_mode&&!getenv("ASTRO_WORLD_BOSS")&&!getenv("ASTRO_WORLD_FLIGHT"));load_mode=1;assert(getenv("ASTRO_WORLD_READY"));}
     int inputs=argc==8&&!strcmp(argv[7],"outer-input256");
     unsigned char *code=read_file(argv[1])+128,*g=calloc(1,0x1300),*heap=calloc(1,0x100000);assert(g&&heap);world_globals=g;
     uint32_t toc[489]={0};for(int i=0;i<484;i++){
@@ -149,7 +149,7 @@ int main(int argc,char **argv){
         for(unsigned i=0;i<sizeof(quiet)/sizeof(*quiet);i++)jump_to(code+quiet[i],loop_noop_fb);
         jump_to(code+0x334bc,normal_music_fb);jump_to(code+0x4cb28,ready_keys_fb);MakeDataExecutable(code,433284);
         if(!setjmp(loop_done))invoke_fb(code+0x51ee0,g,toc,NULL,NULL,NULL);
-        assert(normal_services==2);return 0;
+        assert(normal_services==normal_limit+1);return 0;
     }
     if(load_mode){for(unsigned chain=0;chain<(chain_mode?17u:1u);chain++){
         if(chain){invoke_fb(code+0x529f8,g,toc,NULL,NULL,NULL);invoke_fb(code+0x3e66c,g,toc,NULL,NULL,NULL);invoke_fb(code+0x34edc,g,toc,NULL,NULL,NULL);entity_birth=render_birth=0;}

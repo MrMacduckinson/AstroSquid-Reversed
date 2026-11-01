@@ -691,3 +691,9 @@ The route still starts at the controlled first boss with HP30000/weapon43; it do
 Removed the redundant playMusic1 call from New Game/Continue: original STARTNEWGAME inherits the existing menu track. The actual audio implementation already treats a same-track call as a no-op, so this is not evidence of an audible restart bug. Bootstrap and READY lifecycle regressions pass, including no music-start call during bootstrap. The wrapper uses existing Intel system Python2.7; its comparator also passes on Python3.
 
 This bounded gate uses controlled initial seed/prestate, not physical menu-click timing or an entire ordinary campaign. Longer normal-start play, later levels and final deliverables remain incomplete. The turret-route pilot candidate is separate unverified work.
+
+## 256 consecutive frames after ordinary startup (2026-11-01)
+
+`bash tests/normal_start_host.sh 256` passes on the Intel reference Mac against a repeated original G5 trace: 775,010 records, including 257 complete states of 3,000 stars, all world snapshots and 256 game-clock records. It starts through actual STARTNEWGAME/READY with natural100HP, defaultweapon, one life and one special. Inputs remain released; this proves bounded early1A, not combat-directed ordinary play or level completion. The original one-frame gate still passes unchanged.
+
+The comparator supports plain and gzip traces on Python2.7/3; actual Intel Python2.7 full256 comparison and the complete runner pass. Only the previously documented upstream Click and diagnostic annotation boundary handling apply; payloads are exact. Native capture is tests/normal_start_256_native.tsv.gz.

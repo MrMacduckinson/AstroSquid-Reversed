@@ -5,7 +5,7 @@
 static const char *retainedStarPath;
 static unsigned compositeClocks;static BOOL advancing,outerFrame,loopMode,resumeMode,midMode,midFull,endMode,endFull,resumeLong,gameoverEntry,gameoverReached,warmMode;
 static unsigned followRemaining;
-static BOOL normalStart;
+static BOOL normalStart;static unsigned normalFrames,normalLimit=1;
 static BOOL resetTraceIDsOnLoad;
 static BOOL realHUD,panelMode,panelInput,panelCleanup,panelTail,cleanupDone,destroyMode,menuMode,noScore,menuReturn,readyActive;
 @interface CompositeHUD:AstroHUDRenderer
@@ -24,7 +24,7 @@ static __weak AstroView *midView;
 @interface CompositeArenaAudio:AstroTraceAudio
 @end
 @implementation CompositeArenaAudio
-- (void)serviceMusic {if(normalStart){if(readyActive)return;[midView dumpWorldTrace:@"normal-first-game"];printf("NK\t%u\t%u\t%u\n",compositeClocks,[[midView valueForKey:@"observedWallTick"]unsignedIntValue],[[midView valueForKey:@"worldRenderTick"]unsignedIntValue]);puts("W\tnormal-first-game");@throw [NSException exceptionWithName:@"NormalStartFinished" reason:nil userInfo:nil];}if(readyActive&&getenv("ASTRO_WORLD_ENDING")){puts("M");return;}if(midMode&&(!readyActive||followRemaining))[midView captureMidFrame];else [super serviceMusic];}
+- (void)serviceMusic {if(normalStart){if(readyActive)return;normalFrames++;[midView dumpWorldTrace:normalLimit==1?@"normal-first-game":[NSString stringWithFormat:@"normal-game%u",normalFrames]];printf("NK\t%u\t%u\t%u\n",compositeClocks,[[midView valueForKey:@"observedWallTick"]unsignedIntValue],[[midView valueForKey:@"worldRenderTick"]unsignedIntValue]);if(normalFrames==normalLimit){puts("W\tnormal-first-game");@throw [NSException exceptionWithName:@"NormalStartFinished" reason:nil userInfo:nil];}return;}if(readyActive&&getenv("ASTRO_WORLD_ENDING")){puts("M");return;}if(midMode&&(!readyActive||followRemaining))[midView captureMidFrame];else [super serviceMusic];}
 - (void)stopMusic {puts("A\tstop");}
 - (BOOL)playMusic:(int)track {if(normalStart&&track==1){puts("A\tplay1");return YES;}if(track==3)puts("A\tplay3");else if(track==1&&((midMode&&!readyActive)||(menuReturn&&cleanupDone))){puts("A\tplay1");}else {assert(track==2);puts("A\tplay2");}return YES;}
 @end
@@ -122,6 +122,7 @@ static __weak AstroView *midView;
     backgrounds=@[];parallaxData=[NSMutableData data];starsInitialized=YES;renderClock=0;simulationTick=100;
     campaign=(AstroCampaign){8,2,0,0};inventory=(AstroInventory){0};selectedLevel=[levels indexOfObject:@"Data 8B"];
     if(normalStart){
+        if(getenv("ASTRO_WORLD_NORMAL_FOLLOW")){normalLimit=atoi(getenv("ASTRO_WORLD_NORMAL_FOLLOW"));assert(normalLimit>=1&&normalLimit<=256);}
         assert(realHUD&&!panelMode&&!getenv("ASTRO_WORLD_BOSS")&&!getenv("ASTRO_WORLD_FLIGHT")&&getenv("ASTRO_WORLD_READY"));
         randomSeed=123;compositeClocks=0;traceTick=100;tracePhase="normal-start";nextEntityID=playerTraceID=0;
         ui.musicVolume=1;splashVisible=NO;midView=self;
