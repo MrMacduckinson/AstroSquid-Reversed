@@ -70,6 +70,7 @@ static NSMutableString *events;
     reads=0;[events setString:@""];ui.unlockedLevel=7;readyLoadPending=YES;[self performMenuAction:@"New Game"];
     assert(initialReadyCard&&!readyLoadPending&&flow.phase==ASTRO_FLOW_READY&&reads==backgrounds.count+4*enemies.count+6);
     assert(ui.unlockedLevel==7&&campaign.level==1&&campaign.half==1);
+    assert([events rangeOfString:@"P"].location==NSNotFound); // STARTNEWGAME inherits the current menu track.
     unsigned entryReads=reads;uint64_t birth=playerRenderBirth;uint32_t update=playerState.update_tick;
     [events setString:@""];flow.ticks=59;[self advanceFlowWithKey:YES];
     assert(reads==entryReads+3&&[events isEqual:@"SP"]&&playerRenderBirth==birth&&playerState.update_tick==update);

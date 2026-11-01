@@ -2773,7 +2773,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         memset(keys,0,sizeof(keys));automatic=YES;paused=NO;menuVisible=NO;
         gameLoopActive=YES;gameEndRequested=gameEndHighscores=NO;
         astro_flow_ready(&flow,campaign.level,campaign.half);cardClockStarted=NO;[self unlockStage];
-        [audio setPaused:NO];[audio playMusic:1];
+        [audio setPaused:NO];
     } else if(command.action==ASTRO_UI_QUIT) [self requestQuit];
     else if(command.action==ASTRO_UI_RESUME) {[self resumePause];}
     else if(command.action==ASTRO_UI_GAME_OVER_OK){gameEndRequested=YES;if(!ui.gameOverClosing)[self finishGameOver];}

@@ -683,3 +683,11 @@ The full native run exited0 with a 30-minute watchdog; its previous 20-minute ti
 Complete original G5 and Intel traces match 11,130,022 records, including 34,651 post-load observations. This route survives the first vertical laser corridor, then dies under angled turret beams, respawns and reaches natural Game Over in level 3A. Only G/E/R/S diagnostic annotation ticks are normalized. Full CRC/hash evidence is internal FOLLOW1_BEAMROUTE3_VERIFIED.json; native actual exit was0. The verified test pilot uses shorter hostile lookahead and a bounded level3 crossing/preposition schedule. Production rules are unchanged.
 
 The route still starts at the controlled first boss with HP30000/weapon43; it does not prove ordinary New Game startup or completion of level3. The later turret-route candidate and normal1A bootstrap extension are separate unverified work.
+
+## Actual normal New Game through first gameplay frame (2026-11-01)
+
+`tests/normal_start_host.sh` passes on the authorized Intel iMac against a twice-repeated original G5 STARTNEWGAME trace. All 6,025 compared records match: natural HP100/defaultweapon10/special1/lives1/score0, object state, RNG, game clocks, READY60-tick delay, music switch, and all 3,000 stars at both READY and the first gameplay service boundary. The host enters the broader menu-action boundary; its exactly one upstream Click is explicitly validated and excluded. Only G/E/R/S diagnostic annotation ticks are normalized; all payloads and ND/NK clocks compare exactly. Comparator rejects tested entity/star mutations.
+
+Removed the redundant playMusic1 call from New Game/Continue: original STARTNEWGAME inherits the existing menu track. The actual audio implementation already treats a same-track call as a no-op, so this is not evidence of an audible restart bug. Bootstrap and READY lifecycle regressions pass, including no music-start call during bootstrap. The wrapper uses existing Intel system Python2.7; its comparator also passes on Python3.
+
+This bounded gate uses controlled initial seed/prestate, not physical menu-click timing or an entire ordinary campaign. Longer normal-start play, later levels and final deliverables remain incomplete. The turret-route pilot candidate is separate unverified work.
