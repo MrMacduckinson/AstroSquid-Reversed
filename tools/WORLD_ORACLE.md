@@ -160,5 +160,16 @@ Normal parent-free180tick regression still matches26808 records.
 
 The host applies the parent pass after each complete calculation, and after an
 outer calculation resumes following a timed special; inner calculations retain
-their own pass. The parent fixture has no active special and does not establish
-parent-linked special or dangling/deleted-parent behavior.
+their own pass. The fixture above has no active special.
+
+`active_special_world_host.sh` also compares two controlled parent-linked
+specials against the original: plasma40 and storm51, with target2 linked to
+target1 and parent velocity(2.75,-1.125). Real nested cleanup/CALC/LM, special
+damage and outer return remain active. The full canonical streams contain513
+and1687 non-HUD records, with127003 and127050 independent clock reads. Both
+native captures repeat exactly. Parent identity, inherited velocity and child
+displacement are retained in every world snapshot; both targets survive.
+Fixtures are under `tests/active_special_parents/`. GPU/HUD presentation is
+observed as in the existing active-special gates. This does not establish
+ordinary-game creation of parent links, a parent attached to the firing actor,
+or dangling/deleted-parent behavior.

@@ -737,3 +737,22 @@ Only the coverage documentation changed; production and reference data did not.
 This exposed a missing production branch: an empty periodic OS event still executes original `FBNULLEVENTS`, sampling its timer and a second reset clock when the signed deadline has expired. Root now preserves that behavior and initializes its timer before game asset setup. Actual original v3 G5 startup snapshots confirm interval60/callback0 and the same initial deadline before game initialization, after assets, and at the first Main key-map call. Static anchors are `INITRUNTIME`0x1001b06c, `FBHANDLEEVENTS`0x10024064 and `FBNULLEVENTS`0x10023424.
 
 Full Intel registration-input, bootstrap, and normal first-gameplay (6,025 records) regressions pass. Frame rendering, audio and OS event/time sources are controlled observers in this Main gate; it does not prove physical event delivery, every window/dialog callback, complete UI rendering or the whole campaign. Evidence and original startup transcript: internal `fidelity-audit/main-root-20261101/`.
+
+## Linked targets during nested specials (2026-11-01)
+
+`active_special_world_host.sh` now passes18 original/Intel scenarios, adding
+controlled linked-target cases for plasma40 and storm51. Their513/1687 complete
+canonical records and127003/127050 clock reads match; both native captures
+repeat exactly. Target2 retains parent1 through64 snapshots, inherits its
+velocity during nested calculations, and moves from(350,190) to
+(412.71603086767584,164.3434419177689). Storm damage reduces itsHP30000 to29654.
+The original cleanup/CALC/special/LM and outer return remain active.
+
+The host fixture now explicitly seeds the same world bounds as the native
+fixture, correcting an initial-only worldRight0 versus640 mismatch caused by
+reliance on an old initialization side effect. Production is unchanged.
+The established two native HUD observer records are outside this presentation
+boundary; every other canonical record and every clock value is compared.
+This proves controlled surviving-target parent inheritance during specials,
+not campaign creation of links, a parent on the firing actor, or deleted-parent
+behavior. Full fidelity remains incomplete outside the verified scopes.
