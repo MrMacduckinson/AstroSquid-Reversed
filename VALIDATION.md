@@ -892,3 +892,14 @@ probe source are retained under internal `fidelity-audit/normal-fps-20261101/`.
 This verifies the first 256 no-input service boundaries after ordinary startup;
 combat, later stages and preference-file loading at those FPS values remain
 outside this check.
+
+### Ordinary startup combat at 30 and 20 FPS (2026-11-01)
+
+The same 256-service New Game pairs were repeated with ordinary fire and the
+initial upward movement input. At 30 FPS, all 818,888 records match; at 20 FPS,
+all 818,886 records match. Both comparisons reach EOF with zero differences and
+both pairs passed gzip CRC. They include 256 sound events and the actual
+projectile, player-motion, render, world and star records. The different record
+counts show that frame settings affect the recorded world. Full captures and
+comparison results are in internal `fidelity-audit/normal-fps-20261101/`.
+This verifies these early combat routes, not later combat or a complete campaign.
