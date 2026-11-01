@@ -842,6 +842,14 @@ capacity rule, not exact Sound Manager channel identity or pause/completion
 scheduling. Probe source, native trace and validation are retained internally
 under `fidelity-audit/sound-slot-20261101/`.
 
+The original Pause entry calls `SOUNDPLAY` once with the Pascal cue `Menu` in
+each of 16 existing native schedules. An extended G5 probe preserved all 709
+prior pause-trace rows and added the same four cue bytes in every case; its
+repeat was byte-identical. The production Pause entry requests `Menu` before
+showing its panel. This checks cue identity and call count, not audio device
+timing or lifetime of voices while paused. Evidence is retained under
+`fidelity-audit/pause-cue-20261101/`.
+
 ### Ordinary first-stage pickups, damage and Game Over (2026-11-01)
 
 A normal New Game input route with the original inventory and no injected stats was
