@@ -756,3 +756,24 @@ boundary; every other canonical record and every clock value is compared.
 This proves controlled surviving-target parent inheritance during specials,
 not campaign creation of links, a parent on the firing actor, or deleted-parent
 behavior. Full fidelity remains incomplete outside the verified scopes.
+
+### GameOver real overlay and pointer composition (2026-11-01)
+
+`bash tests/gameover_held_host.sh` retains the three legacy held-input goldens and
+also compares all 2,550 rows from six native GameOver composites. Each uses the
+actual Data B1 factory and 60-tick ready state, real overlay/field/caret, hover,
+DOMOUSE, sprite changes and animation. Intervals 1/2/3 cover both continued held
+input and release/repress followed by moving onto and away from OK. A/B/Enter
+passes through the actual event queue. Every clock boundary, field/latch/end
+state, Click pan, complete node geometry and two terminal draws is compared.
+Two G5 captures are byte-identical and the Intel trace matches without filtering.
+World/HUD drawing, sound playback and score persistence remain observers; this
+is not a whole-world, physical input or pixel identity claim.
+
+This exposed a renderer ordering difference: original DRAWMYEDITFIELD toggles
+caret visibility before its second TickCount, then assigns reset+20. The renderer
+now preserves that intermediate state as well as its final state. The portable
+caret helper checks final values but cannot establish callback ordering. Existing
+field draw, registration draw (810 profiles), GameOver draw and 4,225 caret
+vectors pass. The legacy host fixture now sends separate A/B events, matching
+the unchanged native sequence instead of a synthetic two-character key event.

@@ -288,7 +288,14 @@
     glColor4d(1,1,1,1);
     [self drawText:text x:left+2 baseline:top+23 size:20 texture:texture];
     if(!focused)return;
-    if(self.readTick){uint32_t tick=self.readTick(),reset=(int32_t)caret->deadline<(int32_t)tick?self.readTick():tick;astro_score_caret_draw(caret,tick,reset);}
+    if(self.readTick){
+        uint32_t tick=self.readTick();
+        if((int32_t)caret->deadline<(int32_t)tick){
+            // The original toggles before sampling the reset clock.
+            caret->visible=(int16_t)-caret->visible;
+            caret->deadline=self.readTick()+20u;
+        }
+    }
     if(caret->visible==1){
         NSUInteger prefix=MIN((NSUInteger)MAX(index,0),text.length);double x=left+2+[self textWidth:[text substringToIndex:prefix] size:20];
         glDisable(GL_TEXTURE_2D);glBegin(GL_QUADS);glVertex2d(x,top+1);glVertex2d(x+1,top+1);glVertex2d(x+1,bottom-2);glVertex2d(x,bottom-2);glEnd();
