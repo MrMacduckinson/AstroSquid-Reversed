@@ -777,3 +777,14 @@ caret helper checks final values but cannot establish callback ordering. Existin
 field draw, registration draw (810 profiles), GameOver draw and 4,225 caret
 vectors pass. The legacy host fixture now sends separate A/B events, matching
 the unchanged native sequence instead of a synthetic two-character key event.
+
+### Ordinary first-stage pickups, damage and Game Over (2026-11-01)
+
+A normal New Game input route with the original inventory and no injected stats was
+run to its natural Game Over on both G5 and Intel. Complete captures compare through
+EOF: 28,176,361 records, zero differences (8,455 world states, 25,365,000 star
+records, 8,454 music-service checkpoints and 7,470 sound records). The trace covers
+the actual shield, weapon upgrades, spent special, later Bolt-to-Pellet pickup,
+damage, death and respawn. It stops in 1A before a stage transition; this is
+evidence for that route only. Full captures and streaming comparison result are
+retained under internal `fidelity-audit/normal-pickups-20261101/`.
