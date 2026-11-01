@@ -697,3 +697,9 @@ This bounded gate uses controlled initial seed/prestate, not physical menu-click
 `bash tests/normal_start_host.sh 256` passes on the Intel reference Mac against a repeated original G5 trace: 775,010 records, including 257 complete states of 3,000 stars, all world snapshots and 256 game-clock records. It starts through actual STARTNEWGAME/READY with natural100HP, defaultweapon, one life and one special. Inputs remain released; this proves bounded early1A, not combat-directed ordinary play or level completion. The original one-frame gate still passes unchanged.
 
 The comparator supports plain and gzip traces on Python2.7/3; actual Intel Python2.7 full256 comparison and the complete runner pass. Only the previously documented upstream Click and diagnostic annotation boundary handling apply; payloads are exact. Native capture is tests/normal_start_256_native.tsv.gz.
+
+## Ordinary startup with firing and movement (2026-11-01)
+
+`bash tests/normal_start_host.sh combat` passes on Intel system Python2 against a repeated original G5 trace. The full818,888 records match across256 service boundaries, retaining all subsequent sound events and all star/world payloads. The profile holds ordinary fire and briefly moves upward; it starts with natural100HP/defaultweapon/lives. Positive evidence:255 distinct projectile entities,255 Pellet sounds,1 Bang1 sound, and playerY190→42.979004799180224. HP remains100 throughout: no damage or respawn claim.
+
+Only the established initial Click boundary and diagnostic snapshot ticks are normalized. The test phase bookkeeping now follows native service boundaries for later sound annotations; no payload is filtered. Default native/host first-frame regression passes. Production is unchanged. Service boundaries may include nested lifecycle loops in future longer captures, so they must not automatically be counted as outer gameplay frames.

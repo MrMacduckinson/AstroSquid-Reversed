@@ -2,11 +2,14 @@
 # Authorized Intel runtime only.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-frames=${1:-1}
-case "$frames" in
+mode=${1:-1}
+frames=$mode
+unset ASTRO_WORLD_NORMAL_COMBAT
+case "$mode" in
   1) fixture=tests/normal_start_native.tsv.gz ;;
   256) fixture=tests/normal_start_256_native.tsv.gz ;;
-  *) echo "usage: $0 [1|256]" >&2; exit 2 ;;
+  combat) frames=256; fixture=tests/normal_start_combat_native.tsv.gz; export ASTRO_WORLD_NORMAL_COMBAT=1 ;;
+  *) echo "usage: $0 [1|256|combat]" >&2; exit 2 ;;
 esac
 mkdir -p build
 clang -fobjc-arc -O2 -ffp-contract=off -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations \

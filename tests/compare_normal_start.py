@@ -31,7 +31,6 @@ def compare(native_path, host_path, frames=1):
     assert len(click) == 5 and click[0] == 'S' and click[2:4] == ['normal-start', '436c69636b'], 'expected exactly one upstream Click'
     position = struct.unpack('>d', binascii.unhexlify(click[4]))[0]
     assert not math.isnan(position) and not math.isinf(position)
-    assert not any(row[0] == 'S' for row in native + host), 'unexpected additional sound'
     for rows in (native, host):
         assert [row[2] for row in rows if row[0] == 'G'] == phases
         assert sum(row[0] == 'NK' for row in rows) == frames
