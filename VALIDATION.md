@@ -831,6 +831,17 @@ normalized. Full paired evidence is retained under
 `fidelity-audit/normal-post1b-20261101/`. This is one ordinary input route
 ending in 1B, not a full-campaign victory or proof for every input sequence.
 
+### Sound channel allocation (2026-11-01)
+
+An isolated G5 probe called the original `GETAFREECHANNEL` with all 64 busy/free
+combinations of its six channels. All 190 ordered records show a scan from
+channel 1 upward, returning the first free index or zero when all six are busy;
+a second native run was byte-identical. The Intel adapter removes completed
+voices, permits six concurrent cues and drops a seventh. This verifies its
+capacity rule, not exact Sound Manager channel identity or pause/completion
+scheduling. Probe source, native trace and validation are retained internally
+under `fidelity-audit/sound-slot-20261101/`.
+
 ### Ordinary first-stage pickups, damage and Game Over (2026-11-01)
 
 A normal New Game input route with the original inventory and no injected stats was
