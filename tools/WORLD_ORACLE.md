@@ -173,3 +173,25 @@ Fixtures are under `tests/active_special_parents/`. GPU/HUD presentation is
 observed as in the existing active-special gates. This does not establish
 ordinary-game creation of parent links, a parent attached to the firing actor,
 or dangling/deleted-parent behavior.
+
+### Firing-actor parent reachability
+
+A static audit of the selected shipped PPC code on2026-11-01 found21 direct
+NEWSPRITE call sites. All pass a null parent except two random-generator sites
+that create kind5/subtypes5 and6. Map construction explicitly clears its parent
+argument at0x1004c94c; NEWPLAYERSTART passes zero at0x10050cb4. NEWSPRITE stores
+that argument at entity+92; NEWBEAMSPRITE explicitly clears the same field.
+
+The sole direct FIREWEAPONSPECIAL caller is DOPLAYERSPRITE at0x1005fc88.
+CALCSPRITES dispatches DOPLAYERSPRITE only for kinds1 and-1 at0x10055484..b4.
+The random generator has no direct caller in the selected code; regardless,
+its parented kind5 children do not take this player-special dispatch path.
+The original plasma targeting and GETNEARESTTARGET do inspect the firing
+actor's parent, but the audited construction paths leave it null for players.
+Consequently these paths do not justify changing production `source_parent=-1`.
+
+This is a bounded static reachability finding, not proof against arbitrary
+indirect invocation, external instrumentation or corrupted state. Manually
+parenting a firing actor remains outside the verified scenario. Instruction
+ranges, all direct call sites and original artifact hash are retained in the
+internal `special-parent-reachability-20261101.json` evidence.
