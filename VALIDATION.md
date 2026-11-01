@@ -760,7 +760,7 @@ behavior. Full fidelity remains incomplete outside the verified scopes.
 ### GameOver real overlay and pointer composition (2026-11-01)
 
 `bash tests/gameover_held_host.sh` retains the three legacy held-input goldens and
-also compares all 2,550 rows from six native GameOver composites. Each uses the
+also compares all 2,570 rows from six native GameOver composites. Each uses the
 actual Data B1 factory and 60-tick ready state, real overlay/field/caret, hover,
 DOMOUSE, sprite changes and animation. Intervals 1/2/3 cover both continued held
 input and release/repress followed by moving onto and away from OK. A/B/Enter
