@@ -778,6 +778,44 @@ field draw, registration draw (810 profiles), GameOver draw and 4,225 caret
 vectors pass. The legacy host fixture now sends separate A/B events, matching
 the unchanged native sequence instead of a synthetic two-character key event.
 
+### Retained world, HUD and real GameOver overlay coupling (2026-11-01)
+
+`bash tests/gameover_world_overlay_host.sh` compares two continuous 8B death,
+respawn, last-death and GameOver routes, including ten warm world updates,
+60-frame panel transition, real score input, two terminal draws, score insertion
+and panel cleanup. Both retain actual world and HUD logic while running the real
+overlay, field/caret and hover together. One pointer stays in the field; the other
+moves over OK during A/B/left/C/Enter input. All 31,168 canonical records per route
+match on G5/Intel, and both native captures repeat byte-identically.
+
+The comparison retains all world records, seven overlay field/clock checkpoints,
+all UI node geometry/type/deadline/counter records at each overlay and lifecycle
+boundary, and all ten score-table entries. The existing shared-list mapping
+accounts for native UI nodes sharing the world allocator; only diagnostic
+G/E/R/S tick annotations are normalized. Physical input, OS window dispatch,
+actual score-file persistence, audio output and pixel identity remain outside
+this gate. No production change was needed. The optional overlay flag and
+capture binary name preserve existing arena and normal-pilot defaults.
+
+### Ordinary 1A through the first loaded 1B state (2026-11-01)
+
+The complete original G5/Intel route matches **34,712,025 records**, with zero
+differences through EOF: 10,751 complete world/star states, 32,253,000 star
+records, 10,749 music-service observations, 8,481 sound events, six music events
+and two READY boundaries. It runs actual STARTNEWGAME, ordinary 1A with genuine
+pickups and use of the starting special, MIDLEVEL, second READY, LOADLEVEL and
+the first post-load 1B state (`NT stage1B`). Input, initial seed/prestate and OS
+observers remain controlled; no health or equipment is injected. This proves the
+1A route and entry into 1B, not the remainder of 1B or the full campaign.
+
+Two native-observer setup gaps were corrected: the menu music token/play1 event,
+and per-map renderer identity numbering at LOAD after asserting that the old
+entity/render lists are empty. Entity identities remain continuous. No production
+code or comparison payload filtering changed; the established upstream Click and
+diagnostic tick handling remains. The unchanged 6,025-record native startup
+regression also passes. Full paired evidence is retained internally under
+`fidelity-audit/normal-keepbolt-20261101/`.
+
 ### Ordinary first-stage pickups, damage and Game Over (2026-11-01)
 
 A normal New Game input route with the original inventory and no injected stats was
