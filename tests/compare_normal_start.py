@@ -1,13 +1,12 @@
 #!/usr/bin/env python
-"""Compare STARTNEWGAME through first gameplay service, with explicit DOMOUSE boundary.
+"""Stream complete normal-start traces; exclude one upstream DOMOUSE Click only.
 
-Host enters performMenuAction and emits one upstream Click; native enters
-STARTNEWGAME after that Click. Only diagnostic snapshot labels are normalized:
-original fixture tick and host simulationTick are not the same clock. All
-payloads, actor clocks, ND/NK records and remaining events compare exactly.
+Only G/E/R/S diagnostic tick annotations differ in meaning between harnesses.
+All state, star, sound, actor-clock and NK/ND payloads compare exactly.
 """
 import binascii
 import gzip
+import itertools
 import math
 import struct
 import sys
@@ -15,44 +14,75 @@ import sys
 
 def records(path):
     stream = gzip.open(path, 'rb') if path.endswith('.gz') else open(path, 'rb')
-    with stream:
-        return [line.decode('ascii').rstrip('\n').split('\t') for line in stream]
+    try:
+        for line in stream:
+            yield line.decode('ascii').rstrip('\n').split('\t')
+    finally:
+        stream.close()
 
 
-def compare(native_path, host_path, frames=1):
+def compare(native_path, host_path, frames=1, terminal='limit'):
     frames = int(frames)
-    assert 1 <= frames <= 256
+    assert 1 <= frames <= 1024 and terminal in ('limit', 'gameover')
     native, host = records(native_path), records(host_path)
-    assert len(host) == len(native) + 1, 'unexpected trace length'
-    if frames == 1:
-        assert len(native) == 6025
-    phases = ['normal-ready'] + (['normal-first-game'] if frames == 1 else ['normal-game%d' % i for i in range(1, frames + 1)])
-    click = host.pop(0)
-    assert len(click) == 5 and click[0] == 'S' and click[2:4] == ['normal-start', '436c69636b'], 'expected exactly one upstream Click'
+    click = next(host)
+    assert len(click) == 5 and click[0] == 'S' and click[2:4] == ['normal-start', '436c69636b'], 'expected one upstream Click'
     position = struct.unpack('>d', binascii.unhexlify(click[4]))[0]
     assert not math.isnan(position) and not math.isinf(position)
-    for rows in (native, host):
-        assert [row[2] for row in rows if row[0] == 'G'] == phases
-        assert sum(row[0] == 'NK' for row in rows) == frames
-        grouped = {}
-        for row in rows:
-            if row[0] == 'NS': grouped.setdefault(row[1], []).append(row)
-        assert set(grouped) == set(phases)
-        for phase in phases:
-            stars = grouped[phase]
-            assert len(stars) == 3000 and [int(row[2]) for row in stars] == list(range(3000))
-            assert all(len(row) == 4 and len(binascii.unhexlify(row[3])) == 32 for row in stars)
-        assert rows[-1] == ['W', 'normal-first-game']
-        for row in rows:
-            if row[0] in ('G', 'E', 'R', 'S'):
-                int(row[1])  # Diagnostic annotation only; entity clocks remain untouched.
-                row[1] = '<annotation>'
-    for index, (a, b) in enumerate(zip(native, host)):
-        assert a == b, 'record %d:\nnative=%r\nhost=%r' % (index, a, b)
-    print('PASS %d complete STARTNEWGAME/READY/%d-game-frame records; one explicit upstream Click; diagnostic ticks only normalized' % (len(native), frames))
+    pairs = getattr(itertools, 'izip_longest', None) or itertools.zip_longest
+    phase = None
+    stars = states = clocks = games = delays = reasons = endings = count = 0
+    ended = False
+    for count, (a, b) in enumerate(pairs(native, host), 1):
+        assert a is not None and b is not None, 'trace length mismatch'
+        assert not ended, 'records after terminal'
+        if a[0] in ('G', 'E', 'R', 'S'):
+            int(a[1]); int(b[1])
+            a[1] = b[1] = '<annotation>'
+        assert a == b, 'record %d:\nnative=%r\nhost=%r' % (count, a, b)
+        tag = a[0]
+        if tag == 'G':
+            assert phase is None or stars == 3000, 'incomplete star state'
+            if states == 0:
+                assert a[2] == 'normal-ready'
+            elif a[2] == 'normal-gameover':
+                assert terminal == 'gameover' and games < frames
+            else:
+                games += 1
+                assert games <= frames
+                assert a[2] == ('normal-first-game' if frames == 1 else 'normal-game%d' % games)
+            phase = a[2]; stars = 0; states += 1
+        elif tag == 'NS':
+            assert len(a) == 4 and a[1] == phase and int(a[2]) == stars
+            assert len(binascii.unhexlify(a[3])) == 32
+            stars += 1
+            assert stars <= 3000
+        elif tag == 'NK':
+            assert stars == 3000 and phase != 'normal-ready'
+            clocks += 1
+            assert clocks == states - 1
+        elif tag == 'ND':
+            assert phase == 'normal-ready' and a[1] == '60'
+            delays += 1
+        elif tag == 'NT':
+            assert a == ['NT', terminal]
+            reasons += 1
+            if terminal == 'gameover':
+                assert phase == 'normal-gameover'
+                ended = True
+        elif tag == 'W':
+            assert terminal == 'limit' and a == ['W', 'normal-first-game']
+            endings += 1; ended = True
+    assert ended and stars == 3000 and delays == 1 and clocks == states - 1
+    if terminal == 'gameover':
+        assert reasons == 1 and endings == 0 and clocks == games + 1
+    else:
+        assert games == frames and clocks == frames and endings == 1
+        assert reasons == (1 if frames > 256 else 0)
+    print('PASS %d complete records, %d service states, terminal %s; explicit upstream Click; diagnostic ticks only normalized' % (count, clocks, terminal))
 
 
 if __name__ == '__main__':
-    if len(sys.argv) not in (3, 4):
-        sys.exit('usage: compare_normal_start.py native.tsv[.gz] host.tsv[.gz] [frames]')
+    if len(sys.argv) not in (3, 4, 5):
+        sys.exit('usage: compare_normal_start.py native.tsv[.gz] host.tsv[.gz] [budget] [limit|gameover]')
     compare(*sys.argv[1:])

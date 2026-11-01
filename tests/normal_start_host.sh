@@ -4,12 +4,14 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 mode=${1:-1}
 frames=$mode
+terminal=limit
 unset ASTRO_WORLD_NORMAL_COMBAT
 case "$mode" in
   1) fixture=tests/normal_start_native.tsv.gz ;;
   256) fixture=tests/normal_start_256_native.tsv.gz ;;
   combat) frames=256; fixture=tests/normal_start_combat_native.tsv.gz; export ASTRO_WORLD_NORMAL_COMBAT=1 ;;
-  *) echo "usage: $0 [1|256|combat]" >&2; exit 2 ;;
+  death) frames=1024; terminal=gameover; fixture=tests/normal_start_death_native.tsv.gz ;;
+  *) echo "usage: $0 [1|256|combat|death]" >&2; exit 2 ;;
 esac
 mkdir -p build
 clang -fobjc-arc -O2 -ffp-contract=off -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations \
@@ -19,4 +21,4 @@ scratch=$(mktemp -d /tmp/astrosquid-normal-start.XXXXXX)
 trap 'rm -r "$scratch"' EXIT
 gzip -cd "$fixture" > "$scratch/native.tsv"
 ASTRO_WORLD_NORMAL_FOLLOW="$frames" ASTRO_WORLD_REAL_HUD=1 ASTRO_WORLD_READY=1 build/normal_start_host_test assets advancing normal1A > "$scratch/host.tsv"
-/usr/bin/python tests/compare_normal_start.py "$scratch/native.tsv" "$scratch/host.tsv" "$frames"
+/usr/bin/python tests/compare_normal_start.py "$scratch/native.tsv" "$scratch/host.tsv" "$frames" "$terminal"

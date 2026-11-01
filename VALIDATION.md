@@ -709,3 +709,11 @@ Only the established initial Click boundary and diagnostic snapshot ticks are no
 The complete paired route matches11,100,760 G5/Intel records and34,550 post-load observations through the upper turret encounter, lower-beam damage, death, respawn and natural GameOver. Native actualexit0 and full CRC/hash comparison are recorded internally in FOLLOW1_TURRETROUTE3_VERIFIED.json. Only G/E/R/S diagnostic ticks normalize. The testpilot holds target100 overx4900..5900 and movesright overx5350..5800 in level3; production is unchanged.
 
 This remains a controlled first-boss start, not ordinary campaign or level3 completion. A later lower-target pilot revision and longer ordinary lifecycle tests remain separate pending work.
+
+## Natural ordinary damage, respawn and Game Over entry (2026-11-01)
+
+`bash tests/normal_start_host.sh death` passes on IntelPython2 against a repeated original G5 capture. Starting normally with released inputs causes actual collisions with the unchanged Data1A scenery, without injected damage or inventory. All1,495,130 records match, including495 complete world/star states,1,485,000 star records,494 NK observations and20 sound events. HP first falls to90 at service429 and0 at476; replacement player44 hasHP100/lives0 at479 and becomes active at482. SecondHP0 occurs at492, followed by GameOverentry494. Nested lifecycle observations remain included and are not claimed as outer frames.
+
+The paired fixtures stop at actual GameOver entry before its UI, with explicit terminal reason. The streaming comparator checks every record, ordered full star states, clock-count budget and exact terminal, retaining the documented upstream Click/diagnostic-tick handling only. Mutated star data, HP and terminal reasons were rejected. Native repeat, default6025 and priorcombat818888 regressions pass. A separate normalfire1024 capture also matched3,316,799 records but had no player damage.
+
+This proves the bounded natural lifecycle, not GameOver UI, a complete first level or the full ordinary campaign. Production is unchanged.

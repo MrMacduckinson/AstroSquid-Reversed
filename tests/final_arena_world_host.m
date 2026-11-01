@@ -24,7 +24,7 @@ static __weak AstroView *midView;
 @interface CompositeArenaAudio:AstroTraceAudio
 @end
 @implementation CompositeArenaAudio
-- (void)serviceMusic {if(normalStart){if(readyActive)return;normalFrames++;static char normalPhase[32];snprintf(normalPhase,sizeof(normalPhase),"normal-game%u",normalFrames);tracePhase=normalLimit==1?"normal-first-game":normalPhase;[midView dumpWorldTrace:[NSString stringWithUTF8String:tracePhase]];printf("NK\t%u\t%u\t%u\n",compositeClocks,[[midView valueForKey:@"observedWallTick"]unsignedIntValue],[[midView valueForKey:@"worldRenderTick"]unsignedIntValue]);if(normalFrames==normalLimit){puts("W\tnormal-first-game");@throw [NSException exceptionWithName:@"NormalStartFinished" reason:nil userInfo:nil];}return;}if(readyActive&&getenv("ASTRO_WORLD_ENDING")){puts("M");return;}if(midMode&&(!readyActive||followRemaining))[midView captureMidFrame];else [super serviceMusic];}
+- (void)serviceMusic {if(normalStart){if(readyActive)return;normalFrames++;static char normalPhase[32];snprintf(normalPhase,sizeof(normalPhase),"normal-game%u",normalFrames);tracePhase=normalLimit==1?"normal-first-game":normalPhase;[midView dumpWorldTrace:[NSString stringWithUTF8String:tracePhase]];printf("NK\t%u\t%u\t%u\n",compositeClocks,[[midView valueForKey:@"observedWallTick"]unsignedIntValue],[[midView valueForKey:@"worldRenderTick"]unsignedIntValue]);if(normalFrames==normalLimit){if(normalLimit>256)puts("NT\tlimit");puts("W\tnormal-first-game");@throw [NSException exceptionWithName:@"NormalStartFinished" reason:nil userInfo:nil];}return;}if(readyActive&&getenv("ASTRO_WORLD_ENDING")){puts("M");return;}if(midMode&&(!readyActive||followRemaining))[midView captureMidFrame];else [super serviceMusic];}
 - (void)stopMusic {puts("A\tstop");}
 - (BOOL)playMusic:(int)track {if(normalStart&&track==1){puts("A\tplay1");return YES;}if(track==3)puts("A\tplay3");else if(track==1&&((midMode&&!readyActive)||(menuReturn&&cleanupDone))){puts("A\tplay1");}else {assert(track==2);puts("A\tplay2");}return YES;}
 @end
@@ -64,7 +64,7 @@ static __weak AstroView *midView;
 - (BOOL)menuMouseButtonPressed {return panelInput?NO:[super menuMouseButtonPressed];}
 - (void)pollMenuMouse {if(!panelInput)[super pollMenuMouse];}
 - (void)reloadMainMenu {if(destroyMode&&!menuMode&&cleanupDone){assert(!world.count&&!enemies.count&&!mapPlacements.count);printf("DEND\t%u\t0\t0\n",compositeClocks);puts("W\tdestroy-complete");@throw [NSException exceptionWithName:midMode?@"MidTraceFinished":@"TraceFinished" reason:nil userInfo:nil];}[super reloadMainMenu];}
-- (void)beginGameOver {if(followRemaining||(getenv("ASTRO_WORLD_ENDING")&&!getenv("ASTRO_WORLD_GAMEOVER_WARM"))||(gameoverEntry&&!warmMode)||(getenv("ASTRO_WORLD_GAMEOVER")&&!getenv("ASTRO_WORLD_GAMEOVER_WARM"))){gameoverReached=YES;[self dumpWorldTrace:@"gameover-entry"];printf("K\tentry\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);@throw [NSException exceptionWithName:midMode?@"MidTraceFinished":@"TraceFinished" reason:nil userInfo:nil];}if(getenv("ASTRO_WORLD_ENDING"))readyActive=NO;[super beginGameOver];}
+- (void)beginGameOver {if(normalStart){gameoverReached=YES;[self dumpWorldTrace:@"normal-gameover"];printf("NK\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);puts("NT\tgameover");@throw [NSException exceptionWithName:@"NormalStartFinished" reason:nil userInfo:nil];}if(followRemaining||(getenv("ASTRO_WORLD_ENDING")&&!getenv("ASTRO_WORLD_GAMEOVER_WARM"))||(gameoverEntry&&!warmMode)||(getenv("ASTRO_WORLD_GAMEOVER")&&!getenv("ASTRO_WORLD_GAMEOVER_WARM"))){gameoverReached=YES;[self dumpWorldTrace:@"gameover-entry"];printf("K\tentry\t%u\t%u\t%u\n",compositeClocks,observedWallTick,worldRenderTick);@throw [NSException exceptionWithName:midMode?@"MidTraceFinished":@"TraceFinished" reason:nil userInfo:nil];}if(getenv("ASTRO_WORLD_ENDING"))readyActive=NO;[super beginGameOver];}
 - (void)delayGameTicks:(uint32_t)ticks {
  if(!warmMode&&!getenv("ASTRO_WORLD_GAMEOVER_WARM")){[super delayGameTicks:ticks];return;}
  static const unsigned expected[]={0,1,1,2,3,3,4,4,5,6};assert(warmFrames<10&&ticks==expected[warmFrames]);
@@ -122,7 +122,7 @@ static __weak AstroView *midView;
     backgrounds=@[];parallaxData=[NSMutableData data];starsInitialized=YES;renderClock=0;simulationTick=100;
     campaign=(AstroCampaign){8,2,0,0};inventory=(AstroInventory){0};selectedLevel=[levels indexOfObject:@"Data 8B"];
     if(normalStart){
-        if(getenv("ASTRO_WORLD_NORMAL_FOLLOW")){normalLimit=atoi(getenv("ASTRO_WORLD_NORMAL_FOLLOW"));assert(normalLimit>=1&&normalLimit<=256);}
+        if(getenv("ASTRO_WORLD_NORMAL_FOLLOW")){normalLimit=atoi(getenv("ASTRO_WORLD_NORMAL_FOLLOW"));assert(normalLimit>=1&&normalLimit<=1024);}
         assert(realHUD&&!panelMode&&!getenv("ASTRO_WORLD_BOSS")&&!getenv("ASTRO_WORLD_FLIGHT")&&getenv("ASTRO_WORLD_READY"));
         int normalControls[6]={55,58,126,125,123,124};memcpy(controlKeys,normalControls,sizeof normalControls);
         randomSeed=123;compositeClocks=0;traceTick=100;tracePhase="normal-start";nextEntityID=playerTraceID=0;
@@ -133,7 +133,7 @@ static __weak AstroView *midView;
         tracePhase="normal-ready";[self dumpWorldTrace:@"normal-ready"];printf("ND\t60\t%u\n",compositeClocks);
         [self recordCardPresentation];compositeClocks+=60;[self pollFlowCard];readyActive=NO;
         assert(flow.phase==ASTRO_FLOW_PLAY&&gameLoopActive);
-        @try {for(unsigned poll=0;poll<1000;poll++)[self pollGame];assert(0);}
+        @try {for(unsigned poll=0;poll<normalLimit*16+1000;poll++)[self pollGame];assert(0);}
         @catch(NSException *e){assert([e.name isEqual:@"NormalStartFinished"]);}
         return;
     }
