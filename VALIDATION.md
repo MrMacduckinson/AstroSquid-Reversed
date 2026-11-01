@@ -903,3 +903,16 @@ projectile, player-motion, render, world and star records. The different record
 counts show that frame settings affect the recorded world. Full captures and
 comparison results are in internal `fidelity-audit/normal-fps-20261101/`.
 This verifies these early combat routes, not later combat or a complete campaign.
+
+### Full ordinary 30 FPS route to Game Over in 1B (2026-11-01)
+
+The original G5 and Intel port ran the same ordinary New Game route at frame
+interval 2 (30 FPS), with normal health, inventory, combat, pickups, deaths and
+respawns. Both ended naturally at Game Over in 1B with the same final clock
+tuple 3796354/3796453/3796406. Complete captures compare through EOF:
+48,923,105 records, zero differences after normalizing only diagnostic G/E/R/S
+tick annotations. Both gzip archives passed CRC; the complete original archive
+also matches the G5 source MD5 after an interrupted transfer was resumed.
+The comparison result and original archive are retained under internal
+`fidelity-audit/normal-fps-20261101/`. This verifies this complete route to
+Game Over at 30 FPS, not an ordinary-health campaign victory or every input.
