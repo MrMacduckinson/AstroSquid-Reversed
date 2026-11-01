@@ -314,7 +314,8 @@ captures; those captures do not establish equivalence of the current full game.
 - A controlled parent-linked variant matches6576 records across30ticks, including
   chain order and propagation of a parent death; normalparent-free180ticks remain
   identical. This is an explicit initial-condition probe, not a normal-campaign
-  reachability claim. Parent links during specials remain unverified.
+  reachability claim. The later linked-parent special gate below covers two
+  controlled surviving-target cases during actual nested specials.
 - All29 original AI scripts match104400 controlled original/portable ticks,
   including natural/scaled visual dimensions (separate G5 oracle invocation).
 - `tests/script_clock_native.csv` captures10 whole-original DOSCRIPTEDSPRITE
@@ -728,3 +729,11 @@ blanket statements above that factory deadlines, normal-menu handling and all
 moving-pointer integration were unproved. It does not extend these gates to
 arbitrary mixed input, the complete Main/Root event loop, or Game Over UI.
 Only the coverage documentation changed; production and reference data did not.
+
+## Actual Root replay of Main scheduling, including idle events (2026-11-01)
+
+`bash tests/main_queue_host.sh` compares the real Root `pollMainMenu`/`pollMenu` and field consumers to actual PPC Main traces: 108 generated-event profiles (11,058 records) and 432 finite-FIFO/idle profiles (41,572 records). Every clock, frame, event, terminal field/counter and idle deadline record compares exactly. The idle matrix covers expired/future deadlines and both signed32 extremes; the native capture was repeated identically. Existing generated and historical zero-initialized mixed traces were preserved. The new idle reference initializes the original runtime's 60-tick timer.
+
+This exposed a missing production branch: an empty periodic OS event still executes original `FBNULLEVENTS`, sampling its timer and a second reset clock when the signed deadline has expired. Root now preserves that behavior and initializes its timer before game asset setup. Actual original v3 G5 startup snapshots confirm interval60/callback0 and the same initial deadline before game initialization, after assets, and at the first Main key-map call. Static anchors are `INITRUNTIME`0x1001b06c, `FBHANDLEEVENTS`0x10024064 and `FBNULLEVENTS`0x10023424.
+
+Full Intel registration-input, bootstrap, and normal first-gameplay (6,025 records) regressions pass. Frame rendering, audio and OS event/time sources are controlled observers in this Main gate; it does not prove physical event delivery, every window/dialog callback, complete UI rendering or the whole campaign. Evidence and original startup transcript: internal `fidelity-audit/main-root-20261101/`.

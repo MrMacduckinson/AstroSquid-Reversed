@@ -58,10 +58,12 @@ deadlines, clock wrap, keys and FPS diagnostics; its rendering is an observer.
 including33675 records and every captured star word. These bounded schedules
 do not prove arbitrary combinations of physical input or complete Game Over UI.
 
-The108 original Main-loop schedules currently have a Python-model comparator
-and selected root-input checks. Replaying the complete schedules through the
-actual root loop remains required, as does ordinary campaign integration with
-the UI. These are verification gaps, not authorized fidelity exclusions.
+`../main_queue_host.sh` now replays108 generated-event and432 finite-FIFO/idle
+schedules through the actual root loop and field consumers, comparing all
+clocks, frame counters, events, fields and idle-timer deadlines. Rendering,
+audio and OS event/time delivery are controlled in this gate. Physical event
+delivery, broader window/dialog integration and ordinary campaign integration
+with the UI remain verification gaps, not authorized fidelity exclusions.
 
 ## Key capture regression
 

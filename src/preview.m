@@ -148,7 +148,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     AstroUIRenderer *ui;
     NSString *navigationButton,*registeredSerial;
     NSMutableArray<NSEvent *> *queuedKeyEvents;
-    uint32_t lastMainEventTick,mainMenuFrames;
+    uint32_t lastMainEventTick,mainMenuFrames,mainIdleTimerTick;
     uint16_t mainMenuRate;
     BOOL countMainMenuFrame;
     AstroHUDRenderer *hud;
@@ -319,6 +319,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     fullscreenRequested=!((startupKeys[58>>3]>>(58&7))&1);
     screenshotBase=[[[NSBundle mainBundle] bundlePath] stringByDeletingLastPathComponent];
     clockOrigin=NSProcessInfo.processInfo.systemUptime;
+    mainIdleTimerTick=[self cardDelayClockTick];
     randomSeed=[self macLocalSeconds];astro_random(&randomSeed,1);
     assetPath = [path copy];
     NSData *data = [NSData dataWithContentsOfFile:[path stringByAppendingPathComponent:@"game.json"]];
@@ -2022,6 +2023,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             }
         }
     }else if(event)[NSApp sendEvent:event];
+    else {
+        // FBNULLEVENTS advances the runtime's 60-tick timer even without a callback.
+        uint32_t tick=[self cardDelayClockTick];
+        if((int32_t)mainIdleTimerTick<(int32_t)tick)mainIdleTimerTick=[self cardDelayClockTick]+60u;
+    }
     lastMainEventTick=[self cardDelayClockTick];
     mainMenuRate=(uint16_t)mainMenuFrames;mainMenuFrames=0;
 }
