@@ -876,3 +876,19 @@ source copies and comparator result are retained in the internal
 `fidelity-audit/normal1b-gap2-pair-20261101/` evidence directory and on the
 authorized test machines. This verifies this ordinary route through Game Over,
 not a complete ordinary-health campaign victory.
+
+### Ordinary startup at 30 and 20 FPS (2026-11-01)
+
+The original G5 and Intel port were each run from New Game through READY and
+256 game music-service boundaries with frame interval 2 (30 FPS) and 3 (20 FPS).
+For each interval, complete captures match 775,010 records through EOF with
+zero differences, including 257 world snapshots, 771,000 star records, actors,
+render nodes and clocks. Only the usual G/E/R/S diagnostic tick annotations
+are normalized. The two native captures themselves differ from the first game
+render record, so both frame settings were exercised. The optional
+`ASTRO_WORLD_FRAME_INTERVAL` harness input allows either setting without
+changing the normal default. Full captures, exact comparator results and
+probe source are retained under internal `fidelity-audit/normal-fps-20261101/`.
+This verifies the first 256 no-input service boundaries after ordinary startup;
+combat, later stages and preference-file loading at those FPS values remain
+outside this check.

@@ -188,6 +188,7 @@ if(realHUD)[self drawHUD:!(panelTransitionRender||(panelInput&&warmFrames==10))]
         int normalControls[6]={55,58,126,125,123,124};memcpy(controlKeys,normalControls,sizeof normalControls);
         randomSeed=123;compositeClocks=0;traceTick=100;tracePhase="normal-start";nextEntityID=playerTraceID=0;
         ui.musicVolume=1;splashVisible=NO;midView=self;
+        if(getenv("ASTRO_WORLD_FRAME_INTERVAL")){int iv=atoi(getenv("ASTRO_WORLD_FRAME_INTERVAL"));assert(iv==2||iv==3);ui.frameInterval=iv;}
         [self performMenuAction:@"New Game"];
         assert(initialReadyCard&&flow.phase==ASTRO_FLOW_READY&&playerCombat.hit_points==100&&inventory.lives==1&&inventory.weapon==10&&!inventory.upgrade&&inventory.specials==1&&!score);
         readyActive=YES;BOOL oldHUD=hudClockActive;hudClockActive=YES;[self drawHUD:NO];hudClockActive=oldHUD;

@@ -191,6 +191,7 @@ int main(int argc,char **argv){
     set_double(g,0x368,3.14159265358979323846);set_double(g,0x378,4503601774854144.0);*(uint32_t *)(g+0x380)=0x43300000;
     if(getenv("ASTRO_WORLD_REGISTERED"))set_short(g,0xa0c,1);
     set_short(g,0xed6,640);set_short(g,0xed8,480);set_short(g,0xa52,1);set_short(g,0xa82,8);set_short(g,0xa84,2);
+    if(normal_start&&getenv("ASTRO_WORLD_FRAME_INTERVAL")){int iv=atoi(getenv("ASTRO_WORLD_FRAME_INTERVAL"));assert(iv==2||iv==3);set_short(g,0xa52,iv);}
     set_pointer(g,0x1004,calloc(7,0x108)); /* FIREWEAPON scans six idle sound-channel names. */
     set_pointer(g,0xa54,calloc(3001*4,sizeof(double)));*(uint32_t *)(g+0x244)=123;set_short(g,0xabc,1);*(unsigned *)(g+0xa42)=0x1234;*(unsigned *)(g+0xa46)=0x5678;
     const struct {unsigned at;void *fn;} hooks[]={
