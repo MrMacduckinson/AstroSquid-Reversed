@@ -19,7 +19,7 @@ visit counter and clock count are intentionally not required to match. No
 reference bytes were edited to make the unsafe original match the safe port.
 Other original-fidelity gaps and complete-game verification remain open.
 
-## Verified mouse primitives; remaining frame integration
+## Verified mouse primitives and bounded menu integration
 
 `../mouse_release_host.sh` now checks the actual root rapid-release boundary:
 press outside, drag onto OK, release/repress before an eligible released-button
@@ -47,9 +47,21 @@ The current host passes `../mouse_latch_host.sh` for all52 primitive records,
 including per-sprite hover deadlines and original geometry operations. Actual
 GL rendering uses the sampled sprite state without another clock read. `../gameover_held_host.sh` additionally matches171 records from three whole
 GAMEOVER control-flow schedules with real DOMOUSE body and A/B/Enter while held,
-including closed gates and post-frame dispatch. Initial scene construction,
-all moving-pointer/mixed-input cases, factory deadlines and normal-menu
-LMHANDLE remain unproved. These remain required work, not exclusions.
+including closed gates and post-frame dispatch.
+
+Later gates cover additional integration and passed again on the Intel Mac on
+2026-11-01. `../menu_setup_host.sh` compares nine actual menu reload profiles,
+including all52 scene nodes, factory deadlines, RNG and all3000 stars.
+`../menu_handle_host.sh` compares six actual root-handler profiles with signed
+deadlines, clock wrap, keys and FPS diagnostics; its rendering is an observer.
+`../menu_moving_host.sh` compares18 moving-pointer routes across507 frames,
+including33675 records and every captured star word. These bounded schedules
+do not prove arbitrary combinations of physical input or complete Game Over UI.
+
+The108 original Main-loop schedules currently have a Python-model comparator
+and selected root-input checks. Replaying the complete schedules through the
+actual root loop remains required, as does ordinary campaign integration with
+the UI. These are verification gaps, not authorized fidelity exclusions.
 
 ## Key capture regression
 

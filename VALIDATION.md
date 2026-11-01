@@ -717,3 +717,14 @@ This remains a controlled first-boss start, not ordinary campaign or level3 comp
 The paired fixtures stop at actual GameOver entry before its UI, with explicit terminal reason. The streaming comparator checks every record, ordered full star states, clock-count budget and exact terminal, retaining the documented upstream Click/diagnostic-tick handling only. Mutated star data, HP and terminal reasons were rejected. Native repeat, default6025 and priorcombat818888 regressions pass. A separate normalfire1024 capture also matched3,316,799 records but had no player damage.
 
 This proves the bounded natural lifecycle, not GameOver UI, a complete first level or the full ordinary campaign. Production is unchanged.
+
+## Menu coverage reconciliation (2026-11-01)
+
+The current Intel tree passes `menu_setup_host.sh`, `menu_handle_host.sh` and
+`menu_moving_host.sh` against their unchanged native references: nine complete
+menu reload profiles, six root-handler profiles and18 moving-pointer routes
+(33675 records,507 frames and6084000 IEEE star words). This supersedes the older
+blanket statements above that factory deadlines, normal-menu handling and all
+moving-pointer integration were unproved. It does not extend these gates to
+arbitrary mixed input, the complete Main/Root event loop, or Game Over UI.
+Only the coverage documentation changed; production and reference data did not.
