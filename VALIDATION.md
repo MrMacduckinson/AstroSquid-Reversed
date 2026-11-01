@@ -933,3 +933,14 @@ This validates this route, not an ordinary-health victory across all stages.
 With this input change, the complete 30 FPS route was rerun and still matched
 all 48,923,105 records. The earlier ordinary 60 FPS route was also rerun and
 matched all 48,915,780 records through Game Over; both gzip pairs passed CRC.
+
+### Released-input natural Game Over at 20 and 30 FPS (2026-11-02)
+
+With no movement, firing or pilot input, ordinary New Game runs to natural
+Game Over in 1A. At both frame intervals 3 (20 FPS) and 2 (30 FPS), complete
+G5/Intel captures match 1,495,134 records through EOF with zero differences;
+both end at clocks 14784/14883/14834. All four gzip archives passed CRC and
+each transferred native archive matched its G5 MD5. This extends the earlier
+256-service no-input checks through actual damage, respawn and Game Over at
+both settings. Captures and comparison results are retained under internal
+`fidelity-audit/normal-fps-20261101/`. It does not cover later levels.
