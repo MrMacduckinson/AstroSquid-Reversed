@@ -16,6 +16,15 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- The registered continuous New Game route now matches the original G5 through
+  6B player creation: 265,979 complete canonical records, zero differences after
+  the same initial host Click removal and G/E/R/S diagnostic tick normalization.
+  Both complete compressed logs passed EOF/CRC reading and ended with
+  `NT stage6B`. This uses the same controlled HP/weapon and boss-HP fixture as
+  the 6A route below. It does not prove ordinary-health victory or stages 7–9.
+  Evidence is retained as `CONTROLLED_NEWGAME_6B_REGISTERED_COMPARISON.json`
+  in the persistent AstroSquid fidelity audit.
+
 - A paired registered continuous New Game route from 1A through 1B, 2B,
   3B and 4B victories and 5B reactor defeat to 6A player creation matches all
   239,132 original G5 records. The comparison
