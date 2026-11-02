@@ -7,17 +7,18 @@
 #undef main
 
 typedef struct {unsigned char *p;size_t size;unsigned id;int alive;} Allocation;
-static Allocation allocations[262144];
-static unsigned allocation_slots[524288];static unsigned allocation_count,entity_birth,render_birth;
+enum { ALLOCATION_LIMIT = 524288, ALLOCATION_SLOTS = 1048576 };
+static Allocation allocations[ALLOCATION_LIMIT];
+static unsigned allocation_slots[ALLOCATION_SLOTS];static unsigned allocation_count,entity_birth,render_birth;
 static unsigned char *world_globals;static const char *phase;
 static unsigned allocation_slot(void *p){
- unsigned slot=(unsigned)(((uintptr_t)p>>4)*2654435761u)&524287u;
- while(allocation_slots[slot]&&allocations[allocation_slots[slot]-1].p!=p)slot=(slot+1)&524287u;
+ unsigned slot=(unsigned)(((uintptr_t)p>>4)*2654435761u)&(ALLOCATION_SLOTS-1);
+ while(allocation_slots[slot]&&allocations[allocation_slots[slot]-1].p!=p)slot=(slot+1)&(ALLOCATION_SLOTS-1);
  return slot;
 }
 static Allocation *allocation(void *p){unsigned index=allocation_slots[allocation_slot(p)];return index?&allocations[index-1]:NULL;}
 static unsigned identity(void *p){Allocation*a=allocation(p);if(!p)return 0;if(!a){fputs("Unregistered pointer in canonical state\n",stderr);exit(2);}return a->id;}
-static void *world_alloc(long bytes){if(bytes<0||allocation_count==262144)exit(2);unsigned char*p=calloc(1,bytes?bytes:1);if(!p)exit(2);unsigned id=bytes==106?++entity_birth:bytes==308?++render_birth:allocation_count+1;allocations[allocation_count++]=(Allocation){p,(size_t)bytes,id,1};allocation_slots[allocation_slot(p)]=allocation_count;return p;}
+static void *world_alloc(long bytes){if(bytes<0||allocation_count==ALLOCATION_LIMIT)exit(2);unsigned char*p=calloc(1,bytes?bytes:1);if(!p)exit(2);unsigned id=bytes==106?++entity_birth:bytes==308?++render_birth:allocation_count+1;allocations[allocation_count++]=(Allocation){p,(size_t)bytes,id,1};allocation_slots[allocation_slot(p)]=allocation_count;return p;}
 static void world_dispose(void *p){Allocation*a=allocation(p);if(!a){fputs("Unknown DisposePtr\n",stderr);exit(2);}a->alive=0;/* Retain storage to prevent host allocator pointer reuse affecting IDs. */}
 void world_sound(unsigned char *name,double *pan){printf("S\t%u\t%s\t",tick,phase);for(unsigned i=1;i<=name[0];i++)printf("%02x",name[i]);printf("\t%016llx\n",(unsigned long long)ieee_word(*pan));}
 extern void world_sound_fb(void);
