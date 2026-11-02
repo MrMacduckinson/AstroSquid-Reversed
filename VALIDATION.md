@@ -16,6 +16,19 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- A registered continuous controlled New Game-to-ending route matches all
+  **405,789** canonical original G5/Intel records through `NT gameover`,
+  including the final arena, end card and four ending pages. Both complete
+  gzips passed EOF/CRC reading. Only the initial host menu Click is omitted
+  and G/E/R/S diagnostic ticks normalized. Evidence:
+  `CONTROLLED_NEWGAME_ENDING_FIXED_COMPARISON.json` in the persistent audit.
+  The host test driver initially started each ending delay after advancing
+  its virtual clock, causing repeated page polling; recording presentation
+  before advancing the delay fixes that fixture error. Production unchanged.
+  This route uses HP refills, READY Laser4 and 1-HP objectives, and suppresses
+  per-frame world/star snapshots. It proves this captured controlled route,
+  not ordinary-health victory or every intermediate state/input branch.
+
 - A registered continuous controlled New Game route from 1A to 8B player
   creation matches all **369,437** canonical G5/Intel records to EOF with zero
   differences. Both complete gzips pass CRC/EOF and end at `NT stage8B`. The
