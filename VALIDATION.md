@@ -16,6 +16,17 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
+- A registered continuous controlled New Game route from 1A to 8B player
+  creation matches all **369,437** canonical G5/Intel records to EOF with zero
+  differences. Both complete gzips pass CRC/EOF and end at `NT stage8B`. The
+  comparison omits only the host's initial menu Click and normalizes G/E/R/S
+  diagnostic ticks. This route uses HP refills, Laser4 at READY, and 1-HP
+  objective injections, so it does not prove ordinary-health victory. Its
+  evidence is `CONTROLLED_NEWGAME_8B_REGISTERED_COMPARISON.json` in the
+  persistent fidelity audit. The subsequent 8B→9B ending has separately
+  matched original/host traces; a continuous New Game-to-ending native pair is
+  still open.
+
 - The registered continuous New Game route now matches the original G5 through
   6B player creation: 265,979 complete canonical records, zero differences after
   the same initial host Click removal and G/E/R/S diagnostic tick normalization.
