@@ -16,17 +16,17 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
-- A paired continuous New Game route from 1A through 1B victory, 2A play and
-  2B player creation matches all 41,680 original G5 records. The comparison
+- A paired continuous New Game route from 1A through 1B and 2B victories to
+  3A player creation matches all 59,897 original G5 records. The comparison
   skips the host-only initial menu Click and normalizes only G/E/R/S diagnostic
   ticks;
-  game clocks, RNG, state, events and captured sound order match. To reach 2A,
+  game clocks, RNG, state, events and captured sound order match. To reach 3A,
   this controlled test refills player HP, grants Laser4 at READY, sets the 1B
-  boss to 1 HP when it appears, fires until the level ends, and accepts the
-  end-of-level card. It stops firing during 2A. These inputs do not establish
+  and 2B bosses to 1 HP when they appear, fires until each level ends, and
+  accepts each end-of-level card. It stops firing during 2A. These inputs do not establish
   ordinary-health victory or a full campaign. Evidence and exact harnesses are
   in the persistent AstroSquid fidelity audit as
-  `CONTROLLED_NEWGAME_2B_VERIFIED.json`.
+  `CONTROLLED_NEWGAME_3A_VERIFIED.json`.
 
 - FOLLOW=500 continues the real game loop after 1B victory and 2A creation,
   without resetting player, inventory, clocks or RNG: 1,115,774 records match
