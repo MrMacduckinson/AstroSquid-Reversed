@@ -16,15 +16,17 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
-- A paired continuous New Game route from 1A through 1B victory and 2A player
-  creation matches all 28,284 original G5 records. The comparison skips the
-  host-only initial menu Click and normalizes only G/E/R/S diagnostic ticks;
+- A paired continuous New Game route from 1A through 1B victory, 2A play and
+  2B player creation matches all 41,680 original G5 records. The comparison
+  skips the host-only initial menu Click and normalizes only G/E/R/S diagnostic
+  ticks;
   game clocks, RNG, state, events and captured sound order match. To reach 2A,
   this controlled test refills player HP, grants Laser4 at READY, sets the 1B
-  boss to 1 HP when it appears, fires only after that point, and accepts the
-  end-of-level card. These inputs do not establish ordinary-health victory or
-  a full campaign. Evidence and exact harnesses are in the persistent AstroSquid
-  fidelity audit as `CONTROLLED_NEWGAME_2A_VERIFIED.json`.
+  boss to 1 HP when it appears, fires until the level ends, and accepts the
+  end-of-level card. It stops firing during 2A. These inputs do not establish
+  ordinary-health victory or a full campaign. Evidence and exact harnesses are
+  in the persistent AstroSquid fidelity audit as
+  `CONTROLLED_NEWGAME_2B_VERIFIED.json`.
 
 - FOLLOW=500 continues the real game loop after 1B victory and 2A creation,
   without resetting player, inventory, clocks or RNG: 1,115,774 records match
