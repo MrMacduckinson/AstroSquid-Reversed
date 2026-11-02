@@ -16,18 +16,22 @@ allocator outcome is an intentional difference, not a passing equality claim.
 
 Current bounded evidence:
 
-- A paired continuous New Game route from 1A through 1B and 2B victories to
-  3B player creation matches all 77,780 original G5 records. The comparison
+- A paired registered continuous New Game route from 1A through 1B, 2B and
+  3B victories to 4B player creation matches all 119,784 original G5 records. The comparison
   skips the host-only initial menu Click and normalizes only G/E/R/S diagnostic
   ticks;
-  game clocks, RNG, state, events and captured sound order match. To reach 3B,
-  this controlled test refills player HP, grants Laser4 at READY, sets the 1B
-  and 2B bosses to 1 HP when they appear, fires until each level ends, and
+  game clocks, RNG, state, events and captured sound order match. To reach 4B,
+  this controlled test refills player HP, grants Laser4 at READY, sets the 1B, 2B
+  and 3B bosses to 1 HP when they appear, fires until each level ends, and
   accepts each end-of-level card. It stops firing during 2A. These inputs do not establish
   ordinary-health victory or a full campaign. Evidence and exact harnesses are
   in the persistent AstroSquid fidelity audit as
-  `CONTROLLED_NEWGAME_3B_VERIFIED.json`. The original observer allocation table
-  filled during 3A; its test-only capacity was expanded before this run.
+  `CONTROLLED_NEWGAME_4B_REGISTERED_VERIFIED.json`. The original observer
+  allocation table filled during 3A; its test-only capacity was expanded. The
+  original oracle uses its registered state to match the host registered state.
+  With both unregistered, the separate 4A reminder route matches 119,448
+  records through the 90,000-service waiting limit (internal
+  `UNREGISTERED_NEWGAME_REMINDER_VERIFIED.json`).
 
 - FOLLOW=500 continues the real game loop after 1B victory and 2A creation,
   without resetting player, inventory, clocks or RNG: 1,115,774 records match
