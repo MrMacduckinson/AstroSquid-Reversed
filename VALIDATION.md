@@ -17,16 +17,16 @@ allocator outcome is an intentional difference, not a passing equality claim.
 Current bounded evidence:
 
 - A paired registered continuous New Game route from 1A through 1B, 2B,
-  3B and 4B victories to 5A player creation matches all 148,564 original G5 records. The comparison
+  3B and 4B victories to 5B player creation matches all 169,854 original G5 records. The comparison
   skips the host-only initial menu Click and normalizes only G/E/R/S diagnostic
   ticks;
-  game clocks, RNG, state, events and captured sound order match. To reach 5A,
+  game clocks, RNG, state, events and captured sound order match. To reach 5B,
   this controlled test refills player HP, grants Laser4 at READY, sets the 1B, 2B
   3B and 4B bosses to 1 HP when they appear, fires until each level ends, and
   accepts each end-of-level card. It stops firing during 2A. These inputs do not establish
   ordinary-health victory or a full campaign. Evidence and exact harnesses are
   in the persistent AstroSquid fidelity audit as
-  `CONTROLLED_NEWGAME_5A_REGISTERED_VERIFIED.json`. The original observer
+  `CONTROLLED_NEWGAME_5B_REGISTERED_VERIFIED.json`. The original observer
   allocation table filled during 3A; its test-only capacity was expanded. The
   original oracle uses its registered state to match the host registered state.
   With both unregistered, the separate 4A reminder route matches 119,448
