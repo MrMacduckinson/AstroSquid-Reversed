@@ -7,7 +7,7 @@
 #undef main
 
 typedef struct {unsigned char *p;size_t size;unsigned id;int alive;} Allocation;
-enum { ALLOCATION_LIMIT = 524288, ALLOCATION_SLOTS = 1048576 };
+enum { ALLOCATION_LIMIT = 1048576, ALLOCATION_SLOTS = 2097152 };
 static Allocation allocations[ALLOCATION_LIMIT];
 static unsigned allocation_slots[ALLOCATION_SLOTS];static unsigned allocation_count,entity_birth,render_birth;
 static unsigned char *world_globals;static const char *phase;
