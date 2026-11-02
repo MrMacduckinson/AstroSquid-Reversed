@@ -997,3 +997,23 @@ each transferred native archive matched its G5 MD5. This extends the earlier
 256-service no-input checks through actual damage, respawn and Game Over at
 both settings. Captures and comparison results are retained under internal
 `fidelity-audit/normal-fps-20261101/`. It does not cover later levels.
+
+### Detailed controlled campaign prefix (2026-11-02)
+
+With ROUTE_FAST removed, the original G5 and Intel controlled New Game route
+matches all 186,006,180 complete records captured before the native harness's
+three-hour watchdog: zero differences through `normal-game209869`. This includes
+174,643,236 entity records, 10,767,359 render-state records and 209,868 game-clock
+records. The comparator excludes the final 120-byte unterminated native row,
+validates the host-only initial Click and normalizes only G/E/R/S diagnostic tick
+annotations. All compared payloads and actual game clocks remain intact.
+Both gzip streams reached EOF with CRC validation; the transferred 4,194,013,845-byte
+native archive matched its G5 whole-file MD5 after per-block SHA256 checks.
+
+This uses the previously documented controlled HP refill, READY weapon boost,
+weak objectives and pilot. Per-frame stars remain omitted. The native watchdog
+exit142 is a harness time limit, not a completed campaign or demonstrated game
+fault. Internal `fidelity-audit/normal-boost1b-20261102/` retains
+`fullstate-prefix-comparison-complete.json` and the transfer evidence. A separate
+six-hour native rerun has started with identical conditions and only the
+watchdog duration changed; its completion and full comparison remain pending.
