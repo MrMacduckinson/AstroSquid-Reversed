@@ -1,10 +1,9 @@
 {
   "built_date": "2026-11-03",
   "notes": [
-    "ARM/Intel modern retain AVAudioEngine; Intel-Legacy uses OpenAL and targets10.7.",
-    "Legacy built and component-tested on10.13.6, not runtime-tested on Lion.",
-    "No foreground gameplay launched in this change; prior modern waveform/campaign evidence has its original scope.",
-    "Intel-Tiger adds a separate MRC/fragileABI host,OpenAL,QTKit and static BlocksRuntime; 53 C PASS summaries and platform component checks on Intel10.13.6."
+    "Native-resolution fullscreen, CmdCtrlF and original font border cleanup in all four variants.",
+    "Fullscreen and font framebuffer checks passed on ARM27 and Intel10.13.6 (modern, legacy, i386).",
+    "No actual10.4/10.7 or new full-campaign validation; minimum targets unchanged."
   ],
   "applications": [
     {
@@ -12,44 +11,47 @@
       "architecture": "arm64",
       "minimum_macos": "11.0",
       "build_host": "macOS27.0 / Xcode27",
-      "executable_sha256": "39056935ac24a5cf0c7cc0fe3d5f33fa0cc52818e7461c126c5d2b36aacb7c93",
+      "executable_sha256": "5656049879cf3740f3fce713d8eb5a0e7cbe965ee011070a935f1332e79cbed9",
       "runtime_on_minimum_os_verified": false,
-      "source_commit": "456f9ca3668cf2ac76f751e623ee75ea3b65e09f"
+      "source_commit": "d7dfe23316a67025548c12b281405ac346a24078",
+      "fullscreen_verified": "Native resolution, 4:3, CmdCtrlF/window restoration and exit on ARM27"
     },
     {
       "path": "Applications/Intel/AstroSquid.app",
       "architecture": "x86_64",
       "minimum_macos": "10.13",
       "build_host": "macOS10.13.6 / Apple LLVM10",
-      "executable_sha256": "1975857a43c0e9c286edf138ef7b18a5616db0616ebe93e308e17a56362b5bd8",
+      "executable_sha256": "12a3ea367e4bfb6ff36b7d3acbf1f750c133e019609ed10937425aa7f72536d0",
       "runtime_on_minimum_os_verified": false,
-      "source_commit": "456f9ca3668cf2ac76f751e623ee75ea3b65e09f"
+      "source_commit": "d7dfe23316a67025548c12b281405ac346a24078",
+      "fullscreen_verified": "Native resolution, 4:3, CmdCtrlF/window restoration and exit on Intel10.13.6"
     },
     {
       "path": "Applications/Intel-Legacy/AstroSquid.app",
       "architecture": "x86_64",
       "minimum_macos": "10.7",
       "build_host": "macOS10.13.6 / Apple LLVM10",
-      "executable_sha256": "9ac31a37a6033599f42d05065afeefe590b00732ceef0e6efe04356b4767c8de",
+      "executable_sha256": "a60c040c9e2e086e0194aa5341091f393882943a33d87ca813007f6738ce2849",
       "runtime_on_minimum_os_verified": false,
-      "source_commit": "456f9ca3668cf2ac76f751e623ee75ea3b65e09f"
+      "source_commit": "d7dfe23316a67025548c12b281405ac346a24078",
+      "fullscreen_verified": "Native resolution, 4:3, CmdCtrlF/window restoration and exit on Intel10.13.6"
     },
     {
       "path": "Applications/Intel-Tiger/AstroSquid.app",
       "architecture": "i386",
       "minimum_macos": "10.4",
       "build_host": "macOS10.13.6 / Apple LLVM10 / actual SDK10.4u with isolated normalized linker stubs",
-      "source_commit": "2a62d651bb9217459b7033d38963b019788f857c",
-      "executable_sha256": "26ecbe73ecc4b7fcbc9de26953fd5d7d1a2a2a2997e363c46c7bad2481d379a7",
+      "source_commit": "d7dfe23316a67025548c12b281405ac346a24078",
+      "executable_sha256": "cd211cec17ac72d30d88327dd10d8c5970bb9ad9f24df1d768f4e74534c6bf3c",
       "runtime_on_minimum_os_verified": false,
       "runtime_test_host": "Intel10.13.6 i386",
       "limitations": [
-        "Windowed640x480 only",
         "IntelTiger not runtime-tested",
         "No full campaign run on this variant"
       ],
-      "launch_verified": "LaunchServices startup and rendered splash on Intel10.13.6 after Foundation compatibility fix"
+      "launch_verified": "LaunchServices startup and rendered splash on Intel10.13.6 after Foundation compatibility fix",
+      "fullscreen_verified": "Native resolution, 4:3, CmdCtrlF/window restoration and exit on Intel10.13.6"
     }
   ],
-  "source_commit_note": "Each application records its own source commit; unchanged modern bundles retain their original provenance."
+  "source_commit_note": "All four bundles built from the recorded shared source revision."
 }
