@@ -35,6 +35,7 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>CFBundleVersion</key><string>1</string>
 <key>CFBundleShortVersionString</key><string>1.1</string>
 <key>LSMinimumSystemVersion</key><string>10.4</string>
+<key>NSHighResolutionCapable</key><true/>
 </dict></plist>
 PLIST
 printf 'Built %s\n' "$app"

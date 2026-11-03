@@ -9,7 +9,7 @@ static void forbiddenSave(id self,SEL selector){fputs("FAIL menu quit saved sett
 static void didLaunch(AstroDelegate *self,SEL selector,NSNotification *note){
     ((void (*)(id,SEL,id))originalLaunch)(self,selector,note);
     [NSTimer scheduledTimerWithTimeInterval:1 repeats:NO block:^(NSTimer *timer){
-        assert(self.view.inFullScreenMode&&![self.view canTerminateApplication]);
+        assert(self.view.isGameFullscreen&&![self.view canTerminateApplication]);
         NSMenu *menu=[NSApp.mainMenu itemAtIndex:0].submenu;
         NSMenuItem *item=[menu itemAtIndex:0];
         assert(item.target==self&&item.action==@selector(quitFromMenu:));
@@ -19,7 +19,7 @@ static void didLaunch(AstroDelegate *self,SEL selector,NSNotification *note){
 static void willTerminate(AstroDelegate *self,SEL selector,NSNotification *note){
     assert(invoked&&[self.view canTerminateApplication]);
     ((void (*)(id,SEL,id))originalTerminate)(self,selector,note);
-    assert(!self.view.inFullScreenMode);
+    assert(!self.view.isGameFullscreen);
     puts("PASS real production menu target, termination delegate and fullscreen exit; saveSettings never called");fflush(stdout);
 }
 int main(int argc,const char **argv){@autoreleasepool{

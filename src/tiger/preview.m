@@ -43,10 +43,7 @@ static NSData *debugHeader(NSDateComponents *date,int32_t clock,int32_t memory,u
         [system substringWithRange:NSMakeRange(2,1)],[system substringFromIndex:3],major,minor,fullscreen?@"TRUE":@"FALSE"];
     return [text dataUsingEncoding:NSMacOSRomanStringEncoding];
 }
-static NSView *fullscreenView;
-static void restoreFullscreen(void){
-    @autoreleasepool {NSView *view=fullscreenView;if(view.inFullScreenMode){[view setHidden:YES];[view exitFullScreenModeWithOptions:nil];}fullscreenView=nil;}
-}
+#import "../presentation.h"
 #include "ppc_math.h"
 #include "script.h"
 #include "weapons.h"
@@ -322,6 +319,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     NSOpenGLPixelFormat *format = [[[NSOpenGLPixelFormat alloc] initWithAttributes:attributes] autorelease];
     self = [super initWithFrame:frame pixelFormat:format];
     if (!self) return nil;
+    if([self respondsToSelector:@selector(setWantsBestResolutionOpenGLSurface:)])[self setWantsBestResolutionOpenGLSurface:YES];
     unsigned char startupKeys[16];[self copyKeyMap:startupKeys];engineDebug=(startupKeys[55>>3]>>(55&7))&1;
     fullscreenRequested=!((startupKeys[58>>3]>>(58&7))&1);
     ASTRO_STORE(screenshotBase,[[[NSBundle mainBundle] bundlePath] stringByDeletingLastPathComponent]);
@@ -442,6 +440,14 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(source.bitsPerSample!=8||source.samplesPerPixel!=4||source.isPlanar||
         !(source.bitmapFormat&NSAlphaNonpremultipliedBitmapFormat)||(source.bitmapFormat&NSAlphaFirstBitmapFormat)||source.bytesPerRow%4) {
         NSLog(@"Unsupported atlas pixel layout %@",file);exit(1);
+    }
+    // The font atlas has faint scanline noise along the bottom of glyph cells.
+    if(identifier==50&&width==512&&height==512){
+        unsigned char *pixels=source.bitmapData;
+        for(NSInteger y=31;y<height;y+=32)for(NSInteger x=0;x<width;x++){
+            unsigned char *p=pixels+y*source.bytesPerRow+x*4;
+            if(p[0]<=5&&p[1]<=5&&p[2]<=5&&p[3]<=5)memset(p,0,4);
+        }
     }
     GLuint texture = 0;
     glGenTextures(1,&texture);
@@ -987,8 +993,15 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     int error=[self debugAGLError];if(error&&fprintf(file,"   *** AGL Error: % d\r",error)<0)ok=NO;
     if(fclose(file))ok=NO;return ok;
 }
-// shortcut: Tiger host is windowed; add a tested 10.4 fullscreen path before enabling it.
-- (BOOL)startFullscreen {return NO;}
+- (BOOL)isGameFullscreen {return fullscreenView==self;}
+- (BOOL)startFullscreen {
+    if(!fullscreenRequested||!enterFullscreen(self))return NO;
+    [self display];return YES;
+}
+- (void)toggleGameFullscreen {
+    if(self.isGameFullscreen)leaveFullscreen(YES);else enterFullscreen(self);
+    memset(keys,0,sizeof(keys));[self display];
+}
 - (uint32_t)screenshotSeconds {return [self macLocalSeconds];}
 - (uint32_t)macLocalSeconds {
     CFAbsoluteTime now=CFAbsoluteTimeGetCurrent();CFTimeZoneRef zone=CFTimeZoneCopySystem();
@@ -996,18 +1009,23 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     return (uint32_t)(uint64_t)floor(local);
 }
 - (BOOL)saveScreenshot {
-    unsigned channels=self.inFullScreenMode?4:3;size_t pixels=640u*480u*channels;unsigned char *rgb=malloc(pixels),*picture=NULL;size_t size=0;
+    unsigned channels=self.isGameFullscreen?4:3;size_t pixels=640u*480u*channels;unsigned char *rgb=malloc(pixels),*picture=NULL;size_t size=0;
     if(!rgb)return NO;
-    if(self.inFullScreenMode){
+    if(self.isGameFullscreen){
         NSOpenGLContext *previous=NSOpenGLContext.currentContext;[[self openGLContext] makeCurrentContext];
         GLint readBuffer,alignment;glGetIntegerv(GL_READ_BUFFER,&readBuffer);glGetIntegerv(GL_PACK_ALIGNMENT,&alignment);
-        glReadBuffer(GL_FRONT);glPixelStorei(GL_PACK_ALIGNMENT,1);glReadPixels(0,0,640,480,GL_RGBA,GL_UNSIGNED_BYTE,rgb);
+        NSRect backing=[self convertRectToBacking:self.bounds];int width=(int)backing.size.width,height=(int)backing.size.height;
+        unsigned char *native=width>0&&height>0?malloc((size_t)width*height*4):NULL;
+        glReadBuffer(GL_FRONT);glPixelStorei(GL_PACK_ALIGNMENT,1);
+        if(native)glReadPixels(0,0,width,height,GL_RGBA,GL_UNSIGNED_BYTE,native);
         GLenum error=glGetError();glReadBuffer(readBuffer);glPixelStorei(GL_PACK_ALIGNMENT,alignment);
         if(previous)[previous makeCurrentContext];else [NSOpenGLContext clearCurrentContext];
-        if(error!=GL_NO_ERROR){free(rgb);return NO;}
-        unsigned char row[640*4];for(unsigned y=0;y<240;y++){unsigned char *top=rgb+y*640*4,*bottom=rgb+(479-y)*640*4;memcpy(row,top,sizeof(row));memcpy(top,bottom,sizeof(row));memcpy(bottom,row,sizeof(row));}
+        if(!native||error!=GL_NO_ERROR){free(native);free(rgb);return NO;}
+        for(unsigned y=0;y<480;y++)for(unsigned x=0;x<640;x++)
+            memcpy(rgb+(y*640+x)*4,native+((size_t)(height-1-(y*height/480))*width+x*width/640)*4,4);
+        free(native);
     }else memset(rgb,255,pixels);
-    int encoded=(self.inFullScreenMode?astro_picture_fullscreen_encode:astro_picture_window_encode)(rgb,640*channels,640,480,&picture,&size);free(rgb);if(!encoded)return NO;
+    int encoded=(self.isGameFullscreen?astro_picture_fullscreen_encode:astro_picture_window_encode)(rgb,640*channels,640,480,&picture,&size);free(rgb);if(!encoded)return NO;
     NSString *folder=[screenshotBase stringByAppendingPathComponent:@"Screenshots"];
     NSFileManager *manager=NSFileManager.defaultManager;BOOL directory=NO;
     BOOL exists=[manager fileExistsAtPath:folder isDirectory:&directory];
@@ -2601,7 +2619,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     for(AstroEnemy *enemy in enemies)enemy->visualDeleted=YES;
     ASTRO_STORE(presentedBeams,@[]);playerVisualDeleted=YES;playerHitVisual.active=NO;engineGlow=departureTrail=NO;
     [self appendDebugMessage:@"Deactivating OpenGL context"];
-    [NSOpenGLContext clearCurrentContext];[context clearDrawable];restoreFullscreen();
+    restoreFullscreen();[NSOpenGLContext clearCurrentContext];[context clearDrawable];
     [NSOpenGLContext clearCurrentContext];[self setOpenGLContext:nil];
     [self appendDebugMessage:@" "];[self appendDebugMessage:@"---------- End of Shutdown  -----------"];[self appendDebugMessage:@" "];
 }
@@ -2809,6 +2827,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 @synthesize gameView=_gameView;
 - (void)sendEvent:(NSEvent *)event {
     AstroView *view=self.gameView;
+    if(view&&presentationShortcut(event)){if(!event.isARepeat)[view toggleGameFullscreen];return;}
     // Preserve the original shared key queue before AppKit consumes menu equivalents.
     if(event.type==NSEventTypeKeyDown&&view.window&&event.window==view.window&&!self.modalWindow){
         [view keyDown:event];return;
@@ -2828,6 +2847,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (AstroView *)view{return _view;}
 - (void)setView:(AstroView *)value{ASTRO_STORE(_view,value);}
 - (void)quitFromMenu:(id)sender {[self.view stopRuntime];}
+- (void)toggleFullscreen:(id)sender {[self.view toggleGameFullscreen];}
 - (void)presentGameWindow {
     [self.window center];[NSApp activateIgnoringOtherApps:YES];
     if(![self.view startFullscreen])[self.window makeKeyAndOrderFront:nil];
@@ -2882,6 +2902,8 @@ int main(int argc,const char **argv) {
         NSMenu *menu=[[NSMenu new] autorelease]; NSMenuItem *root=[[NSMenuItem new] autorelease]; [menu addItem:root];
         NSMenu *application=[[NSMenu new] autorelease];
         NSMenuItem *quit=[application addItemWithTitle:@"Quit AstroSquid" action:@selector(quitFromMenu:) keyEquivalent:@"q"];quit.target=delegate;
+        NSMenuItem *full=[application addItemWithTitle:@"Toggle Full Screen" action:@selector(toggleFullscreen:) keyEquivalent:@"f"];
+        full.keyEquivalentModifierMask=NSCommandKeyMask|NSControlKeyMask;full.target=delegate;
         root.submenu=application; app.mainMenu=menu;
         [app run];
     }

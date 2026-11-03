@@ -1214,3 +1214,35 @@ deleted. Sound muted with process arguments, no settings writes requested; test
 process terminated after observation. An initial muted test supplied fps as an
 ASCII-plist string, causing a test-only shortValue exception; corrected arguments
 omit fps. No claim of Tiger10.4 runtime or full campaign validation.
+
+## Native-resolution fullscreen and font scanlines — 2026-11-03
+
+`tests/fullscreen_host.sh` and `--legacy-intel`, plus
+`TIGER_SDK=... bash tests/tiger_fullscreen.sh`, exercise the shared presentation
+implementation with the actual AstroView. ARM macOS27 and Intel10.13.6
+(x86_64 modern/OpenAL and i386) passed: unchanged display mode, centered4:3
+viewport, default fullscreen, leftOption window, rightOption default, CmdCtrlF
+through the application event dispatcher, window/first-responder restoration,
+normal shutdown and direct exit. The test is muted and overrides settings/scores
+writes. It briefly uses the foreground display; it is not a background test.
+ARM requires a bounded AppKit event-loop iteration before its first draw.
+Fullscreen PICT now samples the entire backing framebuffer and retains640x480
+encoding, row order and context/read-buffer/alignment restoration.
+
+Font checks render the original atlas at actual backing sizes2618x1964(ARM)
+and3072x2304(Intel); identical repeated frames are byte-equal and nonempty.
+Visual inspection found faint underlines from atlas50's last row in32pixel
+cells (RGBA4–5). The loader clears only those low-valued bottom-row texels;
+source PNG, metrics, non-border pixels and original ONE blending stay intact.
+The uploaded-texture test checks the cleaned border and retained127coverage;
+before/after framebuffer images confirm removal of these lines. This is an
+intentional display cleanup, not a claim of original framebuffer bit parity.
+The guarded high-resolution OpenGL surface also matches Retina viewport sizing.
+
+Original52 card text commands and16 end-card commands passed unchanged on ARM
+and Intel; ARM window PICT bytes/metadata/failure-path checks passed. i386
+component suite (compatibility, host, audio, departure geometry, Retina primitive
+width and UI) passed on10.13.6. Primitive widths passed at1x/2x on ARM and Intel.
+Actual10.4/10.7 and multi-monitor hotplug were not tested. This is not a new
+full-campaign validation. User confirmation on the formerly problematic screen
+remains separate from these framebuffer checks.
