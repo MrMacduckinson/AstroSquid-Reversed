@@ -1,26 +1,35 @@
 {
-  "source_commit": "400857db3e97dc7d53e7ced7423b948fe041e0d3",
+  "source_commit": "456f9ca3668cf2ac76f751e623ee75ea3b65e09f",
   "built_date": "2026-11-03",
   "notes": [
-    "Only architecture-specific deployment metadata changed in this delivery; gameplay code is unchanged from 878c96d.",
-    "Fresh native-only tests passed on both build hosts; asset checks passed on ARM.",
-    "Audio PCM and gameplay evidence is from preceding fixes; no new foreground game was launched during packaging.",
-    "Minimum OS is a build target, not a claim that all OS versions were runtime tested."
+    "ARM/Intel modern retain AVAudioEngine; Intel-Legacy uses OpenAL and targets10.7.",
+    "Legacy built and component-tested on10.13.6, not runtime-tested on Lion.",
+    "No foreground gameplay launched in this change; prior modern waveform/campaign evidence has its original scope."
   ],
   "applications": [
     {
       "path": "Applications/ARM/AstroSquid.app",
       "architecture": "arm64",
       "minimum_macos": "11.0",
-      "build_and_test_host": "macOS 27.0 (26A5406e)",
-      "executable_sha256": "86061268772cf27f47ace8558ac064d530574924015622d7ad4d5c7dc39d3dc6"
+      "build_host": "macOS27.0 / Xcode27",
+      "executable_sha256": "39056935ac24a5cf0c7cc0fe3d5f33fa0cc52818e7461c126c5d2b36aacb7c93",
+      "runtime_on_minimum_os_verified": false
     },
     {
       "path": "Applications/Intel/AstroSquid.app",
       "architecture": "x86_64",
       "minimum_macos": "10.13",
-      "build_and_test_host": "macOS 10.13.6 (17G66)",
-      "executable_sha256": "a1b06d65ee2db30fd9a0ffb30312f4bb32e87c5ad95fb09795785ee82d9de56c"
+      "build_host": "macOS10.13.6 / Apple LLVM10",
+      "executable_sha256": "1975857a43c0e9c286edf138ef7b18a5616db0616ebe93e308e17a56362b5bd8",
+      "runtime_on_minimum_os_verified": false
+    },
+    {
+      "path": "Applications/Intel-Legacy/AstroSquid.app",
+      "architecture": "x86_64",
+      "minimum_macos": "10.7",
+      "build_host": "macOS10.13.6 / Apple LLVM10",
+      "executable_sha256": "9ac31a37a6033599f42d05065afeefe590b00732ceef0e6efe04356b4767c8de",
+      "runtime_on_minimum_os_verified": false
     }
   ]
 }
