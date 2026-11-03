@@ -1196,3 +1196,21 @@ The adapted UI fixture resets its draw-clock counter after scene setup; setup
 legitimately samples clocks. No production clock logic was changed for that test.
 No fullscreen implementation, actual IntelTiger boot or full campaign run for
 this variant. This evidence is component coverage, not a blanket fidelity claim.
+
+## Intel-Tiger launch compatibility fix (2026-11-03)
+
+User launch on Intel10.13.6 exposed stack overflows in unconditional Foundation
+category overrides: NSDictionary allKeys/fast enumeration, then NSFileManager
+changeFileAttributes/setAttributes. Compatibility methods now use prefixed
+selectors and Tiger-era runtime APIs to install only missing native methods.
+Dictionary fallback uses the primitive keyEnumerator. No frameworks replaced.
+
+Regression confirms a missing selector is installed, existing description is
+preserved, inherited allKeys terminates, empty/multibatch/nested enumeration and
+directory/attribute operations pass. Full tiger_host.sh component suite passes.
+Actual installed i386 bundle launched through LaunchServices on10.13.6, rendered
+the original splash and survived observation; window screenshot inspected then
+deleted. Sound muted with process arguments, no settings writes requested; test
+process terminated after observation. An initial muted test supplied fps as an
+ASCII-plist string, causing a test-only shortValue exception; corrected arguments
+omit fps. No claim of Tiger10.4 runtime or full campaign validation.

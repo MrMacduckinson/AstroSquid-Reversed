@@ -1,5 +1,8 @@
 #import "compat.h"
 #import <Carbon/Carbon.h>
+#import <objc/objc-runtime.h>
+#include <stdlib.h>
+#include <string.h>
 #include <mach/mach_time.h>
 #include <unistd.h>
 #include "vendor/BlocksRuntime/Block_private.h"
@@ -7,72 +10,110 @@ static void retainObject(const void *p){[(id)p retain];}
 static void releaseObject(const void *p){[(id)p release];}
 __attribute__((constructor)) static void prepareBlocks(void){_Block_use_RR(retainObject,releaseObject);}
 void objc_enumerationMutation(id collection){[NSException raise:NSGenericException format:@"Collection changed during enumeration"];}
-@implementation NSArray (AstroTiger)
-- (id)objectAtIndexedSubscript:(NSUInteger)index{return [self objectAtIndex:index];}
-- (id)firstObject{return self.count?[self objectAtIndex:0]:nil;}
-- (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)state objects:(id *)buffer count:(NSUInteger)count{
+// Never replace a native method: newer Foundation often forwards old APIs to it.
+static void installMissingMethods(Class target){
+    void *iterator=NULL;struct objc_method_list *methods,*added=NULL;unsigned count=0;
+    while((methods=class_nextMethodList(target,&iterator))){
+        for(int i=0;i<methods->method_count;i++){
+            Method method=&methods->method_list[i];const char *name=sel_getName(method->method_name);
+            if(strncmp(name,"astroTiger_",11))continue;
+            SEL selector=sel_registerName(name+11);
+            if(class_getInstanceMethod(target,selector))continue;
+            added=realloc(added,sizeof(*added)+count*sizeof(struct objc_method));
+            added->method_list[count]=*method;added->method_list[count++].method_name=selector;
+        }
+    }
+    if(count){added->obsolete=NULL;added->method_count=count;class_addMethods(target,added);}
+    // Runtime owns the method list for the process lifetime.
+}
+__attribute__((constructor)) static void prepareCompatibility(void){
+    const char *names[]={"NSArray","NSMutableArray","NSDictionary","NSMutableDictionary","NSNumber","NSString","NSData","NSProcessInfo","NSView","NSFileManager","NSEvent","NSThread"};
+    for(unsigned i=0;i<sizeof(names)/sizeof(*names);i++){
+        installMissingMethods((Class)objc_getClass(names[i]));
+        installMissingMethods((Class)objc_getMetaClass(names[i]));
+    }
+}
+@interface NSArray (AstroTigerFallback) @end
+@implementation NSArray (AstroTigerFallback)
+- (id)astroTiger_objectAtIndexedSubscript:(NSUInteger)index{return [self objectAtIndex:index];}
+- (id)astroTiger_firstObject{return self.count?[self objectAtIndex:0]:nil;}
+- (NSUInteger)astroTiger_countByEnumeratingWithState:(NSFastEnumerationState *)state objects:(id *)buffer count:(NSUInteger)count{
     NSUInteger n=MIN(count,self.count-state->state);for(NSUInteger i=0;i<n;i++)buffer[i]=[self objectAtIndex:state->state+i];
     state->state+=n;state->itemsPtr=buffer;state->mutationsPtr=&state->extra[0];return n;
 }
 @end
 static int compareObjects(id a,id b,void *context){return (int)((NSComparisonResult (^)(id,id))context)(a,b);}
-@implementation NSMutableArray (AstroTiger)
-- (void)setObject:(id)object atIndexedSubscript:(NSUInteger)index{if(index==self.count)[self addObject:object];else [self replaceObjectAtIndex:index withObject:object];}
-- (void)sortUsingComparator:(NSComparisonResult (^)(id,id))compare{[self sortUsingFunction:compareObjects context:compare];}
+@interface NSMutableArray (AstroTigerFallback) @end
+@implementation NSMutableArray (AstroTigerFallback)
+- (void)astroTiger_setObject:(id)object atIndexedSubscript:(NSUInteger)index{if(index==self.count)[self addObject:object];else [self replaceObjectAtIndex:index withObject:object];}
+- (void)astroTiger_sortUsingComparator:(NSComparisonResult (^)(id,id))compare{[self sortUsingFunction:compareObjects context:compare];}
 @end
-@implementation NSDictionary (AstroTiger)
-- (id)objectForKeyedSubscript:(id)key{return [self objectForKey:key];}
-- (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)state objects:(id *)buffer count:(NSUInteger)count{
-    if(!state->state)state->extra[1]=(unsigned long)[self allKeys];
-    return [(NSArray *)state->extra[1] countByEnumeratingWithState:state objects:buffer count:count];
+@interface NSDictionary (AstroTigerFallback) @end
+@implementation NSDictionary (AstroTigerFallback)
+- (id)astroTiger_objectForKeyedSubscript:(id)key{return [self objectForKey:key];}
+- (NSUInteger)astroTiger_countByEnumeratingWithState:(NSFastEnumerationState *)state objects:(id *)buffer count:(NSUInteger)count{
+    // Newer Foundation implements allKeys through fast enumeration: use the primitive instead.
+    if(!state->state){state->extra[1]=(unsigned long)[self keyEnumerator];state->state=1;}
+    NSEnumerator *keys=(NSEnumerator *)state->extra[1];NSUInteger n=0;id key;
+    while(n<count&&(key=[keys nextObject]))buffer[n++]=key;
+    state->itemsPtr=buffer;state->mutationsPtr=&state->extra[0];return n;
 }
 @end
-@implementation NSMutableDictionary (AstroTiger)
-- (void)setObject:(id)object forKeyedSubscript:(id)key{if(object)[self setObject:object forKey:key];else [self removeObjectForKey:key];}
+@interface NSMutableDictionary (AstroTigerFallback) @end
+@implementation NSMutableDictionary (AstroTigerFallback)
+- (void)astroTiger_setObject:(id)object forKeyedSubscript:(id)key{if(object)[self setObject:object forKey:key];else [self removeObjectForKey:key];}
 @end
-@implementation NSNumber (AstroTiger)
-+ (id)numberWithInteger:(NSInteger)value{return [self numberWithInt:value];}
-+ (id)numberWithUnsignedInteger:(NSUInteger)value{return [self numberWithUnsignedInt:value];}
-- (NSInteger)integerValue{return [self intValue];}
-- (NSUInteger)unsignedIntegerValue{return [self unsignedIntValue];}
+@interface NSNumber (AstroTigerFallback) @end
+@implementation NSNumber (AstroTigerFallback)
++ (id)astroTiger_numberWithInteger:(NSInteger)value{return [self numberWithInt:value];}
++ (id)astroTiger_numberWithUnsignedInteger:(NSUInteger)value{return [self numberWithUnsignedInt:value];}
+- (NSInteger)astroTiger_integerValue{return [self intValue];}
+- (NSUInteger)astroTiger_unsignedIntegerValue{return [self unsignedIntValue];}
 @end
-@implementation NSString (AstroTiger)
-- (NSInteger)integerValue{return [self intValue];}
-- (NSComparisonResult)localizedStandardCompare:(NSString *)value{return [self compare:value options:NSNumericSearch|NSCaseInsensitiveSearch];}
+@interface NSString (AstroTigerFallback) @end
+@implementation NSString (AstroTigerFallback)
+- (NSInteger)astroTiger_integerValue{return [self intValue];}
+- (NSComparisonResult)astroTiger_localizedStandardCompare:(NSString *)value{return [self compare:value options:NSNumericSearch|NSCaseInsensitiveSearch];}
 @end
-@implementation NSData (AstroTiger)
-+ (id)dataWithContentsOfFile:(NSString *)path options:(NSUInteger)options error:(NSError **)error{
+@interface NSData (AstroTigerFallback) @end
+@implementation NSData (AstroTigerFallback)
++ (id)astroTiger_dataWithContentsOfFile:(NSString *)path options:(NSUInteger)options error:(NSError **)error{
     id data=[self dataWithContentsOfFile:path];if(!data&&error)*error=[NSError errorWithDomain:NSCocoaErrorDomain code:260 userInfo:nil];return data;
 }
-- (BOOL)writeToFile:(NSString *)path options:(NSUInteger)options error:(NSError **)error{
+- (BOOL)astroTiger_writeToFile:(NSString *)path options:(NSUInteger)options error:(NSError **)error{
     BOOL ok=[self writeToFile:path atomically:options!=0];if(!ok&&error)*error=[NSError errorWithDomain:NSCocoaErrorDomain code:512 userInfo:nil];return ok;
 }
 @end
-@implementation NSProcessInfo (AstroTiger)
-- (NSTimeInterval)systemUptime{mach_timebase_info_data_t scale;mach_timebase_info(&scale);return mach_absolute_time()*((double)scale.numer/scale.denom)/1e9;}
+@interface NSProcessInfo (AstroTigerFallback) @end
+@implementation NSProcessInfo (AstroTigerFallback)
+- (NSTimeInterval)astroTiger_systemUptime{mach_timebase_info_data_t scale;mach_timebase_info(&scale);return mach_absolute_time()*((double)scale.numer/scale.denom)/1e9;}
 @end
-@implementation NSView (AstroTiger)
-- (NSRect)convertRectToBacking:(NSRect)rect{return rect;}
-- (BOOL)inFullScreenMode{return NO;}
-- (void)exitFullScreenModeWithOptions:(NSDictionary *)options{}
+@interface NSView (AstroTigerFallback) @end
+@implementation NSView (AstroTigerFallback)
+- (NSRect)astroTiger_convertRectToBacking:(NSRect)rect{return rect;}
+- (BOOL)astroTiger_inFullScreenMode{return NO;}
+- (void)astroTiger_exitFullScreenModeWithOptions:(NSDictionary *)options{}
 @end
-@implementation NSFileManager (AstroTiger)
-- (BOOL)createDirectoryAtPath:(NSString *)path withIntermediateDirectories:(BOOL)intermediate attributes:(NSDictionary *)attributes error:(NSError **)error{
+@interface NSFileManager (AstroTigerFallback) @end
+@implementation NSFileManager (AstroTigerFallback)
+- (BOOL)astroTiger_createDirectoryAtPath:(NSString *)path withIntermediateDirectories:(BOOL)intermediate attributes:(NSDictionary *)attributes error:(NSError **)error{
     if(intermediate){NSString *parent=[path stringByDeletingLastPathComponent];BOOL directory=NO;
         if(![self fileExistsAtPath:parent isDirectory:&directory]&&parent.length&&![parent isEqual:path])
             if(![self createDirectoryAtPath:parent withIntermediateDirectories:YES attributes:attributes error:error])return NO;
     }
     BOOL ok=[self createDirectoryAtPath:path attributes:attributes];if(!ok&&error)*error=[NSError errorWithDomain:NSCocoaErrorDomain code:512 userInfo:nil];return ok;
 }
-- (BOOL)setAttributes:(NSDictionary *)attributes ofItemAtPath:(NSString *)path error:(NSError **)error{
+- (BOOL)astroTiger_setAttributes:(NSDictionary *)attributes ofItemAtPath:(NSString *)path error:(NSError **)error{
     BOOL ok=[self changeFileAttributes:attributes atPath:path];if(!ok&&error)*error=[NSError errorWithDomain:NSCocoaErrorDomain code:512 userInfo:nil];return ok;
 }
 @end
-@implementation NSEvent (AstroTiger)
-+ (NSUInteger)pressedMouseButtons{return Button()?1:0;}
+@interface NSEvent (AstroTigerFallback) @end
+@implementation NSEvent (AstroTigerFallback)
++ (NSUInteger)astroTiger_pressedMouseButtons{return Button()?1:0;}
 @end
-@implementation NSThread (AstroTiger)
-+ (void)sleepForTimeInterval:(NSTimeInterval)seconds{[NSThread sleepUntilDate:[NSDate dateWithTimeIntervalSinceNow:seconds]];}
+@interface NSThread (AstroTigerFallback) @end
+@implementation NSThread (AstroTigerFallback)
++ (void)astroTiger_sleepForTimeInterval:(NSTimeInterval)seconds{[NSThread sleepUntilDate:[NSDate dateWithTimeIntervalSinceNow:seconds]];}
 @end
 static NSString *jsonString(id object){
     if(object==[NSNull null])return @"null";
