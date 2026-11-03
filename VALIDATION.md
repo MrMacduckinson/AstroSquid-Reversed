@@ -1032,3 +1032,24 @@ have not been checked on hardware. Intel SSH was unavailable during this check.
 The development objective is a usable reconstructed source project. Existing
 original-machine traces remain valuable bounded evidence; exhaustive bytewise
 execution equivalence is not a release requirement. See SOURCE_GUIDE.md.
+
+### Current Intel release acceptance (2026-11-03)
+
+The source builds on the reference Intel iMac (macOS 10.13.6). Two sequential
+application self-tests pass with separate test settings: music disabled and
+music enabled. Each covers the existing controlled startup/menu, movement,
+weapons/four special families, rendering, score/settings, damage/respawn, pause
+and stage-transition checks. Both exit 0 and restore the original display mode
+without monitor recovery. Peak sampled resident memory is 135,972 and 136,020
+KiB respectively. The external monitor enforces a 120-second deadline and
+1-GiB per-process resident-memory ceiling; neither limit was reached.
+
+The first muted run exposed unconditional music-playing assumptions in the
+self-test. Those assertions now require playback when music is enabled and no
+current track when it is disabled. The two passing runs check both branches;
+production playback behavior was unchanged. Tests used a separate bundle ID
+and settings domain, preserving normal player settings.
+
+This is practical release acceptance, not an unaided full-campaign playthrough
+or proof that the earlier partial iMac hang cannot recur. Its cause remains
+unestablished. No further giant-trace run is required for this release.

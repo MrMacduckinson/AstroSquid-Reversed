@@ -2216,7 +2216,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     NSData *png=[image representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
     [png writeToFile:[selftestPath stringByAppendingPathComponent:@"frame.png"] atomically:YES];
     BOOL moved=selftestMoved;
-    BOOL audioOK=audio.music.isPlaying && audio.music.currentTime>0;
+    BOOL audioOK=ui.musicVolume>0?(audio.music.isPlaying&&audio.music.currentTime>0):audio.music==nil;
     BOOL passed=emittedSpecials==4 && emittedEffects>0 && emittedBeams>0 && damageHits>0 && emittedShots>0 && scriptSteps>0 && moved && selftestStageSwitched && colored>100 && textures.count>0 && audioOK;
     NSDictionary *report=@{@"controlled_runtime_fixture":@YES,@"passed":@(passed),@"script_steps":@(scriptSteps),@"emitted_shots":@(emittedShots),@"damage_hits":@(damageHits),@"emitted_beams":@(emittedBeams),@"emitted_effects":@(emittedEffects),@"special_attacks":@(emittedSpecials),
         @"player_hit_points":@(playerCombat.hit_points),@"score":@(score),@"player_moved":@(moved),
@@ -2297,7 +2297,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     assert([world containsObject:[NSNull null]]&&playerCombat.kind==-1&&inventory.weapon==40&&inventory.upgrade==0&&inventory.specials==2&&playerWeapon==40);
     assert(playerSpawnTick==simulationTick&&((simulationTick-playerSpawnTick)/6)%2==0);
     for(int i=0;i<181;i++){simulationTick++;[self pollGame];}assert(playerCombat.kind==1&&!invulnerableUntil);
-    [self enterPause];assert(paused&&menuVisible&&audio.music.isPlaying);
+    [self enterPause];assert(paused&&menuVisible);
+    assert(ui.musicVolume>0?audio.music.isPlaying:audio.music==nil);
     memset(keys,0,sizeof(keys));uint32_t stopped=simulationTick;[self keyDown:[self testEvent:NSKeyDown code:124]];
     assert(paused);[self readPauseKeys];assert(!paused&&!menuVisible&&simulationTick==stopped);
     [self enterPause];memset(keys,0,sizeof(keys));
