@@ -129,7 +129,10 @@ static NSArray *preparedCue(AVAudioPCMBuffer *buffer,AVAudioEngine *engine){
 }
 - (void)restartEffects {
     if(effectEngine.running)return;
-    [self stopEffects];NSError *error=nil;
+    [self stopEffects];
+    // A route format change invalidates timelines even on prewarmed, unused nodes.
+    for(NSArray *idle in idleVoices.allValues)for(NSArray *pair in idle)for(AstroCuePlayer *player in pair)[player stop];
+    NSError *error=nil;
     if(![effectEngine startAndReturnError:&error]){NSLog(@"Cannot restart sound effects: %@",error);return;}
     for(NSArray *idle in idleVoices.allValues)for(NSArray *pair in idle)for(AstroCuePlayer *player in pair)[player prepare];
 }

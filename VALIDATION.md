@@ -1155,3 +1155,20 @@ Buffer times are now resolved to sample positions before scheduling; a stopped
 node schedules at sample zero and starts at the shared stereo host time.
 The running-node path retains the low-latency prepared mixer; stopping every
 node for each shot was measured and rejected because it stalled gameplay.
+
+## Audio waveform and demo diagnosis — 2026-11-03
+
+`--self-test` is a technical test, not a listening demo: it mutes combat
+sounds and music, then exercises sound-volume settings with Click cues.
+Its audible clicks do not establish truncated gun sounds in normal play.
+
+`bash tests/audio_waveform_host.sh` captures actual mixed PCM upstream of a
+muted sink. Four original cues at 11025/22050/44100 Hz retain their full
+10 ms RMS envelopes in both channels on ARM and Intel. After an internal
+44.1/48 kHz format change, an unused Click previously produced zero PCM:
+restarting now resets all prepared nodes, including unused ones. The unused
+Click and four baseline cues then pass on both architectures (nine checks
+each, envelope correlation >0.9). No device setting is changed.
+
+This tests signal duration/envelope, not exact amplitude, stereo positioning,
+acoustic output or physical device unplugging.

@@ -70,3 +70,8 @@ Additional noninterrupting checks:
 - `bash tests/retina_primitives_host.sh`: offscreen OpenGL pixels at 1x/2x, no window.
 - `bash tests/audio_reconfiguration_host.sh`: muted engine-stop/recovery and pause,
   without switching the system audio device.
+
+Audio output regression: `bash tests/audio_waveform_host.sh` is silent and
+checks rendered PCM before and after an internal mixer rate change.
+The application's `--self-test` mutes combat and exercises settings clicks;
+use ordinary gameplay to listen to effects, not that technical test.
