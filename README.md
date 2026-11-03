@@ -1,89 +1,89 @@
-# AstroSquid 1.1 — реконструкция и нативный порт для Mac
+# AstroSquid 1.1 — reconstruction and native Mac port
 
-Собираемый проект на C/Objective-C и **четыре готовых приложения**. Это восстановление
-поведения оригинальной игры Lost Minds, а не найденные исходники FutureBASIC.
-Эмулятор, Classic Environment и оригинальный исполняемый файл для игры не нужны.
+A buildable C/Objective-C project with **four ready-to-run applications**. This
+reconstructs the behavior of Lost Minds' original game; it is not recovered
+FutureBASIC source. Playing requires no emulator, Classic Environment, or original
+executable.
 
-## Скачать папку, выбрать приложение, запустить
+## Choose an application
 
-| Mac | Приложение в этом репозитории | Минимальная macOS | Где проверено |
+| Mac | Application | Minimum macOS target | Runtime validation |
 | --- | --- | --- | --- |
-| Apple Silicon (ARM64) | [Applications/ARM/AstroSquid.app](Applications/ARM/) | **11.0 Big Sur** | ARM, macOS 27.0 (сборка ОС 26A5406e) |
-| Intel (x86_64) | [Applications/Intel/AstroSquid.app](Applications/Intel/) | **10.13 High Sierra** | Intel iMac, macOS 10.13.6 |
-| Старый Intel (x86_64) | [Applications/Intel-Legacy/AstroSquid.app](Applications/Intel-Legacy/) | **10.7 Lion — целевой минимум** | Совместимый вариант проверен на 10.13.6; сам Lion не проверен |
-| Intel i386 (включая Core Duo) | [Applications/Intel-Tiger/AstroSquid.app](Applications/Intel-Tiger/) | **10.4 Tiger — целевой минимум** | i386-проверки на 10.13.6; сама 10.4 не проверена |
+| Apple Silicon, ARM64 | [Applications/ARM/AstroSquid.app](Applications/ARM/) | **11.0 Big Sur** | ARM macOS 27.0, OS build 26A5406e |
+| Intel, x86_64 | [Applications/Intel/AstroSquid.app](Applications/Intel/) | **10.13 High Sierra** | Intel macOS 10.13.6 |
+| Older Intel, x86_64 | [Applications/Intel-Legacy/AstroSquid.app](Applications/Intel-Legacy/) | **10.7 Lion** | Tested on 10.13.6; Lion itself untested |
+| Intel i386, including Core Duo | [Applications/Intel-Tiger/AstroSquid.app](Applications/Intel-Tiger/) | **10.4 Tiger** | i386 tests on 10.13.6; Tiger itself untested |
 
-Минимумы указаны и в Mach-O, и в Info.plist. Это целевые минимумы сборки:
-ARM на самой 11.0 и все промежуточные версии macOS не проверялись.
-Legacy — отдельная сборка с OpenAL-звуком вместо AVAudioEngine. Это не i386:
-первые 32-битные Core Duo, Mac OS X 10.4–10.6 и PowerPC ею не поддерживаются.
-Подробности и воспроизведение сборки: [docs/LEGACY_INTEL.md](docs/LEGACY_INTEL.md).
+Minimums are recorded in both Mach-O and Info.plist. They are deployment targets,
+not proof of runtime compatibility with every intervening OS. ARM has not been
+run on 11.0 itself. Legacy uses OpenAL instead of AVAudioEngine; it is not an i386,
+PowerPC, or 10.4–10.6 build. See [docs/LEGACY_INTEL.md](docs/LEGACY_INTEL.md).
+Intel-Tiger requires an OS that still runs 32-bit applications: 10.14 or earlier.
+No new PowerPC build is provided. A G5 running 10.4.11 served as the original-game
+reference machine.
 
-Для PowerPC новой сборки нет: G5 с Mac OS X 10.4.11 использовался как эталон оригинала.
+Copy the entire appropriate `AstroSquid.app` into your Applications folder and
+open it. Graphics, levels, effects and music are included. The applications have
+no Developer ID signature or Apple notarization. If macOS blocks a downloaded
+copy, verify its source and use the normal per-application opening exception;
+there is no need to disable system-wide security.
 
-Скопируйте нужный `AstroSquid.app` в свою папку Applications и откройте его.
-Внутри уже есть графика, уровни, звук и музыка. Приложения не имеют подписи
-Developer ID и нотариализации Apple. Если macOS блокирует загруженную копию,
-проверьте источник и используйте штатное разрешение открытия для этого приложения
-в настройках безопасности; отключать защиту системы целиком не требуется.
+All four variants start fullscreen without changing the display resolution.
+The game retains its 4:3 aspect ratio with black bars. **Control–Command–F** or
+**Toggle Full Screen** switches between fullscreen and a window. Hold **left
+Option at launch** for a 640×480 window. The original font is retained; Retina
+uses a full-resolution OpenGL surface.
 
-Все четыре сборки запускаются полноэкранно без изменения разрешения монитора.
-Изображение сохраняет пропорции 4:3, свободные поля чёрные.
-**Control–Command–F** или меню **Toggle Full Screen** переключает окно/fullscreen.
-**Левый Option при старте** открывает окно 640×480. Шрифт остаётся оригинальным;
-на Retina используется полноразмерная OpenGL-поверхность.
+- Arrow keys: movement; Command: fire; Option: special attack.
+- Escape: pause; any key: resume. An already-held key can immediately resume.
+- Settings: controls, sound, music and filtering. Settings, scores and unlocked stages persist.
+- Command-Q or closing the window: quit. An active special attack or transition can defer exit.
 
-- Стрелки — движение; Command — стрельба; Option — специальная атака.
-- Escape — пауза, любая клавиша — продолжить. Удерживаемая клавиша может сразу снять паузу.
-- Settings — клавиши, звук, музыка и фильтрация. Настройки, рекорды и открытые этапы сохраняются.
-- Command-Q или закрытие окна — выход; активная спецатака или переход могут отложить его завершение.
+## Scope and completion
 
-## Что передано и насколько готово
+Implemented: all **17 stage sections**, enemies and bosses, regular weapons,
+**16 special-attack variants**, pickups, damage, lives, respawn, menus, high scores
+and the ending. A controlled route reached the ending with an assisted player.
+A complete unassisted human playthrough and exact agreement of every frame on
+every GPU are **not established**. Trace counts are not a percentage of completion.
 
-Реализованы все **17 этапов**, враги и боссы, обычное оружие, **16 вариантов
-спецатак**, предметы, повреждения, жизни, возрождение, меню, рекорды и финал.
-Контролируемый маршрут до конца игры прошёл, но он усиливает игрока. Полное
-прохождение человеком с обычным здоровьем и точное совпадение каждого кадра
-на всех GPU **не подтверждены**. Процент «побайтовой готовности» здесь не используется.
+Read [STATUS.md](STATUS.md) for scope, known issues, intentional differences and
+remaining checks; [CHANGELOG.md](CHANGELOG.md) describes recent fixes.
 
-Начните с [STATUS.md](STATUS.md): объём выполненного, известные проблемы,
-преднамеренные отличия от оригинала и оставшиеся проверки.
-[CHANGELOG.md](CHANGELOG.md) объясняет последние исправления.
+## Build
 
-## Собрать самому
-
-Нужны Mac и Xcode Command Line Tools. Все ресурсы теперь находятся в Git:
-обычного клона или распаковки архива репозитория достаточно, Git LFS не нужен.
+Requires a Mac with Xcode Command Line Tools. All build resources are tracked in
+Git; a normal clone or repository ZIP is sufficient. Git LFS is not required.
 
 ```sh
 ./build.sh
 ```
 
-Результат — `build/AstroSquid.app` для архитектуры компьютера сборки.
-Сборка на ARM даёт ARM-приложение, на Intel — Intel. Готовые копии в
-`Applications/` автоматически не заменяются; порядок обновления описан
-в [SOURCE_GUIDE.md](SOURCE_GUIDE.md).
+The result is `build/AstroSquid.app` for the build machine's architecture: ARM
+on Apple Silicon, Intel on Intel. This does not automatically replace the copies
+under `Applications/`; see [SOURCE_GUIDE.md](SOURCE_GUIDE.md) for release steps.
 
-## Навигация для следующего разработчика
+## Project map
 
-| Путь | Содержимое |
+| Path | Contents |
 | --- | --- |
-| `src/` | Исходники игры и macOS-интеграции |
-| `assets/` | Все ресурсы сборки и проверки исходных изображений/звуков |
-| `Applications/` | Три готовые сборки, их происхождение и контрольные суммы |
-| `tests/` | Регрессии и сохранённые эталонные данные оригинала |
-| `tools/` | Извлечение ресурсов, анализ, эталонные PPC-пробы, упаковка |
-| `validation/` | Небольшой набор исторических результатов и сравнительных кадров |
-| [SOURCE_GUIDE.md](SOURCE_GUIDE.md) | Архитектура, сборка, тесты и выпуск |
-| [VALIDATION.md](VALIDATION.md) | Подробный исторический журнал проверок и их границ |
-| [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEERING.md) | Воспроизведение анализа и извлечения ресурсов |
-| [THIRD_PARTY.md](THIRD_PARTY.md) | Происхождение ресурсов и стороннего кода |
+| `src/` | Game source and macOS integration |
+| `assets/` | Build resources and original raster/audio verification inputs |
+| `Applications/` | Four applications, provenance and checksums |
+| `tests/` | Regressions and saved original-game reference data |
+| `tools/` | Extraction, analysis, PowerPC oracle probes and packaging |
+| `validation/` | Selected historical results and comparison images |
+| [SOURCE_GUIDE.md](SOURCE_GUIDE.md) | Architecture, builds, tests and releases |
+| [VALIDATION.md](VALIDATION.md) | Detailed historical checks and their limits |
+| [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEERING.md) | Reproducing analysis and resource extraction |
+| [THIRD_PARTY.md](THIRD_PARTY.md) | Resource and third-party code provenance |
 
-Для передачи целиком используйте `AstroSquid-Repository.zip`: в нём исходники,
-ресурсы, тесты, документация и все четыре приложения. Это снимок файлов Git с
-`SOURCE_COMMIT.txt`, без базы `.git` и частных рабочих материалов. Рабочий
-репозиторий сохраняет историю коммитов. Отдельные ZIP приложений предназначены
-тем, кому не нужны исходники. Большие внешние исследовательские трассы, оригинальный
-PEF и модели Infini-D для сборки и запуска не требуются и в репозиторий не включены.
+`AstroSquid-Repository.zip` contains source, resources, tests, documentation and
+all four applications. It is a tracked-file snapshot with `SOURCE_COMMIT.txt`,
+without the `.git` database or private working materials. The working repository
+retains its commit history. Application ZIPs are for players who do not need source.
+Large external research traces, the original PEF and Infini-D models are neither
+required for building/playing nor included in the repository package.
 
-Сравнение с независимым портом из `astrosquid_sam.zip`: [docs/SAM_COMPARISON.md](docs/SAM_COMPARISON.md).
+See [docs/SAM_COMPARISON.md](docs/SAM_COMPARISON.md) and
+[docs/SAM_COMPARISON.txt](docs/SAM_COMPARISON.txt) for the independent Sam port.

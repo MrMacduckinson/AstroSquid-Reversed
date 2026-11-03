@@ -1,6 +1,6 @@
 # Historical allocator-dependent reference
 
-On2026-10-28 the user selected “Определённая логика без этой ошибки” after the
+On2026-10-28 the user selected “Defined behavior without this bug” after the
 original's freed cached-tail behavior was demonstrated. Reproducing that
 use-after-free and a particular system allocator layout is excluded from the
 fidelity target. The `freed_tail_51_*` files remain unchanged historical evidence;

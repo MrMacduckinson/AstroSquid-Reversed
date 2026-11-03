@@ -1,57 +1,57 @@
-# Intel Legacy: целевой Mac OS X 10.7 Lion
+# Intel Legacy: Mac OS X 10.7 Lion target
 
-Это дополнительное приложение `Applications/Intel-Legacy/AstroSquid.app`,
-также доступное в `AstroSquid-Intel-Legacy.zip`. Архитектура **x86_64**, не i386:
-требуется64-битный Intel. Первые32-битные Core Duo,10.4–10.6 и PowerPC не покрыты.
+`Applications/Intel-Legacy/AstroSquid.app`, also distributed as
+`AstroSquid-Intel-Legacy.zip`, is an additional **x86_64** application, not i386.
+It requires a 64-bit Intel CPU; first-generation 32-bit Core Duo, 10.4–10.6 and
+PowerPC are not covered by this variant.
 
-## Почему пришлось менять код
+## Why a separate implementation is necessary
 
-Номер deployment target не добавляет отсутствующих в системе классов.
-Обычный backend использует AVAudioEngine (появился в10.10), а также обработчик
-завершения буфера и задержку вывода из10.13. См. [Apple, AVAudioEngine in Practice](https://devstreaming-cdn.apple.com/videos/wwdc/2014/502xxvo7vov799k/502/502_avaudioengine_in_practice.pdf).
+Changing the deployment target does not supply missing system classes. The normal
+backend uses AVAudioEngine (introduced in 10.10), buffer-completion behavior and
+output-latency facilities from 10.13. See
+[Apple: AVAudioEngine in Practice](https://devstreaming-cdn.apple.com/videos/wwdc/2014/502xxvo7vov799k/502/502_avaudioengine_in_practice.pdf).
 
-Legacy связывается с `src/audio_legacy.m`: все18 WAV декодируются заранее в
-моно16-bit PCM, OpenAL использует6 пар голосов, музыка остаётся в AVAudioPlayer.
-Частоты исходных звуков сохранены; выделение источников не выполняется при
-каждом выстреле. Сохраняются лимит6 логических каналов, коэффициенты громкости,
-отдельные левый/правый коэффициенты и защита от повторного старта завершённого
-звука после паузы. Системный OpenAL может отличаться по фактическому микшированию;
-точное равенство акустического выхода, панорамы и уровня не доказано.
+Legacy links `src/audio_legacy.m`: all 18 WAVs are decoded into mono 16-bit PCM
+in advance, OpenAL provides six pairs of voices, and music uses AVAudioPlayer.
+Original sample rates, the six logical-channel limit, volume coefficients and
+left/right behavior are retained. Playback is protected against replaying a
+completed effect after pause. The system's OpenAL mixer can behave differently;
+exact acoustic output, panning and loudness equivalence have not been proved.
 
-В debug-журнале календарный конструктор10.9 заменён эквивалентным старым вызовом.
-Поддержку коллекционных subscripts на Lion предоставляет статически включённая
-компилятором Apple libarclite. Собственных подмен Foundation-методов нет.
-Проверка доступности API в build.sh допускает только эти четыре известных
-subscript-метода; остальные предупреждения доступности останавливают Legacy-сборку.
+The debug journal's 10.9 calendar constructor was replaced with an older
+API. Apple's statically linked libarclite provides collection-subscripting
+compatibility on Lion. This variant does not replace Foundation methods.
+The build.sh availability check permits only those four known subscript methods;
+other availability warnings stop the Legacy build.
 
-## Сборка
+## Build
 
 ```sh
 ./build.sh --legacy-intel
-# Результат: build/legacy-intel/AstroSquid.app
+# Output: build/legacy-intel/AstroSquid.app
 bash tests/audio_legacy_host.sh
 bash tests/legacy_geometry_host.sh
 python3 tests/legacy_binary_test.py build/legacy-intel/AstroSquid.app
 ```
 
-Использован Intel iMac,10.13.6, Apple LLVM10.0.0 и SDK10.13. Нужны toolchain и
-SDK, поддерживающие deployment10.7, включая штатную libarclite. У установленного
-здесь Xcode27 этой библиотеки нет: подбор старого SDK сам по себе не решает
-ошибку линкера. Сборка на старом Intel toolchain была доступна и использована;
-установка сторонних копий библиотек в Xcode не выполнялась.
+The release used an Intel iMac running 10.13.6, Apple LLVM 10.0.0, and records SDK
+10.13 in Mach-O. A toolchain supporting deployment to 10.7, including Apple's
+libarclite, is required. The installed Xcode 27 toolchain lacks that library;
+selecting an old SDK alone does not resolve the link error. An older available
+Intel toolchain was used; no third-party library was installed into Xcode.
 
-## Проверки и честная граница
+## Validation and limits
 
-- Mach-O: x86_64, минимум10.7; Info.plist:10.7. Нет импортов AVAudioEngine и его новых классов.
-- Статически присутствует поддержка subscripts из libarclite.
-- На10.13.6 проходят бесшумные проверки18 буферов,6 каналов,100 stop/pause циклов,
-  окончания звука без повторного старта, паузы музыки и коллекционных subscripts.
-- Offscreen-проверка геометрии обоих переходов выполняется без окна и звука.
-- **Непосредственно в Lion10.7 приложение ещё не запускалось.** Нет утверждения
-  о полной совместимости всех старых драйверов/GPU или о полном прохождении
-  именно с новым backend. Для проверки на Lion начать с запуска, меню, боя,
-  звука, паузы и выхода; затем переходов между этапами.
+- Mach-O: x86_64, minimum 10.7; Info.plist: 10.7. No AVAudioEngine class imports.
+- The binary includes collection-subscripting support from libarclite.
+- Muted 10.13.6 checks cover 18 buffers, six channels, 100 stop/pause cycles,
+  completed effects, music pause and collection subscripting.
+- Both transition geometries are checked offscreen without a window or sound.
+- **The application has not been run on Lion 10.7 itself.** This does not establish
+  compatibility with all old drivers/GPUs or a full campaign on the new backend.
+  On Lion, first test startup, menus, combat, audio, pause and exit, then transitions.
 
-Для10.4 недостаточно этого варианта: там отсутствуют используемые JSON и
-AVAudioPlayer API, другой Objective-C runtime, а поддержка32-битных первых Intel
-требует отдельной адаптации. Такие приложения здесь не обещаны.
+OS X 10.4 lacks JSON and AVAudioPlayer APIs used here and has a different
+Objective-C runtime. The first Intel machines also need i386 support. That work
+is provided by the separate [Intel-Tiger port](TIGER_INTEL.md), not this variant.

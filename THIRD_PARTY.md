@@ -1,26 +1,26 @@
-# Происхождение и уведомления
+# Provenance and notices
 
-- Оригинальная AstroSquid 1.1 — Lost Minds. Графика, уровни, музыка и звуки
-  извлечены из оригинального приложения и сохраняют авторство своих создателей.
-  Проект не является официальным выпуском Lost Minds. Источник архивов:
-  https://macintoshgarden.org/games/astrosquid . Варианты .sit и .zip,
-  исследованные при восстановлении, содержали одинаковый код и resource fork;
-  более поздняя дата архива сама по себе не означает новую версию игры.
-- Исходники здесь — реконструкция C/Objective-C, не оригинальный FutureBASIC-проект.
-- В `src/ppc_math.c` сохранены уведомления Apple для использованного числового
-  кода. Текст Apple Public Source License 1.1 находится в
-  `licenses/Apple-Libm-APSL-1.1.txt` и включён в обе сборки.
-- Этот пакет не назначает новую общую лицензию оригинальным игровым ресурсам
-  или всему реконструированному проекту. Наличие файлов в Git не означает,
-  что весь пакет лицензирован как MIT или public domain.
-- Оригинальные модели Infini-D — отдельные исходные материалы художников;
-  для запуска и сборки не нужны. Исходный PEF и частные материалы анализа
-  не включены в передаваемый репозиторий.
+- Original AstroSquid 1.1: Lost Minds. Graphics, levels, music and effects were
+  extracted from the original application and retain their creators' authorship.
+  This project is not an official Lost Minds release. Archive source:
+  https://macintoshgarden.org/games/astrosquid . The .sit and .zip versions examined
+  during reconstruction contained the same code and resource fork; a later
+  archive timestamp alone does not establish a newer game revision.
+- These sources are a C/Objective-C reconstruction, not the original FutureBASIC project.
+- `src/ppc_math.c` retains Apple's notices for the numerical code used.
+  `licenses/Apple-Libm-APSL-1.1.txt` contains the license and is included in all bundles.
+- This package does not assign a new blanket license to the original game assets
+  or the entire reconstruction. Tracking files in Git does not make the package
+  MIT-licensed or public domain.
+- Original Infini-D models are separate artist source materials, unnecessary for
+  building or playing. The original PEF and private analysis materials are not
+  included in the distributed repository.
 
-## LLVM BlocksRuntime (Intel-Tiger only)
+## LLVM BlocksRuntime (used by Intel-Tiger)
 
-`src/tiger/vendor/BlocksRuntime` — runtime.c, data.c, Block.h, Block_private.h
-из LLVM compiler-rt llvmorg-3.8.0 (убраны пробелы в конце строк); config.h — локальная конфигурация.
-Источник: https://github.com/llvm/llvm-project/tree/llvmorg-3.8.0/compiler-rt/lib/BlocksRuntime
-Лицензия Apple включена в `licenses/BlocksRuntime.txt` и в Tiger bundle.
-Apple SDK в репозиторий и релиз не включается.
+`src/tiger/vendor/BlocksRuntime` contains runtime.c, data.c, Block.h and
+Block_private.h from LLVM compiler-rt llvmorg-3.8.0, with trailing whitespace
+removed; config.h is a local configuration.
+Source: https://github.com/llvm/llvm-project/tree/llvmorg-3.8.0/compiler-rt/lib/BlocksRuntime
+The Apple license is in `licenses/BlocksRuntime.txt` and the application bundles.
+Apple SDK files are not included in the repository or release.

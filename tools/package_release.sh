@@ -27,9 +27,9 @@ git rev-parse HEAD > "$source_dir/SOURCE_COMMIT.txt"
 git archive HEAD | tar -xf - -C "$repo_dir"
 git rev-parse HEAD > "$repo_dir/SOURCE_COMMIT.txt"
 for target in ARM Intel Intel-Legacy Intel-Tiger; do
-  /usr/bin/ditto -c -k --sequesterRsrc --keepParent "Applications/$target/AstroSquid.app" "$output/AstroSquid-$target.zip"
+  /usr/bin/ditto -c -k --norsrc --noextattr --noqtn --keepParent "Applications/$target/AstroSquid.app" "$output/AstroSquid-$target.zip"
 done
-/usr/bin/ditto -c -k --sequesterRsrc --keepParent "$source_dir" "$output/AstroSquid-Source.zip"
-/usr/bin/ditto -c -k --sequesterRsrc --keepParent "$repo_dir" "$output/AstroSquid-Repository.zip"
+/usr/bin/ditto -c -k --norsrc --noextattr --noqtn --keepParent "$source_dir" "$output/AstroSquid-Source.zip"
+/usr/bin/ditto -c -k --norsrc --noextattr --noqtn --keepParent "$repo_dir" "$output/AstroSquid-Repository.zip"
 (cd "$output" && shasum -a 256 *.zip > SHA256SUMS)
 printf 'Packaged ARM, Intel, Intel-Legacy, Intel-Tiger, source and repository snapshots in %s\n' "$output"

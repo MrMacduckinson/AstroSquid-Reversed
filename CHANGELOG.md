@@ -1,66 +1,70 @@
-# Изменения
+# Changes
 
-## Полноэкранный режим — 2026-11-03
+## English-language distribution and Sam comparison — 2026-11-03
 
-Все четыре Mac-варианта используют fullscreen на текущем разрешении экрана,
-с пропорциями 4:3 и чёрными полями. Control–Command–F переключает режим;
-левый Option при запуске оставляет окно 640×480. Смена видеорежима удалена.
-OpenGL запрашивает Retina-поверхность, соответствующую размеру viewport.
-Это устраняет лишнее системное масштабирование; рисунок и метрики шрифта
-сохранены. При загрузке убран только слабый шум нижней строки ячеек шрифта
-(RGBA ≤ 5); исходный атлас не изменён. Внутренний PICT-снимок теперь захватывает весь игровой кадр.
-Минимальные версии ОС не изменены. Самостоятельная проверка пользователя
-на прежнем проблемном экране ещё нужна для подтверждения исчезновения полос.
+- Translated the remaining Russian documentation into English; retained technical
+  evidence, known issues, attribution and compatibility limits.
+- Added a detailed plain-text comparison with the independently supplied Sam port.
+- Reviewed distributable files for credentials and private operational material;
+  release ZIPs omit Git history and nonessential macOS extended metadata.
+- Our application code and game assets are unchanged by this documentation update.
 
+## Fullscreen — 2026-11-03
 
-## Исправление запуска Intel-Tiger на 10.13.6 — 2026-11-03
+All four Mac variants retain the current display resolution and 4:3 aspect ratio
+with black bars. Control–Command–F toggles fullscreen; left Option at launch keeps
+a 640×480 window. Physical display-mode switching was removed. The OpenGL surface
+matches Retina backing dimensions. Original fonts and spacing remain; only faint
+bottom-row glyph-cell noise (RGBA <= 5) is removed at texture load. The original
+atlas is unchanged. Internal PICT capture now samples the whole game frame.
+Minimum OS targets are unchanged. User confirmation on the previously affected
+display remains distinct from successful framebuffer checks.
 
-Прослойка Tiger теперь добавляет только отсутствующие методы Foundation,
-сохраняя штатные реализации новых систем. Это устраняет рекурсию NSDictionary/
-allKeys и NSFileManager/changeFileAttributes при обычном запуске на 10.13.6.
-Резервный перебор словаря использует keyEnumerator. Добавлены регрессии для
-установки недостающих методов, сохранения штатных, перебора и файловых операций.
+## Intel-Tiger launch on 10.13.6 — 2026-11-03
 
+The compatibility layer now installs only missing Foundation methods, preserving
+native implementations on newer macOS. This fixes recursion through dictionary
+allKeys and file-attribute methods at startup. Fallback enumeration uses
+keyEnumerator. Tests cover method installation/preservation, iteration and files.
 
-## Отдельный Intel Tiger, 2026-11-03
+## Separate Intel-Tiger port — 2026-11-03
 
-Добавлен i386-порт с SDK 10.4u: Cocoa без ARC, OpenAL, QuickTime, XML plist.
-Это отдельное приложение Intel-Tiger. Оно поддерживает окно и fullscreen. Компоненты
-проверены на Intel 10.13.6; запуск на самой 10.4 ещё не подтверждён.
-Сборка, проверки и ограничения: [docs/TIGER_INTEL.md](docs/TIGER_INTEL.md).
+Added an i386 port built using SDK 10.4u: non-ARC Cocoa, OpenAL, QuickTime and
+XML plists. This separate application supports windowed and fullscreen modes.
+Components were tested on Intel 10.13.6; actual 10.4 execution is unconfirmed.
+See [docs/TIGER_INTEL.md](docs/TIGER_INTEL.md).
 
-## Дополнительная Intel Legacy сборка — 2026-11-03
+## Additional Intel-Legacy build — 2026-11-03
 
-- Цель10.7/x86_64, отдельный OpenAL-backend с18 загруженными буферами и6 парами
-  каналов. Музыка, лимит каналов, квантование громкости, пауза и повтор через
-  serviceMusic сохраняют интерфейс игры. Повторного создания player на выстрел нет.
-- Заменён единственный календарный конструктор10.9 на эквивалентный старый API.
-- `./build.sh --legacy-intel`, отдельные проверки и архив; современные backend
-  и сборки сохранены. Компилятор Apple LLVM10 на Intel включает libarclite для Lion.
-- Проверено на10.13.6, не на10.7. i386/PPC и10.4–10.6 не поддерживаются.
+- Target 10.7/x86_64 with an OpenAL backend, 18 preloaded buffers and six paired
+  voices. Music, voice limits, volume quantization, pause and serviceMusic repeats
+  preserve the game interface. Players are not created per shot.
+- Replaced the single 10.9 calendar constructor with an older equivalent API.
+- Added `./build.sh --legacy-intel`, focused tests and a separate archive while
+  retaining modern backends. Apple LLVM 10 on Intel supplies libarclite for Lion.
+- Tested on 10.13.6, not 10.7. This variant does not support i386/PPC or 10.4–10.6.
 
-## Подготовка к передаче — 2026-11-03
+## Initial handoff preparation — 2026-11-03
 
-- В Git включены ресурсы и два приложения: ARM64 (macOS 11.0+) и Intel (10.13+).
-- build.sh выставляет соответствующий минимум и в компиляторе, и в Info.plist.
-- README, описание состояния, ограничения и инструкция выпуска приведены к
-  самодостаточному виду. Исторические проверки сохранены отдельно.
-- Архив репозитория содержит оба приложения; история .git остаётся в рабочем репозитории.
+- Tracked resources and the initial two application variants: ARM64 (11.0+) and Intel (10.13+).
+- build.sh sets matching compiler and Info.plist deployment targets.
+- Made README, status, limitations and release instructions self-contained; retained historical validation separately.
+- The repository snapshot included both then-current apps; Git history remained in the working repository.
 
-## Последние исправления игры — 2026-11-03
+## Recent game fixes — 2026-11-03
 
-| Коммит | Изменение | Проверка |
+| Commit | Change | Validation |
 | --- | --- | --- |
-| 878c96d | Сброс таймлайнов неиспользованных подготовленных аудиоузлов после смены формата | 9 бесшумных PCM-проверок на ARM и Intel; до исправления новый Click давал нулевой сигнал |
-| 269d6c8 | Retina-линии, нулевое направление столкновения, восстановление аудиодвижка и расписание звуков на Intel | Offscreen-кадры ARM/Intel; столкновения также G5; muted lifecycle/stress |
-| 4c89536 | Завершённые звуки после паузы, AVFAudio-дедлок, подготовленные голоса, центровка следа ускорения | ARM/Intel lifecycle и геометрия обоих переходов |
-| 808bec1 | Аудиопроигрывание отделено от игровых часов стрельбы | Начальная пушка: каденция оригинала и вызовы звука |
-| 01dd009 | Совместимость сборки с современным SDK и инструкция работы с исходниками | Сборка проекта и переносимые проверки |
+| 878c96d | Reset unused prepared audio-node timelines after format changes | Nine muted PCM checks on ARM/Intel; unused Click previously rendered silence |
+| 269d6c8 | Retina primitives, zero-direction collisions, audio-engine recovery and Intel scheduling | ARM/Intel offscreen frames; collision also checked on G5; muted lifecycle/stress |
+| 4c89536 | Completed sounds after pause, AVFAudio deadlock, prepared voices and centered boost trail | ARM/Intel lifecycle and both transition geometries |
+| 808bec1 | Decoupled audio playback from game firing clocks | Starting-gun cadence and original sound calls |
+| 01dd009 | Modern SDK compatibility and source guide | Project build and portable checks |
 
-## Ранее
+## Earlier work
 
-Восстановлены игровой цикл, 17 этапов, оружие и AI, меню, сохранение настроек,
-ресурсы и числовое поведение PPC. Исправлены недопустимые обращения оригинала
-при удалении объектов и смерти в переходе; сохранены исходные свидетельства
-и отдельные безопасные регрессии. Подробная история — `git log`, перечень
-ограниченных сравнений — VALIDATION.md; этот файл не перечисляет каждый старый коммит.
+Reconstructed the game loop, 17 sections, weapons/AI, menus, persisted settings,
+resources and PPC numerical behavior. Fixed invalid original accesses during
+object deletion and transition death while retaining evidence and separate safe
+regressions. See `git log` for history and VALIDATION.md for bounded comparisons;
+this document does not enumerate every historical commit.

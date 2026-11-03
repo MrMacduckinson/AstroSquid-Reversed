@@ -1,32 +1,30 @@
-# Готовые приложения
+# Ready-to-run applications
 
 - `ARM/AstroSquid.app`: Apple Silicon, macOS **11.0+**.
-- `Intel/AstroSquid.app`: Intel, macOS **10.13+**.
-- `Intel-Legacy/AstroSquid.app`: Intel64, целевая **10.7+**, отдельный OpenAL-backend; на самой10.7 ещё не проверен.
+- `Intel/AstroSquid.app`: Intel x86_64, macOS **10.13+**.
+- `Intel-Legacy/AstroSquid.app`: Intel x86_64, target **10.7+**, separate OpenAL backend; not tested on Lion itself.
+- `Intel-Tiger/AstroSquid.app`: i386, target **10.4+**; not tested on Tiger itself. Requires 32-bit application support (through macOS 10.14).
 
-- `Intel-Tiger/AstroSquid.app`: i386, целевая **10.4+**; сама 10.4 не проверена. Только системы с поддержкой 32-битных приложений (до 10.14 включительно).
+Each `.app` is a self-contained macOS application bundle with resources. Transfer
+the whole bundle, not just Contents/MacOS/AstroSquid. Use the application ZIPs
+when the transfer service does not preserve directories or permissions.
+Architectures are intentionally separate; the ARM application does not need Rosetta.
 
-Каждая папка `.app` — самостоятельный macOS application bundle с ресурсами.
-Переносите её целиком, не один файл Contents/MacOS/AstroSquid. Если передаёте
-через сервис, который не сохраняет каталоги/права, используйте готовые ZIP.
-Архитектуры разделены намеренно; Rosetta для ARM-сборки не нужна.
-
-BUILD_INFO.json содержит исходный коммит, архитектуры, целевые минимумы,
-системы проверки и SHA-256 исполняемых файлов. SHA256SUMS покрывает каждый
-файл всех bundles; проверка из корня репозитория:
+BUILD_INFO.json records source revisions, architectures, deployment targets,
+validation hosts and executable SHA-256 hashes. SHA256SUMS covers every bundle
+file. Verify from the repository root:
 
 ```sh
 shasum -a 256 -c Applications/SHA256SUMS
 ```
 
-Минимальный target не означает проверку всех версий ОС. ARM проверен на
-macOS 27.0, Intel — на 10.13.6. Нет подписи Developer ID/нотариализации.
-Ограничения, исправления и состояние игры — в ../STATUS.md и ../CHANGELOG.md.
+A deployment target is not proof of testing on every OS version. Runtime checks
+used ARM macOS 27.0 and Intel 10.13.6. No Developer ID signing or notarization is
+provided. See ../STATUS.md and ../CHANGELOG.md for fixes and limitations.
 
-Все версии сохраняют bundle ID `local.astrosquid.reconstruction-preview`,
-чтобы обновление не теряло настройки и рекорды. Пользовательские сохранения
-в пакет не включены. При запуске другой копии на том же аккаунте macOS
-она использует те же настройки; это не независимый игровой профиль.
+All variants retain `local.astrosquid.reconstruction-preview` as the bundle ID
+so updates preserve settings and scores. User saves are not included. Different
+copies run by the same macOS account share settings; they are not separate profiles.
 
-Во всех вариантах: Control–Command–F переключает fullscreen без смены разрешения.
-Левый Option при старте — окно 640×480. Оригинальные шрифты сохранены.
+Control–Command–F toggles fullscreen without changing display resolution in all
+variants. Hold left Option at launch for a 640×480 window. Original fonts remain.

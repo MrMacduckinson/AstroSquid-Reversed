@@ -112,6 +112,6 @@ unmodified, even with SDK10.15 selected. See docs/LEGACY_INTEL.md.
 
 ## Intel Tiger
 
-`src/tiger/` содержит отдельную оболочку MRC/fragile ABI, UI, HUD и звук для i38610.4.
-Общая логика — `src/*.c`; сборка — `tools/build_tiger.sh`. После изменения современной
-оболочки сверяйте Tiger-копию. Инструкции и границы проверок: docs/TIGER_INTEL.md.
+`src/tiger/` contains the separate MRC/fragile-ABI host, UI, HUD and audio for i38610.4.
+Shared logic lives in `src/*.c`; build with `tools/build_tiger.sh`. When changing the
+modern host, review the Tiger counterpart. See docs/TIGER_INTEL.md for instructions and validation limits.

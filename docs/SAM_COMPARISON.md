@@ -1,101 +1,29 @@
-# Сравнение с astrosquid_sam.zip — 2026-11-03
+# Comparison with the independent Sam port — 2026-11-03
 
-Проверен переданный пользователем архив, SHA256:
+The detailed English report is [SAM_COMPARISON.txt](SAM_COMPARISON.txt). It covers
+architecture, shared original resources, numerical fidelity, deliberate bug fixes,
+rendering, audio, persistence, platform support and the separately prepared Intel
+10.7 adaptation. Sam's source is not merged into this repository.
+
+Sam's original archive SHA-256:
 `fa8e5bc2bc5496b22ba2bafe11f5e952123c025bba118ddd7de73deff966f7b6`.
-Его исходники не объединялись с этим репозиторием и не изменялись в оригинальном ZIP.
 
-## Вывод
-
-У Sam сильнее стратегия быстрого сохранения оригинальной программы: статическая
-перекомпиляция PowerPC в C сохраняет управление игрой без ручного восстановления
-каждого сценария. У него также есть компактный прямой Win32-слой. Наш незавершённый Windows-порт
-отменён пользователем и удалён; он не входит в текущий проект.
-У нашей реконструкции сильнее доказательная база точности, читаемость игровой
-логики и явно проверенные исправления исходных ошибок. Нет основания объявлять
-один проект безусловно лучше по всем критериям или считать любой из них 100% копией.
-
-| Критерий | Наш проект | Sam |
+| Area | Our reconstruction | Sam's port |
 | --- | --- | --- |
-| Подход | Именованная логика C/Objective-C, отдельно воспроизведённая математика PPC | Автоматический перевод PPC в C, регистры и 512 MiB адресное пространство, замена Toolbox |
-| Сопровождение игрового поведения | Именованные модели оружия, AI, столкновений, переходов | Правки генератора/оригинальных инструкций либо платформенного runtime; генерированный C сложнее читать |
-| Размер исходников | Около 11 тысяч строк src с несколькими платформами | 107745 строк сгенерированного C + 4751 строк C/Objective-C/заголовков runtime |
-| Окно Mac | Окно 640×480 либо fullscreen без смены разрешения (обновлено 03.11) | Изменяемый размер, Retina, fullscreen без смены разрешения |
-| Другие платформы | Windows-порт отменён и удалён по запросу пользователя | Есть компактный Windows-слой без GNUstep/SDL |
-| Проверки оригинала | Сохранённые PPC-фикстуры и контролируемая сквозная трасса кампании; границы в VALIDATION.md | Есть сценарный ввод и выбор тестового уровня; отдельных тестовых файлов/эталонов сравнений в архиве нет |
-| Старые Mac | Отдельные варианты 10.7 и i386/10.4; минимальные ОС ещё не проверены | Заявлен x86_64/10.9+, можно собирать universal; Intel-код собран здесь, Mac-запуск не проверен |
+| Approach | Named C gameplay systems and Objective-C hosts | Static PowerPC-to-C translation and replacement Toolbox runtime |
+| Maintenance | Direct edits to semantic gameplay modules | Generator/runtime edits or changes to register-level translated code |
+| Original evidence | Saved PPC fixtures and a bounded controlled campaign trace | Original control flow retained; no comparable standalone fixture suite found in the submission |
+| Mac windowing | Native-resolution fullscreen, fixed 640x480 window, all four variants | Resizable 4:3 window, Retina, Cocoa fullscreen with persisted choice |
+| Audio | AVAudioEngine; OpenAL for Legacy/Tiger | Software Sound Manager mixer through AudioQueue; AVAudioPlayer music |
+| Older Intel | Separate x86_64/10.7 and i386/10.4 candidates | Submission targets x86_64/10.9; separate adaptation targets x86_64/10.7 |
+| Other platforms | Windows work cancelled; no Windows release | Independent Win32 runtime is present in the original source |
 
-Количество строк не является оценкой качества. Статическая перекомпиляция — полноценный
-нативный порт, хотя сохраняет программную модель регистров и памяти PowerPC.
+Earlier resource comparison matched all 731 resource payloads and 73 equally named
+PNG exports. A bounded MinGW/Wine math comparison differed from saved PPC results
+in 563 of 10,192 sampled sin/cos/asin/atan calls; this is not a measurement of
+incorrect gameplay frames or of the new Mac build's libm. See the full report for
+sample counts, compiler/rounding caveats and evidence limits.
 
-## Проверенные общие исходные данные
-
-Все 731 пары `(тип ресурса, ID)` совпали по содержимому с нашим download #3.
-FCOD1001 SHA256 у обоих:
-`eadd946129a4cb8e0b5b5511863e11cb938de06c96677f4c364f31f8dd46371f`.
-73 одноимённых PNG-экспорта PICT совпали пиксель-в-пиксель; один экспорт имеет
-другое имя и в этот подсчёт не входил. Следовательно, это сравнение разных
-способов переноса одного программного оригинала, а не новой и старой версии игры.
-
-## Точность вычислений
-
-`port/src/misc.c` Sam вызывает обычные `sin`, `cos`, `asin`, `atan` системы.
-С тем же MinGW-компилятором и Wine, которые использовались для его пробной сборки,
-эти вызовы сопоставлены с нашими сохранёнными PowerPC-результатами:
-
-| Функция | Проверено | Отличаются raw IEEE-64 биты |
-| --- | ---: | ---: |
-| sin | 1000 | 129 |
-| cos | 1000 | 139 |
-| asin | 4096 | 286 |
-| atan | 4096 | 9 |
-| Всего | 10192 | 563 |
-
-Это тест математических вызовов платформенного слоя, не запуск всей игры на каждом
-входе. Наши `astro_ppc_*` проходят эти фикстуры точно. Отличие последних битов не
-означает заметную ошибку каждого выстрела; накопление расхождений в Sam не измерялось.
-
-Кроме того, `port/tools/recompile.py:op59/op63` переводит fused multiply-add в
-обычное выражение `a*b+c`, а `port/src/ppc.h` не применяет FPSCR к общей арифметике.
-Поэтому фраза README о «точных семантиках каждой инструкции» сильнее доказанного:
-результат зависит от генерации кода компилятором и платформенных библиотек.
-Не утверждается, что каждый такой случай достижим во время обычной игры.
-
-## Ошибки и системная интеграция
-
-В нашем проекте явно исправлены чтение освобождённой памяти, гибель во время
-перехода и NaN при нулевом направлении столкновения; тесты и границы указаны в
-STATUS.md. У Sam в PATCHES указан только пропуск регистрации. Его отдельный
-allocator может менять проявление старых ошибок; наличие соответствующего
-игрового исправления в архиве не подтверждено. Это не утверждение, что он
-обязательно упадёт тем же способом.
-
-В Windows-слое Sam используются ANSI GetModuleFileNameA/CreateDirectoryA и
-UserData рядом с EXE: стоит отдельно проверить кириллицу в путях и установку
-в каталог без права записи. Это замечание к его Windows-слою; в Mac-слое Sam данные корректно направлены
-в Application Support. Наш Windows-порт отменён и в сравнении выпуска не участвует.
-
-## Что стоит перенять
-
-Самое ценное — перекомпилятор как независимый инструмент и дополнительный
-исполняемый эталон, таблица функций и лёгкий Win32-слой. Если начинать проект
-заново ради быстрого запуска оригинала, статическая перекомпиляция была бы
-более экономным первым вариантом. Сейчас не стоит автоматически заменять уже
-проверенную игровую логику: сначала нужно прогнать его runtime на имеющихся
-фикстурах, проверить звуковую семантику и исправления исходных ошибок.
-Код Sam здесь не заимствован; сравнение не меняет происхождение нашей реализации.
-
-## Реально выполненные прогоны
-
-Mac-исходники Sam успешно скомпилированы Apple Clang в x86_64 Mach-O с
-LC_VERSION_MIN_MACOSX 10.9 (SDK27). Его игровое окно на физическом Mac не
-запускалось; работа на самом Mavericks не подтверждена.
-
-Windows-тест Sam собран из его C без изменения исходников и кратко запущен под
-Wine10/Xvfb. Процесс загрузил731ресурс, показал заставку и штатно завершился по
-сценарному quit. Встроенная команда shot сохранила чёрный кадр, но отдельный
-снимок виртуального экрана показал нормальную заставку. Поэтому этот чёрный кадр
-не считается дефектом отрисовки игры. Аудиоустройства в среде нет, waveOut/MCI
-не проверены; полная кампания Sam здесь не проходилась.
-
-Это ограниченное техническое сравнение, не соревнование по субъективному
-качеству звука или удобству реального прохождения.
+Sam offers an efficient preservation strategy; our implementation offers more
+readable gameplay systems and explicit tests of selected safety fixes. Neither
+is established as universally superior or a perfect copy for every possible input.

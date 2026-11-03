@@ -1,74 +1,71 @@
-# Отдельный порт для Intel / Mac OS X 10.4
+# Separate Intel / Mac OS X 10.4 port
 
-`Applications/Intel-Tiger/AstroSquid.app` — 32-битное приложение i386,
-собранное с настоящим MacOSX10.4u SDK и target 10.4. Оно предназначено в том числе
-для первых Intel Core Duo. Это нативный порт, без Classic и без Rosetta.
-На macOS 10.15+ 32-битные приложения не запускаются; там выбирайте другую сборку.
+`Applications/Intel-Tiger/AstroSquid.app` is a 32-bit i386 application built with
+an actual MacOSX10.4u SDK and deployment target 10.4, including first-generation
+Intel Core Duo machines. It is native and needs neither Classic nor Rosetta.
+macOS 10.15 and later cannot run 32-bit applications; choose another variant there.
 
-**Статус: кандидат совместимости. Сам Intel Tiger пока не проверен.**
-Компонентные проверки выполнены в i386-процессе на Intel macOS 10.13.6.
-После исправления отдельно проверен обычный запуск готового bundle через
-LaunchServices на этом iMac: приложение отрисовало заставку и оставалось живым.
-Проверка запуска была без звука; она не означает прохождение кампании.
-Прослойка добавляет только отсутствующие методы и сохраняет штатные методы
-новых macOS. Это исправляет рекурсию словарей и файловых операций при старте
-на 10.13.6; обе ветви установки и резервный перебор проверяются отдельно.
-G5 с Tiger имеет другую архитектуру и не подтверждает работоспособность i386.
+**Status: compatibility candidate. Intel Tiger itself has not been tested.**
+Component tests ran in an i386 process on Intel macOS 10.13.6. After the launch
+fix, the ready-made bundle also launched through LaunchServices, rendered its
+splash and remained alive. This muted launch test is not a campaign playthrough.
+The compatibility layer adds only missing methods, retaining native methods on
+newer systems. This fixes dictionary/filesystem recursion on 10.13.6; installation,
+preservation and fallback enumeration are tested separately. A PowerPC G5 running
+Tiger does not validate i386 compatibility.
 
-## Что отличается
+## Differences
 
-- Отдельная оболочка `src/tiger/`: старый Objective-C ABI, ручное управление
-  памятью, Cocoa/OpenGL, OpenAL для эффектов и QTKit/QuickTime для музыки.
-- Все 21 C-модуля игровой логики общие с современными сборками.
-- Таблицы ресурсов преобразуются из JSON в XML plist без изменения значений.
-  Для JSON null используется внутренний маркер с восстановлением NSNull.
-- LLVM BlocksRuntime статически включён для callback-блоков. Никакой установки
-  библиотек в систему пользователя не требуется.
-- Fullscreen без смены разрешения, пропорции 4:3; Control–Command–F возвращает окно 640×480.
-  Общая реализация `src/presentation.h` использует API, доступные в SDK 10.4.
-- Настройки и рекорды используют тот же bundle ID, что и остальные версии.
+- Separate `src/tiger/` host: legacy Objective-C ABI, manual reference counting,
+  Cocoa/OpenGL, OpenAL effects and QTKit/QuickTime music.
+- All 21 C gameplay modules are shared with modern builds.
+- Resource tables are converted from JSON into XML plists without changing values.
+  A private representation of JSON null is restored to NSNull when loading.
+- LLVM BlocksRuntime is statically linked for callbacks; users install no extra library.
+- Fullscreen retains the display resolution and 4:3 aspect ratio. Control–Command–F
+  restores a 640×480 window. Shared `src/presentation.h` uses APIs present in SDK 10.4.
+- Settings and scores use the same bundle ID as the other variants.
 
-Оболочка скопирована отдельно, чтобы не усложнять современные варианты MRC-кодом.
-При исправлениях `preview.m`, UI, HUD или старого OpenAL-backend нужно проверять
-и переносить соответствующее изменение в `src/tiger/`. Изменения C-логики общие.
+The host is separate to avoid spreading MRC requirements through modern sources.
+When modifying preview.m, UI, HUD or the older OpenAL backend, review the matching
+file in `src/tiger/`. C gameplay changes are already shared.
 
-## Воспроизводимая сборка
+## Reproducible build
 
-Нужны Mac с компилятором/линкером, поддерживающим i386, Python 2.7 или 3 и законно
-полученный Apple MacOSX10.4u SDK. SDK не включён в репозиторий. Использован Intel
-10.13.6 с Apple LLVM 10. Современный линкер на ARM больше не умеет собирать i386.
+Requires a Mac toolchain/linker supporting i386, Python 2.7 or 3, and a lawfully
+obtained Apple MacOSX10.4u SDK. The SDK is not included. The build used Intel
+10.13.6 with Apple LLVM 10; the modern ARM linker no longer supports i386.
 
-Старые prebound stubs SDK не принимаются новым ld64. Скрипт создаёт отдельную
-копию SDK: выбирает i386, удаляет устаревшие команды prebinding и исправляет
-диапазон __LINKEDIT. Таблицы символов не меняются, исходный SDK не изменяется.
+Old prebound SDK stubs are rejected by newer ld64. The preparation tool makes
+an isolated SDK copy: selects i386, strips obsolete prebinding commands and fixes
+the __LINKEDIT range. Symbol tables and the original installed SDK are unchanged.
 
 ```sh
 python tools/prepare_tiger_sdk.py /path/MacOSX10.4u.sdk /tmp/astrosquid-sdk/MacOSX10.4u.sdk
 export TIGER_SDK=/tmp/astrosquid-sdk/MacOSX10.4u.sdk
 bash tools/build_tiger.sh
 bash tests/tiger_host.sh
-# На машине с Python 3:
+# On a machine with Python 3:
 python3 tests/tiger_tools_test.py
 ```
 
-Результат: `build/tiger-intel/AstroSquid.app`. Передавать нужно весь bundle или
-`AstroSquid-Intel-Tiger.zip`. Никакого SDK или отдельного assets-каталога рядом
-с установленным приложением не требуется.
+Output: `build/tiger-intel/AstroSquid.app`. Distribute the entire bundle or
+`AstroSquid-Intel-Tiger.zip`; users need no SDK or separate assets directory.
 
-## Проверки и границы результата
+## Checks and limits
 
-- Семь случаев удаления/вставки объектов при обходе мира, с NSZombieEnabled.
-- Загрузка всех 17 участков и по 20 шагов их объектов с освобождением временной
-  памяти между шагами. Это не полное прохождение кампании.
-- 18 звуковых буферов, лимит шести каналов, 100 циклов остановки/паузы,
-  завершение эффекта, воспроизведение и пауза музыки QuickTime. Всё без звука.
-- Два пути перехода уровня: 185 кадров геометрии игрока и луча.
-- Offscreen OpenGL: десять экранов меню/HUD, шрифт, прозрачность, курсор ввода,
-  hover, интервалы кадров 1/2/3 и толщина точек/линий/луча.
-- Все значения преобразованных ресурсов, включая null и CR, сверены с JSON.
-- Нативный C-набор проверяется отдельно как i386; итог записан в VALIDATION.md.
+- Seven world insertion/removal cases with NSZombieEnabled.
+- All 17 sections loaded, with 20 object steps each and temporary memory released
+  between steps. This is not a full campaign run.
+- Eighteen sound buffers, six-channel limit, 100 stop/pause cycles, effect
+  completion, QuickTime music playback/pause; all muted.
+- Both transition paths: 185 frames of player/beam geometry.
+- Offscreen OpenGL: ten menu/HUD screens, font, alpha, caret, hover, frame
+  intervals 1/2/3, and point/line/beam thickness.
+- Every converted resource value, including null and CR, checked against JSON.
+- The native C test suite is also checked as i386; see VALIDATION.md.
 
-Не подтверждены запуск на самой 10.4, полная кампания этой сборки, все старые GPU,
-точное звучание относительно оригинала и поведение всех промежуточных ОС.
-Нет Developer ID/нотариализации. Зависимость от QuickTime — штатная для Tiger,
-но это ещё одна причина использовать современную сборку на новых системах.
+Actual 10.4 startup, a full campaign in this variant, all older GPUs, exact audio
+relative to the original, and every intervening OS are unverified. There is no
+Developer ID/notarization. QuickTime is a normal Tiger dependency but another
+reason to prefer a modern variant on a newer OS.

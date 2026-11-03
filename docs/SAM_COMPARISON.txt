@@ -1,0 +1,261 @@
+ASTROSQUID: INDEPENDENT SAM PORT VS OUR RECONSTRUCTION
+Technical comparison and Intel build handoff — 2026-11-03
+
+1. WHICH PROJECTS ARE BEING COMPARED
+
+"Our reconstruction" means the C/Objective-C project in this repository, including
+its ARM, Intel, Intel-Legacy and Intel-Tiger applications. The current game-code
+baseline is d7dfe23 (native-resolution fullscreen and font scanline cleanup).
+Subsequent documentation changes do not imply new game behavior.
+
+"Sam's original submission" means the user-supplied astrosquid_sam.zip, SHA-256:
+fa8e5bc2bc5496b22ba2bafe11f5e952123c025bba118ddd7de73deff966f7b6
+
+"Sam Intel adaptation" means the separately built x86_64 application prepared
+from that submission for deployment to OS X 10.7. Its small platform/build edits
+are listed below. The original ZIP was not modified, and Sam's source has not
+been merged into our reconstruction. The two applications are separate projects.
+
+2. SUMMARY: DIFFERENT STRENGTHS, NOT A SINGLE WINNER
+
+Sam's approach is an efficient way to preserve an existing program quickly:
+translate the original PowerPC code into native C, then supply the old Mac APIs
+that program expects. Much of the original control flow comes along automatically.
+His source also contains a compact independent Windows host.
+
+Our approach reconstructs named gameplay systems and checks them against bounded
+executions of the original. It is easier to change a named collision, weapon,
+transition or audio component than to edit a large body of generated register-level
+C. It also has an extensive original-runtime evidence trail and explicitly tested
+fixes for several undefined or crashing original behaviors.
+
+Neither approach establishes a perfect copy for all inputs by itself. Sam's
+translated code is not proof of exact floating-point or Toolbox behavior. Our
+large number of matching trace records is not a percentage of overall correctness.
+No claim is made that either version is universally better to play.
+
+3. SHARED ORIGINAL GAME AND ASSETS
+
+The earlier archive comparison matched all 731 resource (type, ID) payloads
+against our selected original download #3. Both use FCOD 1001 with SHA-256:
+eadd946129a4cb8e0b5b5511863e11cb938de06c96677f4c364f31f8dd46371f
+
+Seventy-three equally named exported PICT PNGs matched pixel-for-pixel; one export
+had a different name and was outside that named-file count. This is a comparison
+of different ports of the same original program, not evidence that Sam started
+from an older/newer gameplay release. These are recorded earlier comparison
+results, not a newly repeated complete resource comparison in this build task.
+
+Our distribution uses extracted atlases, WAV effects, MP3 music and structured
+JSON tables (converted to XML plists for Tiger). Sam packages the original raw
+resource fork, including code/resources, and a Data directory; his runtime supplies
+resource lookup and PICT decoding. Both carry material originating with Lost Minds.
+Neither package should be represented as an official Lost Minds release or as
+wholly MIT/public-domain material merely because its files are available.
+
+4. IMPLEMENTATION AND MAINTAINABILITY
+
+Our game logic is expressed as named C modules for physics, scripts, weapons,
+combat, beams, player, campaign, flow, transition, visual effects, scores and UI
+state. Objective-C supplies windowing, rendering and audio integration. The Tiger
+host is a separate MRC/fragile-ABI counterpart, sharing the C game logic. The new
+fullscreen implementation is shared by both hosts.
+
+Sam's generator emits one C function per PowerPC entry point (859 according to
+his README), plus an address-to-function dispatch table. It retains CPU registers,
+big-endian reads/writes, original-style pointers/handles and a 512 MiB modeled
+address space. That is a logical address-space reservation, not proof that the
+process continuously consumes 512 MiB of physical RAM. Memory, files, resources,
+events, QuickDraw, OpenGL and sound are implemented by replacement runtime modules.
+This is ahead-of-time native recompilation, not a requirement to run Rosetta.
+
+Current source-size measurements, including comments/blank lines:
+- Our shared top-level C: 21 files, 1,502 lines.
+- Our top-level Objective-C: 5 files, 3,747 lines.
+- Our Tiger Objective-C: 6 files, 3,719 lines.
+- Sam's generated C: 10 files, 107,745 lines.
+- Sam's original C/Objective-C/header runtime: 4,751 lines; the adaptation adds a
+  handful of platform lines. Headers, tests and tools are not included in our
+  first three counts. These categories are intentionally stated separately.
+
+Line counts are not quality or performance scores. Sam's generator is compact
+relative to its output. For a behavioral edit, our semantic components are more
+readable; for quickly retaining an unexamined original branch, automatic
+translation is attractive. A useful next step would be to use Sam's executable as
+an additional independent comparison target, not to replace tested logic blindly.
+
+5. NUMERICAL FIDELITY
+
+Sam's src/misc.c delegates sin, cos, asin and atan to the host math library.
+An earlier bounded test, built with the same MinGW/Wine setup as his Windows
+smoke build, compared those calls against our saved PowerPC fixtures:
+
+Function   Samples   Different IEEE-754 binary64 results
+sin         1,000       129
+cos         1,000       139
+asin        4,096       286
+atan        4,096         9
+TOTAL      10,192       563
+
+Our astro_ppc_* functions pass those saved fixtures exactly. These numbers are
+about selected mathematical function results, not 563 broken gameplay events,
+not a percentage of differing game frames, and not a new measurement of Apple's
+Intel libm in the adaptation delivered here. Many differences are in low-order
+bits; their accumulated effect during Sam gameplay has not been quantified.
+
+The inspected op59/op63 translation emits ordinary a*b+c-style expressions for
+fused operations. FPSCR is represented, but FPSCR_CHANGED is a no-op; it does not
+apply original rounding state to all host floating-point arithmetic. Exact results
+can therefore depend on compiler contraction and host libraries. This limits the
+README's broad "exact semantics" wording. It does not establish that every
+potential discrepancy is reachable in normal play. We did not change Sam's
+translator, floating-point helpers or gameplay code in this adaptation.
+
+6. ORIGINAL BUGS AND DELIBERATE FIXES
+
+Our implementation explicitly avoids reading an object after it has been freed.
+It handles player death during a scripted transition by respawning or showing
+Game Over, and avoids NaN velocity for an exactly zero collision direction while
+retaining damage. These are deliberate departures from allocator-dependent or
+crashing original behavior, with separate tests and preserved historical evidence.
+
+Sam's PATCHES table contains a registration-limit bypass. The reviewed submission
+does not establish equivalent gameplay fixes for the cases above. Its size-class
+allocator inside the modeled address space can change how a stale-pointer access
+manifests: it might appear to work, retain old bytes, reuse a block, or differ from
+the original system allocator. It is incorrect to infer that Sam necessarily
+crashes in the same way, or that translating the instructions automatically fixes
+those bugs. Those scenarios need direct runtime checks before stronger claims.
+
+7. RENDERING, WINDOWS AND TEXT
+
+Both projects use legacy OpenGL on macOS and retain the original game artwork.
+Sam allows freely resized windows with a 4:3 content aspect ratio, Retina backing
+surfaces and the standard Cocoa fullscreen transition. His fullscreen preference
+is remembered between launches; Control-Command-F invokes it.
+
+Our current four variants use a borderless fullscreen window at the existing
+screen resolution, center a 4:3 game view with black bars, and return to a fixed
+640x480 window. Control-Command-F toggles it; left Option at launch selects a
+window. Our earlier display-mode-switching implementation is no longer current.
+Our fullscreen checks cover entry, exit, first responder, actual application
+shortcut dispatch, normal termination and direct exit on ARM and Intel.
+
+Our original font atlas and metrics are retained. Texture loading removes only
+very faint bottom-row cell noise (RGBA <= 5); useful half-coverage texels remain.
+Our high-resolution OpenGL surface matches the backing viewport. The same border
+cleanup was not added to Sam. Whether his original font path exhibits the same
+artifact at a particular scale has not been proved by this comparison.
+
+Neither project has been established to produce bit-identical images on every
+GPU. Sam intentionally ignores QuickDraw operations aimed directly at on-screen
+windows, because this game normally presents through OpenGL; offscreen QuickDraw
+still matters for texture creation. This is a documented limitation of his runtime,
+not a finding that every game screen is missing.
+
+8. AUDIO: SIGNIFICANT IMPLEMENTATION DIFFERENCES
+
+Our modern ARM/Intel host uses AVAudioEngine with prepared voices and explicit
+scheduling/recovery behavior. The Legacy variant uses preloaded OpenAL buffers
+plus AVAudioPlayer music; Tiger uses OpenAL plus QTKit/QuickTime. Our evidence
+includes firing-clock separation, completed-sound handling after pause, mixer-rate
+recovery and complete PCM waveform checks for selected effects. It is not proof
+of exact acoustic output or panning on every device.
+
+Sam emulates Sound Manager commands using a software mixer: fixed 44,100 Hz stereo
+output, up to 32 runtime Voice slots, linear sample interpolation, floating-point
+accumulation and clipping to signed 16-bit samples. AudioQueue feeds three buffers
+of 1,024 frames each. MP3 music uses AVAudioPlayer. A sound resource is decoded to
+PCM when starting it; its previous PCM allocation is replaced. His runtime's
+capacity of 32 slots does not mean that original game code uses 32 simultaneous
+logical channels; the original program still chooses which channels to request.
+
+These different mixer, buffering and scheduling paths can produce different
+latency, interpolation, loudness or pause behavior. No controlled A/B listening or
+full waveform comparison between the two Mac applications was completed here.
+The Sam smoke check is deliberately muted and must not be described as audio
+quality validation. The ASQ_MUTE diagnostic environment variable added for that
+check is unset during normal use and does not change normal volume behavior.
+
+9. PREFERENCES, SCORES AND COEXISTENCE
+
+Our four variants share bundle ID local.astrosquid.reconstruction-preview and
+therefore share their macOS settings/score profile. No user save files are shipped.
+
+Sam uses org.astrosquid.port and stores files under:
+~/Library/Application Support/AstroSquid/
+His files.c implements an overlay, so original-style writes such as Data/Highscores
+go into a writable Game Data subdirectory rather than modifying the app bundle.
+This is a separate profile from ours; scores/settings are not automatically migrated
+or interchangeable. Merely copying one application's preference files to the other
+is not an established migration path.
+
+10. PLATFORM SUPPORT AND THIS INTEL ADAPTATION
+
+Our available applications:
+- ARM64: deployment 11.0, SDK 27.0 recorded in the release executable.
+- Intel x86_64: deployment 10.13, SDK 10.13 recorded in the executable.
+- Intel-Legacy x86_64: deployment 10.7, SDK 10.13 recorded in the executable.
+- Intel-Tiger i386: deployment 10.4, explicitly built using MacOSX10.4u.
+
+Sam's submitted Mac script defaults to x86_64 / 10.9 and supports a universal
+architecture list. This task delivers x86_64 / 10.7, built on Intel 10.13.6 with
+Apple LLVM 10. It is not an i386 build and cannot run on the first 32-bit Core Duo.
+A true 10.4 port would require a different runtime/API approach, not just changing
+the minimum OS number. The selected 10.7 path retains ARC, Cocoa fullscreen,
+AudioQueue and AVAudioPlayer.
+
+Adaptation changes, all confined to platform/build support:
+- Guard beginActivityWithOptions:reason: behind @available(macOS 10.9, *).
+  App Nap prevention is unnecessary on Lion; the call remains on newer systems.
+- Replace NSArray firstObject with objectAtIndex:0 for the standard application
+  support-directory result, avoiding the newer convenience method.
+- Default the build to deployment target 10.7; limit default compiler concurrency
+  to two jobs to avoid saturating the older test machine.
+- Add optional ASQ_MUTE for nonintrusive checks: AudioQueue master volume and
+  AVAudioPlayer volumes are zero only when that environment variable is present.
+
+Generated C, game resources, allocator, translator and registration patch remain
+unchanged. The accompanying compatibility.patch records the exact edits. The
+Cocoa source is compiled with unguarded-availability warnings treated as errors.
+This complements, but cannot replace, testing on Lion itself.
+
+11. TEST EVIDENCE AND WHAT HAS NOT BEEN TESTED
+
+Our historical checks include original PowerPC raster fixtures, focused gameplay
+and UI comparisons, and a controlled continuous campaign trace of 405,789 compared
+records. The pilot was assisted: this is not a complete unassisted playthrough.
+All 17 stage sections are implemented, but record counts are not a completion metric.
+See STATUS.md and VALIDATION.md for exact limits and deliberate differences.
+
+The Sam submission includes scripted input/test-level support in the Windows host,
+but no comparable standalone fixture-based test suite was found in the archive.
+Earlier work built its Mac x86_64 target without running it on a physical Mac, and
+briefly ran its Windows target under Wine/Xvfb. That earlier Windows run reached a
+visible splash and scripted quit; its built-in screenshot was black while an
+external screen capture showed the splash. No audio device was available there.
+Those are historical checks, not a Windows release supplied by this task.
+
+The current Intel adaptation built as x86_64 with minimum10.7 and SDK10.13 recorded
+in Mach-O. On Intel10.13.6, a muted run loaded731 resources, rendered the main
+menu (externally captured and visually inspected), accepted keyboard input and
+exited normally with status0 after Command-Q. Ad-hoc signature verification passed.
+BUILD_INFO.json and README.txt record the binary identity and test outcome. A short launch/input/quit
+check is not a full campaign, a hardware-comparison benchmark or proof of Lion
+compatibility. Actual OS X 10.7 and 10.4 were not booted for this adaptation.
+The original iMac's earlier partial hang has no proven cause; neither project is
+claimed to make every possible operating-system hang impossible.
+
+12. RECOMMENDATION FOR THE NEXT DEVELOPER
+
+Keep both implementations identifiable and buildable. Use Sam's native translated
+program as another reference when investigating an untested original branch. Use
+our named systems, saved fixtures and documented bug fixes when making intentional
+behavioral changes. Before replacing one with the other, compare focused examples:
+transition deaths, deleted-object processing, zero-direction collisions, firing
+cadence, pause/resume audio, save/load, late-stage progression and fullscreen input.
+
+Do not infer superiority from generated-code size, platform count or isolated
+matching bytes. A successful launch establishes launch; a specific trace match
+establishes that trace. Neither establishes every scenario, all OS versions, or
+pixel/audio identity across different host libraries and graphics hardware.
