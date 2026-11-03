@@ -80,7 +80,7 @@ checks rendered PCM before and after an internal mixer rate change.
 The application's `--self-test` mutes combat and exercises settings clicks;
 use ordinary gameplay to listen to effects, not that technical test.
 
-## Updating the two packaged applications
+## Updating the packaged applications
 
 Build the same committed revision on each target architecture. Copy the entire
 bundle (not only its executable) into `Applications/ARM/AstroSquid.app` or
@@ -93,10 +93,19 @@ Commit the applications and metadata. Do not commit player preferences, logs,
 local access data or disposable probes.
 
 Run `bash tools/package_release.sh [OUTPUT_DIRECTORY]` from a clean committed
-checkout. It uses the two Applications bundles, verifies their checksums, architectures
+checkout. It uses the Applications bundles, verifies their checksums, architectures
 and declared Info.plist minima, and produces ARM/Intel ZIPs, a source ZIP with assets, and
-a full repository-file ZIP containing both applications. It never substitutes
+a full repository-file ZIP containing all applications. It never substitutes
 one architecture into build/AstroSquid.app. SOURCE_COMMIT.txt in snapshots
 identifies the packaging revision; BUILD_INFO.json identifies binary sources.
 No Git remote is configured in the original working checkout; no push has been
 performed. The ZIP is a snapshot without .git; the local repository retains history.
+
+## Older Intel systems
+
+`./build.sh --legacy-intel` builds x86_64 with target10.7 into
+`build/legacy-intel/AstroSquid.app`. It links src/audio_legacy.m instead of the
+modern audio.m. Use an Apple toolchain with Lion deployment support and its
+libarclite; tested with Apple LLVM10 / SDK10.13 on the Intel reference Mac.
+The current Xcode27 toolchain lacks libarclite and cannot perform this build
+unmodified, even with SDK10.15 selected. See docs/LEGACY_INTEL.md.

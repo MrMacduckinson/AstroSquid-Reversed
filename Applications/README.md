@@ -2,6 +2,7 @@
 
 - `ARM/AstroSquid.app`: Apple Silicon, macOS **11.0+**.
 - `Intel/AstroSquid.app`: Intel, macOS **10.13+**.
+- `Intel-Legacy/AstroSquid.app`: Intel64, целевая **10.7+**, отдельный OpenAL-backend; на самой10.7 ещё не проверен.
 
 Каждая папка `.app` — самостоятельный macOS application bundle с ресурсами.
 Переносите её целиком, не один файл Contents/MacOS/AstroSquid. Если передаёте
@@ -10,7 +11,7 @@
 
 BUILD_INFO.json содержит исходный коммит, архитектуры, целевые минимумы,
 системы проверки и SHA-256 исполняемых файлов. SHA256SUMS покрывает каждый
-файл обоих bundles; проверка из корня репозитория:
+файл всех bundles; проверка из корня репозитория:
 
 ```sh
 shasum -a 256 -c Applications/SHA256SUMS
@@ -20,7 +21,7 @@ shasum -a 256 -c Applications/SHA256SUMS
 macOS 27.0, Intel — на 10.13.6. Нет подписи Developer ID/нотариализации.
 Ограничения, исправления и состояние игры — в ../STATUS.md и ../CHANGELOG.md.
 
-Обе версии сохраняют bundle ID `local.astrosquid.reconstruction-preview`,
+Все версии сохраняют bundle ID `local.astrosquid.reconstruction-preview`,
 чтобы обновление не теряло настройки и рекорды. Пользовательские сохранения
 в пакет не включены. При запуске другой копии на том же аккаунте macOS
 она использует те же настройки; это не независимый игровой профиль.

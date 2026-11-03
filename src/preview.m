@@ -965,7 +965,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (NSData *)debugJournalHeader {
     SInt32 clock=0,memory=0,version=0;Gestalt('pclk',&clock);Gestalt('ram ',&memory);if(Gestalt(gestaltSystemVersion,&version))return nil;
     int major=0,minor=0;void *library=debugAGLLibrary();void (*readVersion)(int *,int *)=library?dlsym(library,"aglGetVersion"):NULL;if(readVersion)readVersion(&major,&minor);
-    NSDateComponents *date=[[NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian] components:NSCalendarUnitYear|NSCalendarUnitMonth|NSCalendarUnitDay|NSCalendarUnitHour|NSCalendarUnitMinute|NSCalendarUnitSecond fromDate:[NSDate date]];
+    NSDateComponents *date=[[[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar] components:NSCalendarUnitYear|NSCalendarUnitMonth|NSCalendarUnitDay|NSCalendarUnitHour|NSCalendarUnitMinute|NSCalendarUnitSecond fromDate:[NSDate date]];
     return debugHeader(date,clock,memory,version,major,minor,fullscreenRequested);
 }
 - (BOOL)initializeDebugJournal {
