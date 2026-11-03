@@ -1,5 +1,5 @@
 #!/bin/bash
-# Authorized Intel runtime only.
+# Authorized ARM or Intel runtime; uses muted effects and no game window.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p build

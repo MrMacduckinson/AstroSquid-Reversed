@@ -57,3 +57,11 @@ instead of crashing when the player dies during a scripted transition.
 The historical validation record contains bounded comparisons, not a proof of
 all inputs or pixel identity across GPUs. A fresh Intel application check and
 current release packaging must be reported separately from those older results.
+
+For a silent background check of departure alignment, run
+`bash tests/departure_geometry_host.sh`; it observes geometry through both
+production transition paths without opening a window or audio engine.
+`bash tests/pellet_audio_host.sh` checks muted effects and 100 rapid
+stop/pause/resume cycles without a game window. The full application's
+`--self-test` is a foreground graphics test; do not run it while the user
+needs the desktop uninterrupted.

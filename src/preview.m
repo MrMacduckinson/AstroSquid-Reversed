@@ -1543,6 +1543,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         transition.phase=ASTRO_TRANSITION_CRUISE;[self waitForTransitionTicks:20];
         departureTrail=YES;
         astro_visual_change(&playerVisual,15,spriteInfo,1001,[self playerClockTick]);
+        playerX=playerVisual.x-camera;playerY=playerVisual.y;
         departureGlow=astro_transition_departure_glow(playerVisual.x,playerVisual.y,playerVisual.width,playerVisual.height);
         departureTrailBirth=++renderClock;departureTrailTick=[self playerClockTick]+(uint32_t)spriteInfo[116].delay;
         trailRect=astro_transition_departure_trail(departureGlow);[audio playCue:@"Bang3"];
@@ -1592,6 +1593,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(transition.events&ASTRO_TRANSITION_TRAIL_SPRITE) {
         departureTrail=YES;
         astro_visual_change(&playerVisual,15,spriteInfo,1001,[self playerClockTick]);
+        playerX=playerVisual.x-camera;playerY=playerVisual.y;
         departureGlow=astro_transition_departure_glow(playerVisual.x,playerVisual.y,playerVisual.width,playerVisual.height);
         departureTrailBirth=++renderClock;departureTrailTick=[self playerClockTick]+(uint32_t)spriteInfo[116].delay;
         trailRect=astro_transition_departure_trail(departureGlow);
@@ -2151,6 +2153,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     assert(splashVisible);[self keyDown:[self testEvent:NSKeyDown code:36]];assert(!splashVisible);
     while(ui.transitioning)[self pollMenu];[self keyUp:[self testEvent:NSKeyUp code:36]];
     assert(menuVisible&&[ui.anchor isEqual:@"Main Menu"]);
+    // Splash acceptance latches the mouse until a released menu frame is polled.
+    for(unsigned released=0;released<2;released++){observedWallTick=[self currentGameTick]-(uint32_t)ui.frameInterval;[self pollMenu];}
     [self mouseDown:[self testMouse:NSLeftMouseDown x:369 y:175]];
     [self mouseUp:[self testMouse:NSLeftMouseUp x:369 y:175]];
     assert([ui.anchor isEqual:@"Play Menu"]);[ui animateTicks:120];
@@ -2844,7 +2848,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     ((AstroApplication *)NSApp).gameView=view;
     [self presentGameWindow];
     if(preferenceProbe)[view probePreferences:preferenceProbe];
-    if(testPath) [view beginSelfTest:testPath];
+    // Windowed AppKit needs a run-loop turn before display-driven menu input is ready.
+    if(testPath) [view performSelector:@selector(beginSelfTest:) withObject:testPath afterDelay:0.1];
     if(campaignPath) [view beginCampaignTest:campaignPath];
 }
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender {

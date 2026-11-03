@@ -1,4 +1,4 @@
-// Short original-player cadence replay plus real AVAudioPlayer timing, Intel only.
+// Short original-player cadence replay plus real effect timing on ARM and Intel.
 #define main astrosquid_application_main
 #include "../src/preview.m"
 #undef main
@@ -59,9 +59,17 @@ int main(int argc,const char **argv){@autoreleasepool{
         printf("P,%u,request_ms=%.3f,call_ms=%.3f,duration_ms=%.3f\n",i,(request-start)*1000,callTime*1000,pcm.frameLength/pcm.format.sampleRate*1000);
     }
     assert(totalCall<.05); // The old per-shot players block for hundreds of milliseconds in this sequence.
-    [[NSRunLoop currentRunLoop]runUntilDate:[NSDate dateWithTimeIntervalSinceNow:.25]];
+    NSTimeInterval deadline=NSProcessInfo.processInfo.systemUptime+2;
+    for(;;){
+        BOOL playing=NO;
+        for(NSArray *pair in [sound valueForKey:@"voices"])playing|=[pair[0]isPlaying]||[pair[1]isPlaying];
+        if(!playing||NSProcessInfo.processInfo.systemUptime>=deadline)break;
+        [[NSRunLoop currentRunLoop]runUntilDate:[NSDate dateWithTimeIntervalSinceNow:.01]];
+    }
     for(NSArray *pair in [sound valueForKey:@"voices"])assert(![pair[0]isPlaying]&&![pair[1]isPlaying]);
-    for(unsigned i=0;i<4;i++){
+    [sound setPaused:YES];[sound setPaused:NO];
+    for(NSArray *pair in [sound valueForKey:@"voices"])assert(![pair[0]isPlaying]&&![pair[1]isPlaying]);
+    for(unsigned i=0;i<100;i++){
         [sound stopEffects];assert([sound playStringCue:297 position:.2]);
         NSArray *pair=[[sound valueForKey:@"voices"]lastObject];
         [sound setPaused:YES];assert(![pair[0]isPlaying]&&![pair[1]isPlaying]);

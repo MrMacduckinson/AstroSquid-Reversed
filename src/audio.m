@@ -16,8 +16,9 @@ static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
 @property(nonatomic) float volume,pan;
 @property(nonatomic,readonly,getter=isPlaying) BOOL playing;
 @property(nonatomic,readonly) double deviceCurrentTime;
+@property(nonatomic,readonly) NSTimeInterval outputLatency;
 - (instancetype)initWithEngine:(AVAudioEngine *)engine buffer:(AVAudioPCMBuffer *)pcm;
-- (BOOL)playAtTime:(NSTimeInterval)time;
+- (BOOL)playAtTime:(NSTimeInterval)time outputLatency:(NSTimeInterval)latency;
 - (BOOL)play;
 - (void)prepare;
 - (void)pause;
@@ -35,16 +36,20 @@ static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
 - (void)setPan:(float)value{node.pan=value;}
 - (BOOL)isPlaying{return atomic_load(&activeTicket)!=0&&node.isPlaying;}
 - (double)deviceCurrentTime{return [AVAudioTime secondsForHostTime:mach_absolute_time()];}
-- (BOOL)playAtTime:(NSTimeInterval)time {
+- (NSTimeInterval)outputLatency{return node.outputPresentationLatency;}
+- (BOOL)playAtTime:(NSTimeInterval)time outputLatency:(NSTimeInterval)latency {
     unsigned ticket=++nextTicket;assert(ticket);atomic_store(&activeTicket,ticket);
     uint64_t scheduledHost=[AVAudioTime hostTimeForSeconds:time];
     [node scheduleBuffer:buffer atTime:[AVAudioTime timeWithHostTime:scheduledHost] options:0
-        completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType type){
-            unsigned expected=ticket;atomic_compare_exchange_strong(&self->activeTicket,&expected,0);
+        // DataPlayedBack deadlocks against stop on 10.13; retain its output-latency wait outside AVFAudio locks.
+        completionCallbackType:AVAudioPlayerNodeCompletionDataRendered completionHandler:^(AVAudioPlayerNodeCompletionCallbackType type){
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(latency*NSEC_PER_SEC)),dispatch_get_global_queue(QOS_CLASS_DEFAULT,0),^{
+                unsigned expected=ticket;atomic_compare_exchange_strong(&self->activeTicket,&expected,0);
+            });
         }];
     if(!node.isPlaying)[node play];return YES;
 }
-- (BOOL)play{if(atomic_load(&activeTicket)){[node play];return YES;}return [self playAtTime:self.deviceCurrentTime+.005];}
+- (BOOL)play{if(!atomic_load(&activeTicket))return NO;[node play];return YES;}
 - (void)prepare{[node play];}
 - (void)pause{[node pause];}
 - (void)stop{atomic_store(&activeTicket,0);[node stop];}
@@ -86,7 +91,10 @@ static NSArray *preparedCue(AVAudioPCMBuffer *buffer,AVAudioEngine *engine){
         if(!fileData||fileData.length<=0||fileData.length>UINT32_MAX)return nil;
         AVAudioPCMBuffer *sample=[[AVAudioPCMBuffer alloc]initWithPCMFormat:fileData.processingFormat frameCapacity:(AVAudioFrameCount)fileData.length];
         if(!sample||![fileData readIntoBuffer:sample error:error])return nil;
-        idleVoices[name]=[NSMutableArray arrayWithObjects:preparedCue(sample,effectEngine),preparedCue(sample,effectEngine),nil];samples[name]=sample;
+        NSMutableArray *idle=[NSMutableArray array];
+        // Any of the six logical channels may overlap this cue; never attach nodes during combat.
+        for(unsigned i=0;i<6;i++)[idle addObject:preparedCue(sample,effectEngine)];
+        idleVoices[name]=idle;samples[name]=sample;
     }
     if(beforeMusic)beforeMusic(self);
     NSMutableArray *musicTracks=[NSMutableArray array];
@@ -126,15 +134,16 @@ static NSArray *preparedCue(AVAudioPCMBuffer *buffer,AVAudioEngine *engine){
     // GETAFREECHANNEL checks channels 1 through 6 and drops a cue when all are busy.
     if (voices.count>=6) return NO;
     NSMutableArray *idle=idleVoices[name];NSArray *pair=idle.lastObject;
-    if(pair)[idle removeLastObject];else pair=preparedCue(samples[name],effectEngine);
     if(!pair)return NO;
+    [idle removeLastObject];
     AstroCuePlayer *left=pair[0],*right=pair[1];
     double p=fmax(0,fmin(1,position));
     BOOL pan=_stereo && isfinite(position);
     double leftGain=pan?floor(sqrt(1-p)*256)/256:1,rightGain=pan?floor(sqrt(p)*256)/256:1;
     left.volume=soundGain(_soundVolume)*leftGain;right.volume=soundGain(_soundVolume)*rightGain;
+    NSTimeInterval latency=left.outputLatency;
     NSTimeInterval time=left.deviceCurrentTime+0.005;
-    BOOL ok=[left playAtTime:time] && [right playAtTime:time];
+    BOOL ok=[left playAtTime:time outputLatency:latency] && [right playAtTime:time outputLatency:latency];
     if (!ok) { [left stop];[right stop];return NO; }
     [voiceGains setObject:@(leftGain) forKey:left];[voiceGains setObject:@(rightGain) forKey:right];
     [cueNames setObject:name forKey:left];

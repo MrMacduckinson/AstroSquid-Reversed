@@ -2,7 +2,9 @@
 
 Target: AstroSquid 1.1 reconstructed native Intel application, macOS 10.13.6.
 Original execution references: PowerPC G5, Mac OS X 10.4.11, original 1.1 CFM/PEF.
-No game, GUI, OpenGL or audio test is launched on the primary development Mac.
+Original verification used dedicated reference Macs. On 2026-11-03 the user
+also authorized ARM runtime checks on the primary Mac; test runs use isolated
+preferences and bounded execution.
 
 ## Bitwise fidelity work in progress
 
@@ -1082,3 +1084,36 @@ The final probe completes all12 submissions in under3ms on the Intel reference
 iMac; this measures game-thread submission time, not acoustic speaker latency.
 The existing132 gain/pan/channel checks and18-cue/three-track decode/music/pause
 check pass. Original PCM/pitch and firing logic were not changed.
+
+## Focused cross-architecture quality pass — 2026-11-03
+
+ARM and Intel portable logic suites and targeted pause, menu-transition,
+loaded-world player, music-service and gain/channel tests pass against the
+saved original fixtures. Live G5 recapture of 16 independent player clocks and
+53 Pellet shots matches those fixtures byte for byte. This is an original PPC
+reference check, not a new PPC build of the reconstructed application.
+
+A regression reproduces completed effects replaying after pause; resume now
+only resumes an active buffer. Intel 10.13 also exposed an AVFAudio lock inversion
+between DataPlayedBack completion and rapid stop. Effects now use DataRendered
+completion plus the node's output presentation latency before freeing a slot.
+The generation token still protects reuse from old callbacks. Six prepared
+pairs per cue cover the original six-channel budget without attaching audio
+nodes during combat. One current output-latency query serves both stereo sides.
+Two consecutive
+Intel tests of 100 stop/play/pause/resume cycles pass after the fix.
+
+The app self-test waits for AppKit's initial window presentation and polls
+released menu frames before its first synthetic click. The earlier synchronous
+self-test could click before display-driven input was initialized on ARM.
+These checks do not constitute acoustic recordings or exhaustive gameplay proof.
+
+The reported departure trail misalignment was a separate rendering bug:
+changing player sprite 12 (65x28) to 15 (78x20) recenters `playerVisual`, but
+both departure paths left the rendered `playerX/Y` cache stale. The player
+therefore appeared 4 pixels above and 6.5 pixels right of its original center,
+while the glow/trail coordinates were correct. Both paths now update that
+cache. `tests/departure_geometry_host.sh` checks 185 render steps through both
+actual methods against the original centered geometry, without windows,
+audio, input injection or display changes. The original glow texture's slight
+alpha asymmetry is preserved; no asset has been artificially shifted.
