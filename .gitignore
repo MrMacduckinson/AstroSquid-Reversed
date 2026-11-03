@@ -1,6 +1,5 @@
-build/
+/build/
 originals/
-assets/
 analysis/
 __pycache__/
 .DS_Store

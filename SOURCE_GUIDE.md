@@ -9,7 +9,11 @@ tools are not runtime dependencies. The source distribution includes `assets/`.
 On macOS with Xcode Command Line Tools, run `./build.sh`. It produces
 `build/AstroSquid.app` for the build Mac's architecture. Build on Intel for the
 Intel release; compiling on Apple Silicon does not produce an Intel release.
-The minimum deployment target is macOS 10.13.
+The deployment targets are macOS 11.0 on ARM64 and 10.13 on Intel.
+The build sets both the executable target and Info.plist minimum.
+Command Line Tools suffice to build; portable tests additionally need Python
+for their picture fixture (python3 preferred; the native fixture also supports
+the system Python on the Intel 10.13 reference machine).
 
 Run `./test.sh --native-only` for the portable logic tests and saved original
 reference cases. This command does not launch the game, OpenGL or audio. The
@@ -75,3 +79,24 @@ Audio output regression: `bash tests/audio_waveform_host.sh` is silent and
 checks rendered PCM before and after an internal mixer rate change.
 The application's `--self-test` mutes combat and exercises settings clicks;
 use ordinary gameplay to listen to effects, not that technical test.
+
+## Updating the two packaged applications
+
+Build the same committed revision on each target architecture. Copy the entire
+bundle (not only its executable) into `Applications/ARM/AstroSquid.app` or
+`Applications/Intel/AstroSquid.app` with macOS `ditto`. Recheck architecture,
+Mach-O minimum and Info.plist; keep executable permissions and all resources.
+Update `Applications/BUILD_INFO.json` with the source revision, build/test hosts,
+and SHA-256 of each executable; update `Applications/SHA256SUMS` for all bundle
+files. Keep source revision separate from the later commit adding the binaries.
+Commit the applications and metadata. Do not commit player preferences, logs,
+local access data or disposable probes.
+
+Run `bash tools/package_release.sh [OUTPUT_DIRECTORY]` from a clean committed
+checkout. It uses the two Applications bundles, verifies their checksums, architectures
+and declared Info.plist minima, and produces ARM/Intel ZIPs, a source ZIP with assets, and
+a full repository-file ZIP containing both applications. It never substitutes
+one architecture into build/AstroSquid.app. SOURCE_COMMIT.txt in snapshots
+identifies the packaging revision; BUILD_INFO.json identifies binary sources.
+No Git remote is configured in the original working checkout; no push has been
+performed. The ZIP is a snapshot without .git; the local repository retains history.

@@ -1,258 +1,79 @@
-# AstroSquid 1.1 — native reconstruction
+# AstroSquid 1.1 — реконструкция и нативный порт для Mac
 
-A reconstructed C/Objective-C port of Lost Minds' AstroSquid 1.1 for Intel Macs
-running macOS 10.13 or later. It runs natively, without Classic or a PowerPC
-emulator. This is newly reconstructed source, not the author's FutureBASIC
-project. Original art, levels, sounds and music belong to their original authors.
+Собираемый проект на C/Objective-C и **два готовых приложения**. Это восстановление
+поведения оригинальной игры Lost Minds, а не найденные исходники FutureBASIC.
+Эмулятор, Classic Environment и оригинальный исполняемый файл для игры не нужны.
 
-The reconstruction includes the complete campaign and original runtime assets.
-Development targets a buildable, playable reconstruction of the original game;
-it does not require reproducing undefined memory access or proving every possible
-execution byte for byte. See [SOURCE_GUIDE.md](SOURCE_GUIDE.md) for the code layout
-and practical verification workflow, and [VALIDATION.md](VALIDATION.md) for the
-existing original-machine evidence and its limits.
+## Скачать папку, выбрать приложение, запустить
 
-## Play
+| Mac | Приложение в этом репозитории | Минимальная macOS | Где проверено |
+| --- | --- | --- | --- |
+| Apple Silicon (ARM64) | [Applications/ARM/AstroSquid.app](Applications/ARM/) | **11.0 Big Sur** | ARM, macOS 27.0 (сборка ОС 26A5406e) |
+| Intel (x86_64) | [Applications/Intel/AstroSquid.app](Applications/Intel/) | **10.13 High Sierra** | Intel iMac, macOS 10.13.6 |
 
-Extract `AstroSquid-Intel.zip`, then open `AstroSquid.app`. The application contains
-all runtime assets. No Python, developer tools or original installation is needed.
-The build is unsigned. Tested on the Intel reference iMac with macOS 10.13.6;
-newer macOS releases have not been tested on Intel hardware.
+Минимумы указаны и в Mach-O, и в Info.plist. Это целевые минимумы сборки:
+ARM на самой 11.0 и все промежуточные версии macOS не проверялись.
+Для PowerPC новой сборки нет: G5 с Mac OS X 10.4.11 использовался как эталон оригинала.
 
-The game starts fullscreen at 640×480; hold left Option during startup for a
-fixed 640×480 window. If the display mode is unavailable, it uses the window.
-The previous display mode is restored on exit. The loading picture is shown
-before the 54 texture maps are preloaded. Sound and music are then prepared
-before the credits appear.
+Скопируйте нужный `AstroSquid.app` в свою папку Applications и откройте его.
+Внутри уже есть графика, уровни, звук и музыка. Приложения не имеют подписи
+Developer ID и нотариализации Apple. Если macOS блокирует загруженную копию,
+проверьте источник и используйте штатное разрешение открытия для этого приложения
+в настройках безопасности; отключать защиту системы целиком не требуется.
 
-Arrows move, Command fires, Option uses a special attack. Escape pauses; any key
-resumes at the next eligible input poll. As in the original, a key still held
-while entering pause (including Escape) can immediately dismiss it. Use Settings
-to reassign keys, adjust sound/music and
-change filtering. Control/audio/filter changes apply immediately and are saved
-on Back or normal quit. Keys, settings, scores and unlocked stages persist between
-launches. Close the window or use Command-Q to request quit. Like the original,
-quit waits for the active special, respawn or card/score interaction to return
-before clearing the world and closing the application.
+Игра по умолчанию переключает экран в 640×480. **Удерживайте левый Option при
+старте**, чтобы открыть окно 640×480. Если режим недоступен, используется окно.
+При штатном выходе предыдущий режим экрана восстанавливается.
 
-The game includes all 17 stage files, all four special-attack families and their
-upgrades, enemies, bosses, pickups, deaths/respawns, menus, score entry, stage
-transitions and the four ending pages. The optional graphics archive contains the
-original Infini-D models; it is not required to play or compile this port.
+- Стрелки — движение; Command — стрельба; Option — специальная атака.
+- Escape — пауза, любая клавиша — продолжить. Удерживаемая клавиша может сразу снять паузу.
+- Settings — клавиши, звук, музыка и фильтрация. Настройки, рекорды и открытые этапы сохраняются.
+- Command-Q или закрытие окна — выход; активная спецатака или переход могут отложить его завершение.
 
-Hold left Command during startup to enable the original diagnostic screenshot
-key: keypad multiply saves `Screenshots/Screen <seconds>.pict` beside the app.
-It repeats on every input poll while held and overwrites the same-second file.
-Fullscreen saves the currently presented OpenGL frame. In windowed mode (left
-Option at startup), the original instead captures its white QuickDraw backing;
-this behavior is preserved. This mode also creates `LMEngine Debug file` beside
-the app with startup, level-load and shutdown diagnostics.
+## Что передано и насколько готово
 
-## Build from the source archive
+Реализованы все **17 этапов**, враги и боссы, обычное оружие, **16 вариантов
+спецатак**, предметы, повреждения, жизни, возрождение, меню, рекорды и финал.
+Контролируемый маршрут до конца игры прошёл, но он усиливает игрока. Полное
+прохождение человеком с обычным здоровьем и точное совпадение каждого кадра
+на всех GPU **не подтверждены**. Процент «побайтовой готовности» здесь не используется.
 
-`AstroSquid-Source.zip` includes the extracted runtime assets. On a Mac with Xcode
-Command Line Tools installed:
+Начните с [STATUS.md](STATUS.md): объём выполненного, известные проблемы,
+преднамеренные отличия от оригинала и оставшиеся проверки.
+[CHANGELOG.md](CHANGELOG.md) объясняет последние исправления.
+
+## Собрать самому
+
+Нужны Mac и Xcode Command Line Tools. Все ресурсы теперь находятся в Git:
+обычного клона или распаковки архива репозитория достаточно, Git LFS не нужен.
 
 ```sh
 ./build.sh
 ```
 
-The result is `build/AstroSquid.app`. The compiler builds for the host architecture;
-the distributed application was built on the Intel iMac. Python and image tools
-are needed only to regenerate assets or run the additional resource checks below.
+Результат — `build/AstroSquid.app` для архитектуры компьютера сборки.
+Сборка на ARM даёт ARM-приложение, на Intel — Intel. Готовые копии в
+`Applications/` автоматически не заменяются; порядок обновления описан
+в [SOURCE_GUIDE.md](SOURCE_GUIDE.md).
 
-## Inputs
+## Навигация для следующего разработчика
 
-Original downloads are preserved unchanged in Downloads. Working extraction
-is kept outside Git. `tools/macresources.py` exports a resource inventory and
-the main PEF container for analysis with REA and Ghidra.
+| Путь | Содержимое |
+| --- | --- |
+| `src/` | Исходники игры и macOS-интеграции |
+| `assets/` | Все ресурсы сборки и проверки исходных изображений/звуков |
+| `Applications/` | Две готовые сборки, их происхождение и контрольные суммы |
+| `tests/` | Регрессии и сохранённые эталонные данные оригинала |
+| `tools/` | Извлечение ресурсов, анализ, эталонные PPC-пробы, упаковка |
+| `validation/` | Небольшой набор исторических результатов и сравнительных кадров |
+| [SOURCE_GUIDE.md](SOURCE_GUIDE.md) | Архитектура, сборка, тесты и выпуск |
+| [VALIDATION.md](VALIDATION.md) | Подробный исторический журнал проверок и их границ |
+| [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEERING.md) | Воспроизведение анализа и извлечения ресурсов |
+| [THIRD_PARTY.md](THIRD_PARTY.md) | Происхождение ресурсов и стороннего кода |
 
-The executable data and resource forks in `astrosquid.sit` and `astrosquid.zip`
-are identical. A later archive timestamp is not evidence of newer game code.
-The Ten for X build is a separate comparison and runtime reference.
-
-## Current state
-
-The native host runs reconstructed gameplay, not the original PowerPC executable.
-Runtime verification is performed on the Intel iMac; original-code probes run on
-the G5. Development builds on ARM are not the distributed Intel application.
-
-Recovered and checked against original instructions on the G5:
-
-- Movement and drag:2000 comparisons; heading:1004.
-- All29 enemy scripts:52200 controlled ticks, including shot arguments.
-- Ordinary weapons:1400 cases; beam targeting/damage:800; projectile damage:2000.
-- Pickups:1000; player/scenery contacts:1000; player controls/animation:3200 ticks.
-- All16 special-attack tiers:320 cases, including polygon vertices/colors and RNG.
-- Death effects/debris/drop generation:402 cases; sprite geometry changes:1000.
-- Debris updates:5400; star movement:300000; complete beam geometry:400 streams.
-
-These isolated oracles intercept selected world/renderer/audio operations. They
-prove the compared routines, not the entire game or a complete campaign run.
-Captured original traces also replay on ARM and Intel.
-
-All74 PICT rasters now match original G5 QuickDraw pixels. The extractor selects
-ImageMagick for69 images and sips for5 compressed images, then checks native
-reference RGB hashes. A previous sips-only conversion silently destroyed the
-font and orb masks; regression checks now catch that failure. Recovered assets
-include54 atlases,295 sprite definitions,134 attributes,22 weapons,29 scripts,
-8126 map objects,17 stage files, all18 sound cues and3 music tracks.
-
-The host connects normal and special weapons, damage, pickups, effects, sprite
-animation, camera, campaign markers, death and respawn. The live entity list now
-preserves original prepend order and the player's insertion position; each actor
-moves, collides and then runs AI before the next actor. Cleanup precedes updates.
-Native original-code probes verify those ordering rules separately from gameplay.
-
-Original menus, HUD, startup credits, volume/filter controls, key reassignment,
-highscore entry, stage cards, midpoint autopilot and departure animation are
-connected. Preferences and unlocked stages persist. Score defaults, tie ordering
-and Classic name editing were checked against original PPC routines on G5.
-
-On the Intel reference Mac, `bash tests/menu_transition_host.sh` compares six
-controlled menu transitions against whole original `MOVEMENUTO` execution:
-164 frames, 10,684 ordered records and all 1,968,000 canonical IEEE star words.
-The fixture retains 52 scene objects and 3,000 stars, observes GPU/audio boundaries,
-and checks that static repaints do not advance clocks or RNG. Mouse-click dispatch
-and the original startup randomization are outside this fixture.
-`bash tests/menu_dispatch_host.sh` additionally compares actual original `DOMOUSE`
-with host hit handling for Settings/Back at three frame intervals, with released,
-held offscreen and held stationary mouse schedules: 33,224 records, 507 frames
-and 6,084,000 star words. This includes hover during movement, preference-save
-ordering, held-button suppression after arrival and release before the next click.
-Preference file serialization and other navigation routes remain outside this fixture.
-
-`bash tests/menu_edges_host.sh` compares the renderer's hit selection with actual
-original `LMPOINTSPRITE`: 342,576 edge queries and 28,548 complete IEEE object
-states. It covers all 52 raw menu objects, animation frames 0–60, three frame
-intervals and three camera positions, including fractional coordinates and
-overlapping objects. All raw nodes are enabled for this fixture; registration
-and unlock filtering, OS event conversion and other scenes remain separate checks.
-
-`bash tests/menu_setup_host.sh` compares original `PUTCONTROLSINWINDOW`, including
-the actual scene factory, with the root menu reload: nine seed/interval/previous
-camera profiles, 28,455 records, all 27,000 initialized stars and RNG/camera values
-at every clock read. The original registration-field clock reads and unrendered
-camera movement are retained. Registration UI state and unlock filtering are
-outside this all-enabled fixture.
-
-`bash tests/menu_visibility_host.sh` extends that fixture to registered and
-unregistered menus at all 16 unlock thresholds: 103,456 ordered records,
-1,408 surviving objects and 1,664 original hit selections. Original registration
-validation and linked-list deletion run on the G5 with synthetic test inputs;
-no user registration data or preference files are accessed. The registered game
-removes only the `Register` button, retaining the other registration-scene objects.
-
-`bash tests/menu_routes_host.sh` compares 108 original/host transitions through
-Play, Continue, Highscores, Settings, Keys and Register, including their return
-buttons. Released, held offscreen and stationary-pointer schedules at intervals
-1/2/3 produce 202,496 ordered records and 37,152,000 canonical IEEE star words
-over 3,096 frames. The fixture enables all raw menu nodes and includes held and
-released Main frames between actions. Registration submission, Credits and
-interrupted transitions remain separate checks.
-
-The complete controlled campaign route passed on the Intel iMac: all 17 stages
-and the ending, through normal world updates and stage transitions. The pilot
-replenishes its shield and uses weapon 53; this proves route connectivity, not an
-unaided playthrough. Nested timed-special world interleaving is checked against
-an original PPC actor trace, including the terminal same-tick outer-loop resume.
-
-Ordinary host checks also cover nonfatal hits, scenery hit effects, death,
-respawn, weapon retention, invulnerability, pause/resume, modifier-key release,
-new-game transition reset and wall-clock aging while paused. Original PPC probes
-check 1980 mixed projectile/scenery shield-effect lifecycle ticks. Preferences
-are tested through a write process and a separate reload process in an isolated
-test bundle, without changing player preferences.
-
-The validation does not establish pixel-identical live campaign frames across
-GPUs or an unaided full playthrough. The original painter order and all 74 source
-rasters have separate original-machine checks. Twelve controlled full playfields
-also compare the actual production renderer on Intel against original code on
-the G5, including a focused HUD-edge regression test. See `VALIDATION.md` for the
-release evidence and its scope.
-
-## Regenerate assets from the original
-
-Assets are generated from the original application, including its resource fork
-and adjacent Data folder. On macOS with Xcode Command Line Tools, Python, Pillow,
-ImageMagick (`magick`) and the built-in `sips`:
-
-```sh
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python tools/prepare_assets.py '/path/to/original/AstroSquid' assets
-./build.sh
-# Run build/AstroSquid.app on the target test Mac.
-```
-
-Development weapon and stage shortcuts are enabled only in the explicit
-self-test. They are disabled during ordinary play.
-
-`PYTHON=.venv/bin/python ./test.sh` replays original captures and checks resources,
-audio PCM integrity and all74 QuickDraw image references. The native executable's
-`--self-test DIRECTORY` exercises actual key handlers, movement, all4 special
-families, hits, effects, boss defeat/score, level selection, rendering and muted
-music playback; it writes evidence and exits. It does not prove a full campaign.
-
-## Reproduce binary analysis
-
-`tools/prepare_analysis.py APPLICATION OUTPUT` exports the original PEF and an
-explicitly named analysis copy. It extends the code mapping to retain existing
-import stubs and clears the compiler's reserved compare bit at four sites.
-Neither the downloaded archive nor the original executable is rewritten.
-`tools/ppc_compare_probe.c` verified equivalent CR0 results for the legacy and
-canonical compare encoding in 100 cases on the real G5.
-
-Import the normalized analysis copy into Ghidra using `PowerPC:BE:32:default`.
-Run `PrepareAstro.java` with the literal-pool path and function-names TSV path,
-then `ExportAstro.java` with an output directory. The scripts are in `tools/`.
-Default PEF architecture detection selected an unsuitable VLE language; do not
-rely on it. Retain diagnostics and review pseudocode before translating it.
-
-FutureBASIC also emits non-arithmetic PPC `stfs` conversions without `frsp`.
-These truncate significant bits rather than following a normal C float cast.
-The recovered damping routine preserves those conversions; this difference was
-verified against original execution, not assumed from the decompiler cast.
-See [IBM's stfs reference](https://www.ibm.com/docs/kk/ssw_aix_72/assembler/idalangref_stfs_instrs.html)
-and the Power ISA `SINGLE` conversion implemented in
-[QEMU's PowerPC helpers](https://github.com/qemu/qemu/blob/master/target/ppc/fpu_helper.c).
-
-`--campaign-test DIRECTORY` runs the complete campaign through real world updates
-and screens, with a controlled pilot that replenishes its shield, uses weapon53
-and steers toward bosses. It writes progress/results without modifying player
-preferences. This diagnoses campaign connectivity; it does not prove an unaided
-playthrough or original-game frame identity. Test rendering submits every frame
-to OpenGL without waiting for screen presentation, allowing accelerated checks.
-
-## Package
-
-After building and checking the Intel application, `tools/package_release.sh`
-writes `AstroSquid-Intel.zip` and `AstroSquid-Source.zip` into
-`~/Downloads/AstroSquid-Release`. It checks that the executable contains x86_64.
-The source archive includes runtime assets and the Git source revision, but no
-private analysis files, access credentials or original executable.
-
-`bash tests/wait_key_host.sh` compares 8,762 ordered records from 134 original
-`WAITFORKEY` schedules, including all 128 key bits, simultaneous and held keys,
-delayed input, interval gates, strict timeout and clock wrap.
-`bash tests/key_binding_host.sh` additionally compares 13,972 records from 18
-actual named `DOMOUSE` transactions across all six bindings, including pressed
-button state, unchanged labels while waiting, key selection, button reset and latch.
-The host polls complete key state instead of committing the first key event.
-Frame calls in these fixtures are observers; numeric waiting-frame state and
-physical OS event delivery remain separate checks.
-
-`bash tests/key_input_system_host.sh` checks the real Cocoa availability poll,
-`GetKeys`, clock and offscreen rendering through the no-input timeout. It also
-checks that a private application event remains queued and the binding remains
-unchanged. It requests no permissions, injects no keyboard events and records
-no key values. Exit 77 means live input prevented a clean no-input check.
-Held-key delivery through the OS remains a separate validation.
-
-`bash tests/key_wait_numeric_host.sh` retains actual original `MOVESTARS` and
-`ANIMATEMENU` during 18 key-binding transactions. It compares 127,486 records,
-including object states before/after each frame and after button reset, plus
-all 12,864,000 canonical IEEE star words across 1,072 frames. Seeded edge/corner
-stars exercise wrapping and RNG at three camera/interval pairs. These are CPU
-state comparisons; GPU output, real keyboard delivery and other initial states
-remain outside this fixture.
+Для передачи целиком используйте `AstroSquid-Repository.zip`: в нём исходники,
+ресурсы, тесты, документация и оба приложения. Это снимок файлов Git с
+`SOURCE_COMMIT.txt`, без базы `.git` и частных рабочих материалов. Рабочий
+репозиторий сохраняет историю коммитов. Отдельные ZIP приложений предназначены
+тем, кому не нужны исходники. Большие внешние исследовательские трассы, оригинальный
+PEF и модели Infini-D для сборки и запуска не требуются и в репозиторий не включены.

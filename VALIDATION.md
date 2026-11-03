@@ -1,4 +1,11 @@
-# Validation scope
+# Historical validation record
+
+**Current handoff:** see [STATUS.md](STATUS.md) and [README.md](README.md).
+This is a historical accumulation of bounded checks, not an up-to-date TODO
+list. Later results supersede earlier "still open" statements (for example,
+the continuous controlled ending route was completed). Some named external
+audit reports and large traces are not distributed. Bundled tests/fixtures and
+validation/ are available; missing external reports are not implied included.
 
 Target: AstroSquid 1.1 reconstructed native Intel application, macOS 10.13.6.
 Original execution references: PowerPC G5, Mac OS X 10.4.11, original 1.1 CFM/PEF.
