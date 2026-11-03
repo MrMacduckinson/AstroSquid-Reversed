@@ -7,7 +7,7 @@ output="${1:-$HOME/Downloads/AstroSquid-Release}"
 lipo "$app/Contents/MacOS/AstroSquid" -verify_arch x86_64
 mkdir -p "$output"
 staging=$(mktemp -d "${TMPDIR:-/tmp}/astrosquid-source.XXXXXX")
-trap 'mv "$staging" "$HOME/.Trash/$(basename "$staging")"' EXIT
+trap 'rm -rf -- "$staging"' EXIT
 source_dir="$staging/AstroSquid-Source"
 mkdir "$source_dir"
 rsync -a --exclude __pycache__ --exclude .DS_Store src tests tools assets validation licenses "$source_dir/"
