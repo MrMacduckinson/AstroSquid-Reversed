@@ -1053,3 +1053,32 @@ and settings domain, preserving normal player settings.
 This is practical release acceptance, not an unaided full-campaign playthrough
 or proof that the earlier partial iMac hang cannot recur. Its cause remains
 unestablished. No further giant-trace run is required for this release.
+
+### Initial Pellet firing and audio dispatch (2026-11-03)
+
+A short G5 probe of the original DOPLAYERSPRITE captures 53 FIREWEAPON entries
+over three 180-tick schedules: 20/18/15 shots at frame intervals 1/2/3. A repeat
+is identical. The host's actual ordinary-fire gate and FIREWEAPON sound path
+match every firing tick and emit STR#297 exactly once per shot. This yields
+150/166.667/200 ms between initial-weapon shots at 60/30/20 FPS. Projectile
+allocation and sound output are observers in the cadence comparison.
+
+Original snd140 Pellet has one buffer command, base frequency60, 1797 samples
+at11025Hz (162.993ms). Its decoded PCM matches the distributed WAV. The original
+sound wrapper uses asynchronous SndPlay without a pitch/rate command.
+
+The old AVAudioPlayer effect path nevertheless blocks the calling thread: an
+Intel probe measured about224ms on the first Pellet request and30-63ms on later
+requests. Prepared-player reuse and immediate play did not remove this stall.
+Effects now use predecoded PCM and prepared AVAudioPlayerNodes on a running
+AVAudioEngine; music remains on its existing player path. Paired left/right
+gains, stereo pan and the six-active-effect limit are preserved. Atomic playback
+tickets prevent a stopped buffer's late completion from retiring a reused voice.
+
+`tests/pellet_audio_host.sh` replays the original cadence and sends12 real audio
+requests150ms apart, requiring no drops and less than50ms cumulative submission
+time. It also checks natural completion and four stop/reuse/pause/resume cycles.
+The final probe completes all12 submissions in under3ms on the Intel reference
+iMac; this measures game-thread submission time, not acoustic speaker latency.
+The existing132 gain/pan/channel checks and18-cue/three-track decode/music/pause
+check pass. Original PCM/pitch and firing logic were not changed.

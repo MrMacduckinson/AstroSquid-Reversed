@@ -1,15 +1,67 @@
 #import "audio.h"
 #include <math.h>
+#include <stdatomic.h>
+#include <assert.h>
+#include <mach/mach_time.h>
 
 static float soundGain(float value){return (int)(255*(double)value)/255.0f;}
 
 static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
+
+// Each effect stays on a running mixer; starting AVAudioPlayer per shot blocks the game clock.
+@interface AstroCuePlayer : NSObject {
+    AVAudioPlayerNode *node;AVAudioPCMBuffer *buffer;
+    atomic_uint activeTicket;unsigned nextTicket;
+}
+@property(nonatomic) float volume,pan;
+@property(nonatomic,readonly,getter=isPlaying) BOOL playing;
+@property(nonatomic,readonly) double deviceCurrentTime;
+- (instancetype)initWithEngine:(AVAudioEngine *)engine buffer:(AVAudioPCMBuffer *)pcm;
+- (BOOL)playAtTime:(NSTimeInterval)time;
+- (BOOL)play;
+- (void)prepare;
+- (void)pause;
+- (void)stop;
+@end
+@implementation AstroCuePlayer
+- (instancetype)initWithEngine:(AVAudioEngine *)engine buffer:(AVAudioPCMBuffer *)pcm {
+    if((self=[super init])){buffer=pcm;node=[AVAudioPlayerNode new];atomic_init(&activeTicket,0);
+        [engine attachNode:node];[engine connect:node to:engine.mainMixerNode format:pcm.format];}
+    return self;
+}
+- (float)volume{return node.volume;}
+- (void)setVolume:(float)value{node.volume=value;}
+- (float)pan{return node.pan;}
+- (void)setPan:(float)value{node.pan=value;}
+- (BOOL)isPlaying{return atomic_load(&activeTicket)!=0&&node.isPlaying;}
+- (double)deviceCurrentTime{return [AVAudioTime secondsForHostTime:mach_absolute_time()];}
+- (BOOL)playAtTime:(NSTimeInterval)time {
+    unsigned ticket=++nextTicket;assert(ticket);atomic_store(&activeTicket,ticket);
+    uint64_t scheduledHost=[AVAudioTime hostTimeForSeconds:time];
+    [node scheduleBuffer:buffer atTime:[AVAudioTime timeWithHostTime:scheduledHost] options:0
+        completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType type){
+            unsigned expected=ticket;atomic_compare_exchange_strong(&self->activeTicket,&expected,0);
+        }];
+    if(!node.isPlaying)[node play];return YES;
+}
+- (BOOL)play{if(atomic_load(&activeTicket)){[node play];return YES;}return [self playAtTime:self.deviceCurrentTime+.005];}
+- (void)prepare{[node play];}
+- (void)pause{[node pause];}
+- (void)stop{atomic_store(&activeTicket,0);[node stop];}
+@end
+static NSArray *preparedCue(AVAudioPCMBuffer *buffer,AVAudioEngine *engine){
+    AstroCuePlayer *left=[[AstroCuePlayer alloc]initWithEngine:engine buffer:buffer];
+    AstroCuePlayer *right=[[AstroCuePlayer alloc]initWithEngine:engine buffer:buffer];
+    left.pan=-1;right.pan=1;return @[left,right];
+}
 
 @implementation AstroAudio {
     NSDictionary *manifest;
     NSMutableDictionary *samples;
     NSArray *tracks;
     NSMutableArray *voices;
+    NSMutableDictionary *idleVoices;
+    AVAudioEngine *effectEngine;
     NSMapTable *cueNames,*voiceGains;
     AVAudioPlayer *_music;
     BOOL paused;
@@ -25,17 +77,16 @@ static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
     if (!data) return nil;
     manifest=[NSJSONSerialization JSONObjectWithData:data options:0 error:error];
     if (![manifest isKindOfClass:[NSDictionary class]]) return nil;
-    samples=[NSMutableDictionary dictionary]; voices=[NSMutableArray array];
+    samples=[NSMutableDictionary dictionary]; voices=[NSMutableArray array];idleVoices=[NSMutableDictionary dictionary];
     cueNames=[NSMapTable weakToStrongObjectsMapTable];voiceGains=[NSMapTable weakToStrongObjectsMapTable];
-    _soundVolume=1; _musicVolume=1; _stereo=YES;
+    _soundVolume=1; _musicVolume=1; _stereo=YES;effectEngine=[AVAudioEngine new];
     for (NSString *name in manifest[@"sounds"]) {
         NSString *file=manifest[@"sounds"][name][@"file"];
-        NSData *sample=[NSData dataWithContentsOfFile:[path stringByAppendingPathComponent:file] options:0 error:error];
-        if (!sample) return nil;
-        // Validate every cue at load time, before a missing decoder can silence combat.
-        AVAudioPlayer *probe=[[AVAudioPlayer alloc] initWithData:sample error:error];
-        if (!probe || probe.duration<=0) return nil;
-        samples[name]=sample;
+        AVAudioFile *fileData=[[AVAudioFile alloc]initForReading:[NSURL fileURLWithPath:[path stringByAppendingPathComponent:file]] error:error];
+        if(!fileData||fileData.length<=0||fileData.length>UINT32_MAX)return nil;
+        AVAudioPCMBuffer *sample=[[AVAudioPCMBuffer alloc]initWithPCMFormat:fileData.processingFormat frameCapacity:(AVAudioFrameCount)fileData.length];
+        if(!sample||![fileData readIntoBuffer:sample error:error])return nil;
+        idleVoices[name]=[NSMutableArray arrayWithObjects:preparedCue(sample,effectEngine),preparedCue(sample,effectEngine),nil];samples[name]=sample;
     }
     if(beforeMusic)beforeMusic(self);
     NSMutableArray *musicTracks=[NSMutableArray array];
@@ -46,11 +97,14 @@ static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
         player.numberOfLoops=0;player.volume=i<=2?musicGain(_musicVolume):126/256.0f;
         [player prepareToPlay];[musicTracks addObject:player];
     }
-    tracks=[musicTracks copy];return self;
+    tracks=[musicTracks copy];[effectEngine prepare];
+    if(![effectEngine startAndReturnError:error])return nil;
+    for(NSArray *idle in idleVoices.allValues)for(NSArray *pair in idle)for(AstroCuePlayer *player in pair)[player prepare];
+    return self;
 }
 - (void)setSoundVolume:(float)value {
     _soundVolume=fmaxf(0,fminf(1,value));
-    for(NSArray *pair in voices)for(AVAudioPlayer *player in pair)
+    for(NSArray *pair in voices)for(AstroCuePlayer *player in pair)
         player.volume=soundGain(_soundVolume)*[[voiceGains objectForKey:player] doubleValue];
 }
 - (void)setMusicVolume:(float)value {
@@ -64,18 +118,21 @@ static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
     NSIndexSet *finished=[voices indexesOfObjectsPassingTest:^BOOL(NSArray *pair,NSUInteger i,BOOL *stop) {
         return ![pair[0] isPlaying] && ![pair[1] isPlaying];
     }];
+    [finished enumerateIndexesUsingBlock:^(NSUInteger i,BOOL *stop){
+        NSArray *pair=voices[i];NSString *cue=[cueNames objectForKey:pair[0]];
+        [idleVoices[cue] addObject:pair];
+    }];
     [voices removeObjectsAtIndexes:finished];
     // GETAFREECHANNEL checks channels 1 through 6 and drops a cue when all are busy.
     if (voices.count>=6) return NO;
-    AVAudioPlayer *left=[[AVAudioPlayer alloc] initWithData:samples[name] error:NULL];
-    AVAudioPlayer *right=[[AVAudioPlayer alloc] initWithData:samples[name] error:NULL];
-    if (!left || !right) return NO;
-    left.pan=-1;right.pan=1;
+    NSMutableArray *idle=idleVoices[name];NSArray *pair=idle.lastObject;
+    if(pair)[idle removeLastObject];else pair=preparedCue(samples[name],effectEngine);
+    if(!pair)return NO;
+    AstroCuePlayer *left=pair[0],*right=pair[1];
     double p=fmax(0,fmin(1,position));
     BOOL pan=_stereo && isfinite(position);
     double leftGain=pan?floor(sqrt(1-p)*256)/256:1,rightGain=pan?floor(sqrt(p)*256)/256:1;
     left.volume=soundGain(_soundVolume)*leftGain;right.volume=soundGain(_soundVolume)*rightGain;
-    [left prepareToPlay];[right prepareToPlay];
     NSTimeInterval time=left.deviceCurrentTime+0.005;
     BOOL ok=[left playAtTime:time] && [right playAtTime:time];
     if (!ok) { [left stop];[right stop];return NO; }
@@ -118,7 +175,10 @@ static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
     [_music stop];_music=nil;musicStarted=NO;
 }
 - (void)stopEffects {
-    for (NSArray *pair in voices) for (AVAudioPlayer *player in pair) [player stop];
+    for (NSArray *pair in voices) {
+        for (AVAudioPlayer *player in pair) [player stop];
+        [idleVoices[[cueNames objectForKey:pair[0]]] addObject:pair];
+    }
     [voices removeAllObjects];
 }
 - (void)stop {[self stopMusic];[self stopEffects];}
