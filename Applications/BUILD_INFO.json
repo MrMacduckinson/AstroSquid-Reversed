@@ -39,15 +39,16 @@
       "architecture": "i386",
       "minimum_macos": "10.4",
       "build_host": "macOS10.13.6 / Apple LLVM10 / actual SDK10.4u with isolated normalized linker stubs",
-      "source_commit": "600f7ea81554f2f7848d40a55ceae77b73ab909b",
-      "executable_sha256": "560b85d600a2df2c8c0ce02de045a1c80b314a918aee3f0bd98b9b55eb989012",
+      "source_commit": "2a62d651bb9217459b7033d38963b019788f857c",
+      "executable_sha256": "26ecbe73ecc4b7fcbc9de26953fd5d7d1a2a2a2997e363c46c7bad2481d379a7",
       "runtime_on_minimum_os_verified": false,
       "runtime_test_host": "Intel10.13.6 i386",
       "limitations": [
         "Windowed640x480 only",
         "IntelTiger not runtime-tested",
         "No full campaign run on this variant"
-      ]
+      ],
+      "launch_verified": "LaunchServices startup and rendered splash on Intel10.13.6 after Foundation compatibility fix"
     }
   ],
   "source_commit_note": "Each application records its own source commit; unchanged modern bundles retain their original provenance."
