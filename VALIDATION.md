@@ -1017,3 +1017,18 @@ fault. Internal `fidelity-audit/normal-boost1b-20261102/` retains
 `fullstate-prefix-comparison-complete.json` and the transfer evidence. A separate
 six-hour native rerun has started with identical conditions and only the
 watchdog duration changed; its completion and full comparison remain pending.
+
+### Buildable-source delivery check (2026-11-03)
+
+The current source passes `./test.sh --native-only` and compiles with the
+installed Apple Silicon macOS SDK using `./build.sh`. No application, OpenGL
+or audio runtime was launched on that development Mac. The obsolete direct
+`SetThemeCursor` declaration prevented compilation with this SDK; the host now
+resolves that legacy function at runtime and uses the Cocoa arrow cursor when
+it is unavailable. Existing menu-cursor identifiers and call order are retained.
+The fallback cursor appearance and this revision's Intel application runtime
+have not been checked on hardware. Intel SSH was unavailable during this check.
+
+The development objective is a usable reconstructed source project. Existing
+original-machine traces remain valuable bounded evidence; exhaustive bytewise
+execution equivalence is not a release requirement. See SOURCE_GUIDE.md.

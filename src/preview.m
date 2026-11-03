@@ -418,7 +418,12 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     NSNumber *key=@(identifier);if(!textures[key])return;
     GLuint texture=[textures[key] unsignedIntValue];glDeleteTextures(1,&texture);[textures removeObjectForKey:key];
 }
-- (void)setMenuCursor:(int)identifier {SetThemeCursor(identifier==4?kThemeWatchCursor:kThemeArrowCursor);}
+- (void)setMenuCursor:(int)identifier {
+    // Modern SDKs omit this legacy declaration; keep the watch cursor where available.
+    OSStatus (*setThemeCursor)(UInt32)=dlsym(RTLD_DEFAULT,"SetThemeCursor");
+    if(setThemeCursor)setThemeCursor(identifier==4?kThemeWatchCursor:kThemeArrowCursor);
+    else [[NSCursor arrowCursor] set];
+}
 - (GLuint)texture:(NSInteger)identifier {
     NSNumber *key = @(identifier);
     if (textures[key]) return [textures[key] unsignedIntValue];

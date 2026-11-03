@@ -5,11 +5,12 @@ running macOS 10.13 or later. It runs natively, without Classic or a PowerPC
 emulator. This is newly reconstructed source, not the author's FutureBASIC
 project. Original art, levels, sounds and music belong to their original authors.
 
-Bitwise fidelity verification is in progress. The earlier packaged release is
-playable; full original-logic equivalence has not yet been proved. See
-[VALIDATION.md](VALIDATION.md) for the verified scope and remaining limits.
-Fidelity targets defined gameplay behavior; allocator-dependent use-after-free
-from the original is intentionally excluded.
+The reconstruction includes the complete campaign and original runtime assets.
+Development targets a buildable, playable reconstruction of the original game;
+it does not require reproducing undefined memory access or proving every possible
+execution byte for byte. See [SOURCE_GUIDE.md](SOURCE_GUIDE.md) for the code layout
+and practical verification workflow, and [VALIDATION.md](VALIDATION.md) for the
+existing original-machine evidence and its limits.
 
 ## Play
 
