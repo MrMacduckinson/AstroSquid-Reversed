@@ -109,3 +109,9 @@ modern audio.m. Use an Apple toolchain with Lion deployment support and its
 libarclite; tested with Apple LLVM10 / SDK10.13 on the Intel reference Mac.
 The current Xcode27 toolchain lacks libarclite and cannot perform this build
 unmodified, even with SDK10.15 selected. See docs/LEGACY_INTEL.md.
+
+## Intel Tiger
+
+`src/tiger/` содержит отдельную оболочку MRC/fragile ABI, UI, HUD и звук для i38610.4.
+Общая логика — `src/*.c`; сборка — `tools/build_tiger.sh`. После изменения современной
+оболочки сверяйте Tiger-копию. Инструкции и границы проверок: docs/TIGER_INTEL.md.

@@ -1179,3 +1179,20 @@ each, envelope correlation >0.9). No device setting is changed.
 
 This tests signal duration/envelope, not exact amplitude, stereo positioning,
 acoustic output or physical device unplugging.
+
+## Intel Tiger port — 2026-11-03
+
+Built with Apple LLVM 10, actual MacOSX10.4u SDK (isolated normalized linker-stub
+copy), fragile Objective-C ABI / manual reference counting; Mach-O i386, min10.4.
+Executed on Intel macOS10.13.6, not on Intel10.4. `test.sh --native-only` compiled
+and ran as i386: exit0, 53 PASS summaries. `tests/tiger_host.sh`: seven traversal
+lifetime cases;17 stage loads with20 production actor steps each across pool
+drains;18 muted OpenAL buffers,6channel limit,100pause/stopcycles,QTKit music;
+185 departuregeometryframes;offscreen primitives and10UI/HUD scenes,fonts,alpha,
+hover/caret andinterval2/3. All passed with NSZombieEnabled.
+`python3 tests/tiger_tools_test.py`: lossless resource table conversion including
+nulls/CRs and copy-only stub metadata/symbol-byte invariants passed.
+The adapted UI fixture resets its draw-clock counter after scene setup; setup
+legitimately samples clocks. No production clock logic was changed for that test.
+No fullscreen implementation, actual IntelTiger boot or full campaign run for
+this variant. This evidence is component coverage, not a blanket fidelity claim.
