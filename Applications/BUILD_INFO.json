@@ -1,10 +1,10 @@
 {
-  "source_commit": "456f9ca3668cf2ac76f751e623ee75ea3b65e09f",
   "built_date": "2026-11-03",
   "notes": [
     "ARM/Intel modern retain AVAudioEngine; Intel-Legacy uses OpenAL and targets10.7.",
     "Legacy built and component-tested on10.13.6, not runtime-tested on Lion.",
-    "No foreground gameplay launched in this change; prior modern waveform/campaign evidence has its original scope."
+    "No foreground gameplay launched in this change; prior modern waveform/campaign evidence has its original scope.",
+    "Intel-Tiger adds a separate MRC/fragileABI host,OpenAL,QTKit and static BlocksRuntime; 53 C PASS summaries and platform component checks on Intel10.13.6."
   ],
   "applications": [
     {
@@ -13,7 +13,8 @@
       "minimum_macos": "11.0",
       "build_host": "macOS27.0 / Xcode27",
       "executable_sha256": "39056935ac24a5cf0c7cc0fe3d5f33fa0cc52818e7461c126c5d2b36aacb7c93",
-      "runtime_on_minimum_os_verified": false
+      "runtime_on_minimum_os_verified": false,
+      "source_commit": "456f9ca3668cf2ac76f751e623ee75ea3b65e09f"
     },
     {
       "path": "Applications/Intel/AstroSquid.app",
@@ -21,7 +22,8 @@
       "minimum_macos": "10.13",
       "build_host": "macOS10.13.6 / Apple LLVM10",
       "executable_sha256": "1975857a43c0e9c286edf138ef7b18a5616db0616ebe93e308e17a56362b5bd8",
-      "runtime_on_minimum_os_verified": false
+      "runtime_on_minimum_os_verified": false,
+      "source_commit": "456f9ca3668cf2ac76f751e623ee75ea3b65e09f"
     },
     {
       "path": "Applications/Intel-Legacy/AstroSquid.app",
@@ -29,7 +31,24 @@
       "minimum_macos": "10.7",
       "build_host": "macOS10.13.6 / Apple LLVM10",
       "executable_sha256": "9ac31a37a6033599f42d05065afeefe590b00732ceef0e6efe04356b4767c8de",
-      "runtime_on_minimum_os_verified": false
+      "runtime_on_minimum_os_verified": false,
+      "source_commit": "456f9ca3668cf2ac76f751e623ee75ea3b65e09f"
+    },
+    {
+      "path": "Applications/Intel-Tiger/AstroSquid.app",
+      "architecture": "i386",
+      "minimum_macos": "10.4",
+      "build_host": "macOS10.13.6 / Apple LLVM10 / actual SDK10.4u with isolated normalized linker stubs",
+      "source_commit": "600f7ea81554f2f7848d40a55ceae77b73ab909b",
+      "executable_sha256": "560b85d600a2df2c8c0ce02de045a1c80b314a918aee3f0bd98b9b55eb989012",
+      "runtime_on_minimum_os_verified": false,
+      "runtime_test_host": "Intel10.13.6 i386",
+      "limitations": [
+        "Windowed640x480 only",
+        "IntelTiger not runtime-tested",
+        "No full campaign run on this variant"
+      ]
     }
-  ]
+  ],
+  "source_commit_note": "Each application records its own source commit; unchanged modern bundles retain their original provenance."
 }
