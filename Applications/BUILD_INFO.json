@@ -1,0 +1,26 @@
+{
+  "source_commit": "400857db3e97dc7d53e7ced7423b948fe041e0d3",
+  "built_date": "2026-11-03",
+  "notes": [
+    "Only architecture-specific deployment metadata changed in this delivery; gameplay code is unchanged from 878c96d.",
+    "Fresh native-only tests passed on both build hosts; asset checks passed on ARM.",
+    "Audio PCM and gameplay evidence is from preceding fixes; no new foreground game was launched during packaging.",
+    "Minimum OS is a build target, not a claim that all OS versions were runtime tested."
+  ],
+  "applications": [
+    {
+      "path": "Applications/ARM/AstroSquid.app",
+      "architecture": "arm64",
+      "minimum_macos": "11.0",
+      "build_and_test_host": "macOS 27.0 (26A5406e)",
+      "executable_sha256": "86061268772cf27f47ace8558ac064d530574924015622d7ad4d5c7dc39d3dc6"
+    },
+    {
+      "path": "Applications/Intel/AstroSquid.app",
+      "architecture": "x86_64",
+      "minimum_macos": "10.13",
+      "build_and_test_host": "macOS 10.13.6 (17G66)",
+      "executable_sha256": "a1b06d65ee2db30fd9a0ffb30312f4bb32e87c5ad95fb09795785ee82d9de56c"
+    }
+  ]
+}

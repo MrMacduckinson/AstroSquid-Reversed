@@ -1,0 +1,199 @@
+{
+  "sounds": {
+    "Blast1": {
+      "resource_id": 128,
+      "file": "sounds/Blast1.wav",
+      "channels": 1,
+      "sample_bytes": 1,
+      "rate": 44100,
+      "frames": 38714,
+      "pcm_sha256": "2fba5ed5e94513df7fd7317732a2198bf4cbf7edb1730d60e4b203e927f13301"
+    },
+    "Click2": {
+      "resource_id": 129,
+      "file": "sounds/Click2.wav",
+      "channels": 1,
+      "sample_bytes": 1,
+      "rate": 22050,
+      "frames": 2730,
+      "pcm_sha256": "45d5edb89eef9c22724273d23fdf676964ca6761ef7d5c6f4d508ceb9ab51ff8"
+    },
+    "Bang1": {
+      "resource_id": 130,
+      "file": "sounds/Bang1.wav",
+      "channels": 1,
+      "sample_bytes": 1,
+      "rate": 44100,
+      "frames": 26921,
+      "pcm_sha256": "c143f52cde878d385f9339be449d79c59468b0d41740f648a1e709aaed7bd853"
+    },
+    "Bang2": {
+      "resource_id": 131,
+      "file": "sounds/Bang2.wav",
+      "channels": 1,
+      "sample_bytes": 1,
+      "rate": 44100,
+      "frames": 32213,
+      "pcm_sha256": "78060a573daf07687f54cfa8bb544e7f1247265e4fef71f75703a82453981285"
+    },
+    "Bang4": {
+      "resource_id": 132,
+      "file": "sounds/Bang4.wav",
+      "channels": 1,
+      "sample_bytes": 1,
+      "rate": 44100,
+      "frames": 73827,
+      "pcm_sha256": "e7535e561a9974e70861da5f90734a80946126a56e2d877b18d3674ba4b229a8"
+    },
+    "Menu": {
+      "resource_id": 133,
+      "file": "sounds/Menu.wav",
+      "channels": 1,
+      "sample_bytes": 1,
+      "rate": 44100,
+      "frames": 83003,
+      "pcm_sha256": "a444c415a2787f5f9ed65a033e52f19aee4c9b7740d79ecec0da0bd4634b6b6f"
+    },
+    "Zap": {
+      "resource_id": 134,
+      "file": "sounds/Zap.wav",
+      "channels": 1,
+      "sample_bytes": 1,
+      "rate": 44100,
+      "frames": 31137,
+      "pcm_sha256": "237f78336ee7c377a8ee3b35bcb133afaa7ab552491c7036a768f593a7d0c1a0"
+    },
+    "Bang3": {
+      "resource_id": 135,
+      "file": "sounds/Bang3.wav",
+      "channels": 1,
+      "sample_bytes": 1,
+      "rate": 22050,
+      "frames": 33008,
+      "pcm_sha256": "a7ed772f60fb20075c0bc4994b377c9ef53fee1abf941a771b0d266df2b97973"
+    },
+    "Click": {
+      "resource_id": 136,
+      "file": "sounds/Click.wav",
+      "channels": 1,
+      "sample_bytes": 2,
+      "rate": 44100,
+      "frames": 14220,
+      "pcm_sha256": "ad54a192bbe3c4e049f59d77c18a8c344b2a680e1d2f10df7ce79726115cf589"
+    },
+    "Bang0": {
+      "resource_id": 137,
+      "file": "sounds/Bang0.wav",
+      "channels": 1,
+      "sample_bytes": 2,
+      "rate": 44100,
+      "frames": 32196,
+      "pcm_sha256": "2fc3040e232b992944fa06892001e126a90a38ee46f12a41324bfff4948a4d27"
+    },
+    "Hyper": {
+      "resource_id": 138,
+      "file": "sounds/Hyper.wav",
+      "channels": 1,
+      "sample_bytes": 2,
+      "rate": 11025,
+      "frames": 25408,
+      "pcm_sha256": "7903151855cb1ef2c92fb23268e992ca10403d02fa33475522996902c80a7efc"
+    },
+    "Plasma": {
+      "resource_id": 139,
+      "file": "sounds/Plasma.wav",
+      "channels": 1,
+      "sample_bytes": 1,
+      "rate": 22050,
+      "frames": 22076,
+      "pcm_sha256": "b9179030fa0ea0685ade7edc868c122095840b13fb1a99921e41dfbe714f9249"
+    },
+    "Pellet": {
+      "resource_id": 140,
+      "file": "sounds/Pellet.wav",
+      "channels": 1,
+      "sample_bytes": 2,
+      "rate": 11025,
+      "frames": 1797,
+      "pcm_sha256": "726c577bf9dd70eb87a9dfd924800799d48ee2863012426d85ee1423c5209c4c"
+    },
+    "Laser": {
+      "resource_id": 141,
+      "file": "sounds/Laser.wav",
+      "channels": 1,
+      "sample_bytes": 1,
+      "rate": 22050,
+      "frames": 23057,
+      "pcm_sha256": "62e5e4400d5abd8f354fa46eff12a83fb7d917c8bc41b6e8d6a8acfae5733e4b"
+    },
+    "ExtraLife": {
+      "resource_id": 142,
+      "file": "sounds/ExtraLife.wav",
+      "channels": 1,
+      "sample_bytes": 1,
+      "rate": 22050,
+      "frames": 22016,
+      "pcm_sha256": "9de70099167e5bf89d455d4fdd07dc45203f83c52527f7ae7db2e34c418ae0a9"
+    },
+    "Shield": {
+      "resource_id": 143,
+      "file": "sounds/Shield.wav",
+      "channels": 1,
+      "sample_bytes": 2,
+      "rate": 44100,
+      "frames": 17264,
+      "pcm_sha256": "821edcd6bcbc015c685d757361e04514fdcbc6bd279c98848a7219a1264601d5"
+    },
+    "Pickup": {
+      "resource_id": 144,
+      "file": "sounds/Pickup.wav",
+      "channels": 1,
+      "sample_bytes": 2,
+      "rate": 44100,
+      "frames": 13664,
+      "pcm_sha256": "900b35b059041feb742207ee75f6084c6f31fb4cd84422972b1058bfaf966286"
+    },
+    "Hit": {
+      "resource_id": 145,
+      "file": "sounds/Hit.wav",
+      "channels": 1,
+      "sample_bytes": 2,
+      "rate": 22050,
+      "frames": 2592,
+      "pcm_sha256": "5a080dd895872db71100b95ac1f0322a8cffe57d1309631da86329fbb7829e9e"
+    }
+  },
+  "string_cues": {
+    "176": "Click",
+    "277": "Menu",
+    "280": "Hyper",
+    "282": "Bang3",
+    "290": "Bang0",
+    "291": "Bang2",
+    "292": "Bang1",
+    "293": "Bang4",
+    "295": "Zap",
+    "296": "Laser",
+    "297": "Pellet",
+    "298": "Plasma",
+    "299": "Blast1",
+    "301": "Hit",
+    "302": "Shield",
+    "303": "Pickup",
+    "304": "ExtraLife"
+  },
+  "music": {
+    "1": {
+      "file": "Music1.mp3",
+      "sha256": "c400b52afc70962bd8537f71e70368e52e52bfa30dcdc31b73e231a9c5abe52e"
+    },
+    "2": {
+      "file": "Music2.mp3",
+      "sha256": "140a5f6ecd9b44818b60a3d8badc4188f8c70a1f890e85118d75aa199ffc85b4"
+    },
+    "3": {
+      "file": "Music3.mp3",
+      "sha256": "1199ca3fcb7bd8504d1edd46ad8a76c69cd21d06a9f16557b48cf5460abb2d97"
+    }
+  }
+}
