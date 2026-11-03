@@ -47,7 +47,9 @@ void astro_player_hits_scenery(AstroCombatState *p,AstroRect a,AstroCombatState 
     if(s->remove) return;
     /* The original subtracts right-right for X; preserve that asymmetric push. */
     double dx=b.left-a.left,dy=(b.bottom-b.top)/2.0+b.top-((a.bottom-a.top)/2.0+a.top);
-    double length=sqrt(dx*dx+dy*dy);dx/=length;dy/=length;
+    double length=sqrt(dx*dx+dy*dy);
+    // A zero-length collision direction must not poison motion with NaNs.
+    if(length>0){dx/=length;dy/=length;}
     if(b.right-b.left+b.bottom-b.top<60) {
         s->velocity.x+=dx;s->velocity.y+=dy;
         p->velocity.x-=dx;p->velocity.y-=dy;

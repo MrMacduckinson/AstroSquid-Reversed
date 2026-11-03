@@ -1117,3 +1117,41 @@ cache. `tests/departure_geometry_host.sh` checks 185 render steps through both
 actual methods against the original centered geometry, without windows,
 audio, input injection or display changes. The original glow texture's slight
 alpha asymmetry is preserved; no asset has been artificially shifted.
+
+## Broader quality review — 2026-11-03
+
+The follow-up examined rendering caches/animation, weapon and collision
+integration, pickups/death, input/menu exit and preference persistence rather
+than treating the departure fix as a complete review of the port.
+
+- Retina geometry already used backing pixels, but point and line thickness
+  did not. Physical star/beam/trail widths now scale from the original 640-wide
+  viewport. A silent offscreen framebuffer test calls production callbacks:
+  1x thickness remains 1/3/1 pixels and 2x is 2/6/2 on ARM and Intel.
+- A real player/MedAsteroid2 overlap can produce a zero collision direction.
+  The original also divided by zero here. The port now leaves the impulse zero
+  and retains damage and finite velocities. This is an intentional correction
+  of the original invalid-state bug. New coincident cases and 200 original
+  scenery cases pass on ARM, Intel and G5; existing combat/pickup cases pass.
+- AVAudioEngine stops itself after hardware channel/rate changes. Effects now
+  restart on the main queue after its configuration notification, clear stale
+  voices and preserve pause. Cue/resume requests while stopped are guarded;
+  the unguarded resume crashed on Intel 10.13. Muted tests simulate the stop
+  and notification without changing the user's devices. Real device switching
+  and unplugging hardware were not performed.
+- Preference saving, 65,536 packed preference mappings, legacy/partial input
+  and deferred application/window exit checks pass on ARM and Intel. The exit
+  fixture stubs PUTCONTROLS and MOVEMENUTO; its host observer now excludes the
+  internal UI clocks consistently. Original events and expected values remain
+  unchanged; separate menu tests cover the real UI timing.
+
+All new probes run without visible windows, input injection or audible sound.
+The rendering checks do not establish equality of all game frames, and the
+review is not an exhaustive physical-input or complete-campaign proof.
+
+A repeated Intel 10.13 audio stress run also exposed asynchronous conversion of
+host-only buffer timestamps after pause/stop had invalidated the player clock.
+Buffer times are now resolved to sample positions before scheduling; a stopped
+node schedules at sample zero and starts at the shared stereo host time.
+The running-node path retains the low-latency prepared mixer; stopping every
+node for each shot was measured and rejected because it stalled gameplay.

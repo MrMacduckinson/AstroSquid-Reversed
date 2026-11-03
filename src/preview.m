@@ -136,6 +136,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     BOOL panelTransitionRender,hudClockActive;
     int32_t visualSprites;
     double visualRate;
+    GLfloat scenePixelScale;
     BOOL visualDebug,wallClockPoll,nestedWorldRender,stringOverflowActive;
     BOOL engineDebug,fullscreenRequested,graphicsReleased,spriteMapsPreloaded;
     NSString *screenshotBase;
@@ -224,6 +225,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
 - (void)playSound:(int)index x:(double)x;
 - (void)playBeamSound:(int)index x:(int)x;
 - (void)drawSceneSprite:(const AstroSceneSprite *)sprite;
+- (GLfloat)scenePixelScale;
 - (void)createSceneSprite:(const AstroSceneSprite *)sprite;
 - (void)fireWeapon:(int)weapon x:(int)x y:(int)y heading:(int)heading source:(int)kind;
 - (void)moveChildren:(AstroEnemy *)parent heading:(int)heading amount:(double)amount;
@@ -292,21 +294,22 @@ static void specialAnimate(void *c) {BeamContext *w=c;[w->view animateSpecialWor
 static void specialKeys(void *c) {BeamContext *w=c;[w->view readSpecialKeys];}
 
 static void sceneLine(void *context,double x,double y,double ex,double ey,AstroLineStyle style) {
-    (void)context;glDisable(GL_TEXTURE_2D);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-    glLineWidth(style.width);glColor4d(style.r,style.g,style.b,style.a);
+    glDisable(GL_TEXTURE_2D);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+    glLineWidth(style.width*[(__bridge AstroView *)context scenePixelScale]);glColor4d(style.r,style.g,style.b,style.a);
     glBegin(GL_LINES);glVertex2d(x,y);glVertex2d(ex,ey);glEnd();
 }
 static void sceneSprite(void *context,const AstroSceneSprite *sprite) {[(__bridge AstroView *)context drawSceneSprite:sprite];}
 static void scenePoint(void *context,double x,double y,double gray) {
-    (void)context;glDisable(GL_TEXTURE_2D);glPointSize(1);glColor4d(gray,gray,gray,1);
+    glDisable(GL_TEXTURE_2D);glPointSize([(__bridge AstroView *)context scenePixelScale]);glColor4d(gray,gray,gray,1);
     glBegin(GL_POINTS);glVertex2d(x,y);glEnd();
 }
 static void sceneTrail(void *context,double x,double y,double ex,double gray) {
-    (void)context;glDisable(GL_TEXTURE_2D);glShadeModel(GL_SMOOTH);glLineWidth(1);
+    glDisable(GL_TEXTURE_2D);glShadeModel(GL_SMOOTH);glLineWidth([(__bridge AstroView *)context scenePixelScale]);
     glBegin(GL_LINES);glColor4d(gray,gray,gray,1);glVertex2d(x,y);glColor4d(0,0,0,1);glVertex2d(ex,y);glEnd();
 }
 
 @implementation AstroView
+- (GLfloat)scenePixelScale {return scenePixelScale>0?scenePixelScale:1;}
 - (instancetype)initWithFrame:(NSRect)frame assets:(NSString *)path {
     NSOpenGLPixelFormatAttribute attributes[] = {
         NSOpenGLPFADoubleBuffer, NSOpenGLPFAAccelerated,
@@ -527,6 +530,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(graphicsReleased||stringOverflowActive)return;
     [[self openGLContext] makeCurrentContext];
     NSRect bounds = [self convertRectToBacking:self.bounds];
+    scenePixelScale=bounds.size.width/640.0;
     if(!spriteMapsPreloaded){
         visualRateTick=[self currentGameTick];
         glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);

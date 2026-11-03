@@ -3,6 +3,14 @@
 #include <math.h>
 #include <stdio.h>
 int main(int argc,char **argv) {
+    // Sprite12 and MedAsteroid2 can share a left edge and vertical center.
+    const AstroRect coincident[]={{100,89,148,139},{100,109,110,119}};
+    for(unsigned i=0;i<2;i++) {
+        AstroCombatState p={.hit_points=100,.velocity={1,2}},s={.hit_points=50,.velocity={3,4}};
+        astro_player_hits_scenery(&p,(AstroRect){100,100,165,128},&s,coincident[i]);
+        assert(p.hit_points==90&&s.hit_points==40);
+        assert(p.velocity.x==1&&p.velocity.y==2&&s.velocity.x==3&&s.velocity.y==4);
+    }
     assert(argc==2);FILE *f=fopen(argv[1],"r");assert(f);
     int n,hp,shp,removed,sremoved;double px,py,sx,sy;unsigned checked=0;
     while(fscanf(f,"%d,%d,%d,%d,%d,%lf,%lf,%lf,%lf",&n,&hp,&shp,&removed,&sremoved,&px,&py,&sx,&sy)==9) {

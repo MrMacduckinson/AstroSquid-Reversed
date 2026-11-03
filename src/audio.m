@@ -40,14 +40,24 @@ static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
 - (BOOL)playAtTime:(NSTimeInterval)time outputLatency:(NSTimeInterval)latency {
     unsigned ticket=++nextTicket;assert(ticket);atomic_store(&activeTicket,ticket);
     uint64_t scheduledHost=[AVAudioTime hostTimeForSeconds:time];
-    [node scheduleBuffer:buffer atTime:[AVAudioTime timeWithHostTime:scheduledHost] options:0
+    // Resolve host time now: 10.13's asynchronous buffer conversion races immediate pause/stop.
+    AVAudioTime *renderTime=node.lastRenderTime;
+    AVAudioTime *playerTime=renderTime?[node playerTimeForNodeTime:renderTime]:nil;
+    BOOL running=node.isPlaying&&renderTime.hostTimeValid&&playerTime.sampleTimeValid;
+    AVAudioTime *bufferTime=nil;
+    if(running){
+        double delta=time-[AVAudioTime secondsForHostTime:renderTime.hostTime];
+        AVAudioFramePosition sample=playerTime.sampleTime+llround(delta*playerTime.sampleRate);
+        bufferTime=[AVAudioTime timeWithSampleTime:MAX(0,sample) atRate:playerTime.sampleRate];
+    }else [node stop];
+    [node scheduleBuffer:buffer atTime:bufferTime options:0
         // DataPlayedBack deadlocks against stop on 10.13; retain its output-latency wait outside AVFAudio locks.
         completionCallbackType:AVAudioPlayerNodeCompletionDataRendered completionHandler:^(AVAudioPlayerNodeCompletionCallbackType type){
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(latency*NSEC_PER_SEC)),dispatch_get_global_queue(QOS_CLASS_DEFAULT,0),^{
                 unsigned expected=ticket;atomic_compare_exchange_strong(&self->activeTicket,&expected,0);
             });
         }];
-    if(!node.isPlaying)[node play];return YES;
+    if(!running)[node playAtTime:[AVAudioTime timeWithHostTime:scheduledHost]];return YES;
 }
 - (BOOL)play{if(!atomic_load(&activeTicket))return NO;[node play];return YES;}
 - (void)prepare{[node play];}
@@ -108,7 +118,20 @@ static NSArray *preparedCue(AVAudioPCMBuffer *buffer,AVAudioEngine *engine){
     tracks=[musicTracks copy];[effectEngine prepare];
     if(![effectEngine startAndReturnError:error])return nil;
     for(NSArray *idle in idleVoices.allValues)for(NSArray *pair in idle)for(AstroCuePlayer *player in pair)[player prepare];
+    [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(effectConfigurationChanged:) name:AVAudioEngineConfigurationChangeNotification object:effectEngine];
     return self;
+}
+- (void)dealloc {[[NSNotificationCenter defaultCenter]removeObserver:self];}
+- (void)effectConfigurationChanged:(NSNotification *)notification {
+    // Hardware changes stop the engine; never restart it on AVFAudio's notification queue.
+    __weak AstroAudio *weakSelf=self;
+    dispatch_async(dispatch_get_main_queue(),^{[weakSelf restartEffects];});
+}
+- (void)restartEffects {
+    if(effectEngine.running)return;
+    [self stopEffects];NSError *error=nil;
+    if(![effectEngine startAndReturnError:&error]){NSLog(@"Cannot restart sound effects: %@",error);return;}
+    for(NSArray *idle in idleVoices.allValues)for(NSArray *pair in idle)for(AstroCuePlayer *player in pair)[player prepare];
 }
 - (void)setSoundVolume:(float)value {
     _soundVolume=fmaxf(0,fminf(1,value));
@@ -122,7 +145,7 @@ static NSArray *preparedCue(AVAudioPCMBuffer *buffer,AVAudioEngine *engine){
 }
 - (BOOL)playCue:(NSString *)name { return [self playCue:name position:NAN]; }
 - (BOOL)playCue:(NSString *)name position:(double)position {
-    if (!samples[name] || paused) return NO;
+    if (!samples[name] || paused || !effectEngine.running) return NO;
     NSIndexSet *finished=[voices indexesOfObjectsPassingTest:^BOOL(NSArray *pair,NSUInteger i,BOOL *stop) {
         return ![pair[0] isPlaying] && ![pair[1] isPlaying];
     }];
@@ -176,7 +199,7 @@ static NSArray *preparedCue(AVAudioPCMBuffer *buffer,AVAudioEngine *engine){
 - (void)setPaused:(BOOL)value {
     if (paused==value) return;paused=value;
     for (NSArray *pair in voices) for (AVAudioPlayer *player in pair) {
-        if (value) [player pause]; else [player play];
+        if (value) [player pause]; else if(effectEngine.running) [player play];
     }
     if (value) [_music pause]; else musicStarted=[_music play];
 }

@@ -63,6 +63,8 @@ static BOOL rawQuit;
     world=[NSMutableArray arrayWithObject:[NSNull null]];enemies=[NSMutableArray array];
     mapPlacements=[NSMutableArray arrayWithObject:@{}];playerNextActor=nil;
     fixedTick=100;clockReads=keyPolls=menuCode=0;rawQuit=NO;memset(keys,0,sizeof(keys));
+    // The native fixture stubs PUTCONTROLS/MOVEMENUTO; their internal clocks have separate menu tests.
+    ui.readTick=^{return fixedTick;};
     actual=[NSMutableArray array];shutdownEvents=[NSMutableArray array];
 }
 - (void)checkQuit {
@@ -88,6 +90,8 @@ static BOOL rawQuit;
         assert(!ferror(f));fclose(f);assert(nativeReads&&expected.count);
         observing=YES;[self beginGameLoop];for(unsigned i=0;gameLoopActive&&i<3;i++)[self pollGame];observing=NO;
         assert(!gameLoopActive&&quitRequested==(c!=3)&&!terminationAllowed&&menuVisible&&!world.count&&!mapPlacements.count&&playerVisualDeleted);
+        if(![actual isEqual:expected]||clockReads!=nativeReads||keyPolls!=nativePolls||menuCode!=nativeMenu)
+            fprintf(stderr,"quit case%u actual=%s expected=%s clocks%u/%u keys%u/%u menu%u/%u\n",c,actual.description.UTF8String,expected.description.UTF8String,clockReads,nativeReads,keyPolls,nativePolls,menuCode,nativeMenu);
         assert([actual isEqual:expected]&&clockReads==nativeReads&&keyPolls==nativePolls&&menuCode==nativeMenu);
         if(c==3){assert(!gameEndRequested);continue;}
         shutdownMode=YES;[self closeDown];[self closeDown];shutdownMode=NO;

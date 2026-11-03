@@ -65,3 +65,8 @@ production transition paths without opening a window or audio engine.
 stop/pause/resume cycles without a game window. The full application's
 `--self-test` is a foreground graphics test; do not run it while the user
 needs the desktop uninterrupted.
+Additional noninterrupting checks:
+
+- `bash tests/retina_primitives_host.sh`: offscreen OpenGL pixels at 1x/2x, no window.
+- `bash tests/audio_reconfiguration_host.sh`: muted engine-stop/recovery and pause,
+  without switching the system audio device.
