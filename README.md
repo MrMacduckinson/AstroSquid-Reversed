@@ -87,3 +87,6 @@ required for building/playing nor included in the repository package.
 
 See [docs/SAM_COMPARISON.md](docs/SAM_COMPARISON.md) and
 [docs/SAM_COMPARISON.txt](docs/SAM_COMPARISON.txt) for the independent Sam port.
+
+For the original shareware gate, byte-verified PowerPC disassembly and both
+unlock approaches, see [docs/LEVEL_UNLOCK_EXPLAINED.txt](docs/LEVEL_UNLOCK_EXPLAINED.txt).

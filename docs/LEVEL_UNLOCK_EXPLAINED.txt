@@ -1,0 +1,763 @@
+ASTROSQUID 1.1: HOW THE FULL CAMPAIGN WAS ENABLED
+Original PowerPC disassembly, reconstructed pseudocode and both port approaches
+2026-11-04 — English technical handoff
+
+1. THE IMPORTANT DISTINCTION
+
+Our reconstruction and Sam's port do NOT unlock the campaign in the same way.
+
+Our reconstruction starts a clean profile with valid registration state and a
+valid name/code pair. The shareware test and reminder still exist in its source.
+Sam's generator instead replaces the call to the shareware reminder with a NOP
+before translating PowerPC into C. It leaves the registration flag unchanged,
+which is why his menu can still say "Unregistered" while later levels are playable.
+
+Neither mechanism means every stage-selection button is visible on a fresh
+profile. Registration entitlement and saved campaign progress are separate.
+The game has eight numbered levels, normally split into A/B sections, plus its
+final encounter; our campaign data contains 17 stage files. The shareware barrier
+is after the six ordinary sections of levels 1-3, before section 4A.
+
+2. EVIDENCE AND ADDRESS CONVENTIONS
+
+The original input is FCOD resource 1001 (FB^3.PPC) from the same game revision
+used by the selected original download and Sam's archive. Its SHA-256 is:
+eadd946129a4cb8e0b5b5511863e11cb938de06c96677f4c364f31f8dd46371f
+
+The FCOD slice beginning at its PEF header (FCOD offset0x40, including any
+trailing data in that resource) has SHA-256:
+dd748d51e3591ddf5545857cd6b978aa29cc67d7470b1f4bd9c167e4ce5ecd20
+
+Sam's extracted AstroSquid_code.pef is normalized for analysis: its header extends
+the code section to include linker glue and it omits trailing resource data. It
+is not byte-identical to that whole FCOD slice. The code-plus-glue byte range
+PEF offsets0x80..0x69D04 was verified identical in both representations. All
+instruction comparisons below use the original FCOD bytes, not a patched export.
+
+Original function ranges, as CODE-SECTION OFFSETS, with exclusive end addresses:
+  CHECKREGCODE  0x03D844 .. 0x03DD90  (1356 bytes)
+  REGREMINDER   0x03E924 .. 0x03EB1C  (504 bytes)
+  GETREADY      0x04E004 .. 0x04E9B0  (2476 bytes)
+
+A number such as0x04E998 below is NOT an offset into the whole .rsrc, ZIP or
+Macintosh application. The code section begins at PEF file offset0x80.
+The call is therefore at PEF file offset0x04EA18, or FCOD payload offset0x04EA58.
+The resource container has another offset layer; do not apply those offsets to
+an entire file without parsing it. Sam uses virtual CODE_BASE0x00100000, so the
+same instruction is at modeled address0x0014E998. This is not a claimed G5 load
+address, and it is not an offset in the new x86_64 executable.
+
+The original saved assembly is in Sam's decompiled/code/03_game.s. Every machine
+word reproduced in the three listings below was freshly checked against the
+original PEF bytes: 493 instructions total. Symbol/variable interpretations
+come from the saved analysis and matching reconstructed source.
+
+REA was attempted for fresh native analysis, but its open_binary tool rejected
+the legacy PEF format as unsupported. No fresh REA/Ghidra decompilation is claimed.
+The readable C below is a reconstructed semantic explanation. The actual
+machine-word listings and the saved/generated C are identified separately.
+
+3. ORIGINAL SHAREWARE CHECK AT THE END OF GETREADY
+
+r14 is the FutureBASIC global-data base. Relevant fields:
+  r14+0x0A0C: signed16 registration flag (zero means unregistered)
+  r14+0x0A82: signed16 numbered level
+  r14+0x0A84: signed16 section/half (A=1, B=2)
+
+Exact byte-verified disassembly:
+
+    04e940:  abee0a0c   lha     r31, 0xa0c(r14)    ; g_0a0c
+    04e944:  38600000   li      r3, 0
+    04e948:  7c03f800   cmpw    r3, r31
+    04e94c:  38600000   li      r3, 0
+    04e950:  40820008   bne     L_04e958
+    04e954:  3860ffff   li      r3, -1
+    04e958:  7c7f1b78   mr      r31, r3
+    04e95c:  abce0a82   lha     r30, 0xa82(r14)    ; g_0a82
+    04e960:  3bdeffff   addi    r30, r30, -1
+    04e964:  1fde0002   mulli   r30, r30, 2
+    04e968:  a86e0a84   lha     r3, 0xa84(r14)    ; g_0a84
+    04e96c:  7c7e1a14   add     r3, r30, r3
+    04e970:  7c7e1b78   mr      r30, r3
+    04e974:  38600006   li      r3, 6
+    04e978:  7c03f000   cmpw    r3, r30
+    04e97c:  38600000   li      r3, 0
+    04e980:  40800008   bge     L_04e988
+    04e984:  3860ffff   li      r3, -1
+    04e988:  7fe31839   and.    r3, r31, r3
+    04e98c:  7c631b79   or.     r3, r3, r3
+    04e990:  40820008   bne     L_04e998
+    04e994:  48000008   b       L_04e99c
+    04e998:  4bfeff8d   bl      REGREMINDER
+    04e99c:  382100d0   addi    r1, r1, 0xd0
+    04e9a0:  80010008   lwz     r0, 8(r1)
+    04e9a4:  7c0803a6   mtlr    r0
+    04e9a8:  b9a1ffa0   lmw     r13, -0x60(r1)
+    04e9ac:  4e800020   blr
+
+Readable semantic decompilation of this block:
+
+  int registered = read_s16(globals + 0x0A0C);
+  int level      = read_s16(globals + 0x0A82);
+  int half       = read_s16(globals + 0x0A84);
+  int section    = (level - 1) * 2 + half;
+  if (registered == 0 && section > 6) {
+      REGREMINDER();
+  }
+
+FutureBASIC represents a true comparison with -1 (all bits set), not necessarily
+C's integer1. The first sequence builds (registered==0) as0/-1 inr31. The second
+builds (section>6) as0/-1. and. combines them and updates the condition register.
+At0x04E990, bne takes the nonzero result to the call at0x04E998.
+
+The order of cmpw at0x04E978 matters: it compares6 against section. bge skips the
+true assignment when6>=section, so the resulting condition is section>6, not<6.
+
+Boundary examples:
+  level1, half1 -> section1: allowed even when unregistered
+  level3, half2 -> section6: allowed even when unregistered
+  level4, half1 -> section7: invokes REGREMINDER when unregistered
+  level8, half2 -> section16: same barrier when unregistered
+  any such section with a nonzero registration flag: no reminder call
+
+There is no asset download or missing-level extraction at this gate. The later
+content is already present; the conditional changes whether play may continue.
+
+4. WHAT REGREMINDER DOES
+
+Simplified semantic decompilation, omitting graphics argument plumbing:
+
+  void REGREMINDER(void) {
+      set_2d_projection_and_640x480_viewport();
+      clear_color_buffer();
+      draw_picture(70, 0, 0, 640, 480);  // registration reminder artwork
+      swap_buffers();
+      delay(5000);                      // _DODELAY argument0x1388
+      do {
+          service_music();
+          read_key_map();
+      } while (!mouse_button() && !fire_control());
+      write_s16(globals + 0x0A68, 0);
+      write_s16(globals + 0x058C, 1);    // requests ending this play session
+  }
+
+The last two state writes explain why the call is consequential: it does not
+merely draw a harmless label and continue normal play. Our matching host method
+clears paused and sets gameEndRequested after the reminder. The raw original
+state offsets and store instructions appear in Appendix A.
+
+5. SAM'S ONE-INSTRUCTION CHANGE
+
+Sam's port/tools/recompile.py contains this existing patch entry:
+
+  0x04e998: (0x4BFEFF8D, 0x60000000,
+             'GETREADY: skip the shareware REGREMINDER (bl -> nop)')
+
+Before, original big-endian bytes:
+  4B FE FF 8D    bl 0x03E924          ; REGREMINDER
+After, in the translator's temporary code buffer:
+  60 00 00 00    ori r0,r0,0          ; canonical PowerPC nop
+
+The branch displacement is -0x10074:
+  0x04E998 - 0x10074 = 0x03E924.
+Its link bit is set, so the original instruction also writes the return address
+to LR. Replacing it removes that call. GETREADY's normal epilogue subsequently
+restores its saved caller LR; a dummy function call is not needed.
+
+The generator checks that the old word is exactly0x4BFEFF8D before replacing it;
+otherwise it aborts rather than patching an unrelated revision. It then translates
+the patched in-memory code into C. The raw resource fork is written before that
+patch loop, so a raw resource file can still contain the ORIGINAL call while the
+compiled generated C already omits it. The original ZIP is not modified.
+
+Actual generated C in port/gen/ppc_code_06.c:
+
+  L_04e988: c->r[3] = c->r[31] & c->r[3]; SET_CR0(c, c->r[3]);
+            c->r[3] = c->r[3] | c->r[3]; SET_CR0(c, c->r[3]);
+            if (!(c->cr[0] & 2)) goto L_04e998;
+  L_04e994: goto L_04e99c;
+  L_04e998: c->r[0] = c->r[0] | 0x00000000u;
+  L_04e99c: c->r[1] = c->r[1] + 0x000000d0u;
+
+The self-OR is the translated NOP, not an accidental missing operation. Condition
+calculation remains, but either branch now reaches the epilogue without calling
+REGREMINDER. No registration key is computed by this patch. Registration/menu
+labels and progress-selection state are left alone.
+
+This was already present in Sam's submitted archive. Our later Intel10.7 build
+adaptation did not introduce it or modify the generator/generated game code.
+
+6. OUR RECONSTRUCTION: VALID REGISTRATION, NOT THAT NOP
+
+Current src/preview.m initializes a clean launch with:
+
+  ui.registered = YES;
+  ui.registeredName = @"MACSPB";
+  registeredSerial = @"UACHCUFD";
+
+The Tiger counterpart uses the same registration values. The original-inspired
+barrier remains in advanceFlowWithKey: at the ready-to-play transition:
+
+  if (!ui.registered && (flow.stage-1)*2 + flow.half > 6)
+      [self showRegistrationReminder];
+
+It does not fire for the registered clean-profile defaults. This is not a blanket
+always-true replacement of the validator. Saved registration dictionaries and
+packed preferences can override those startup defaults and are validated. An
+invalid stored registration can therefore restore unregistered behavior. We did
+not silently erase existing profiles to force the state on every launch.
+
+The name/code pair is not an SSH password, server token, account credential or
+Graphing Calculator serial. It belongs to AstroSquid's local registration scheme.
+The supplied startup code agrees with the reconstructed original validator.
+
+7. RECONSTRUCTED CHECKREGCODE VALIDATOR
+
+CHECKREGCODE starts at code offset0x03D844. The original routine uses Pascal-string
+helpers, modular arithmetic, character construction and a final string comparison.
+For example,0x03D898..0x03D8AC takes the name length, multiplies it by128, divides
+by26 and subtracts the quotient product: the remainder modulo26. Later blocks
+use selected name bytes with multipliers13,42,35,24,72,11. Appendix B includes the
+entire byte-verified function, including its UI/state handling.
+
+The following is the concise existing C reconstruction of the validation result,
+not a verbatim output from a new decompiler and not all of the function's UI side
+effects. It uses raw name bytes (the host supplies MacRoman), not UTF-8 character
+counts or an invented uppercase/name-normalization step:
+
+int astro_registration_valid(const unsigned char *name,size_t length,const unsigned char *code,size_t code_length){
+    if(length>255||(!name&&length)||!code||code_length!=8)return 0;
+    unsigned first=length?name[0]:0,second=length>1?name[1]:0,third=length>2?name[2]:0;
+    unsigned penultimate=length?name[length>1?length-2:0]:0;
+    unsigned p=penultimate*42%26,q=second*35%26,r=third*24%26,t=third*11%26;
+    unsigned a=(length*128%26+p)%26,b=(q+a)%26,c=(q+b)%26;
+    unsigned digits[]={a,(first*13%26+q)%26,(p+r)%26,b,(first*72%26+r)%26,c,(r+t)%26,(t+c)%26};
+    unsigned char expected[8];for(unsigned i=0;i<8;i++)expected[i]='A'+digits[i];
+    return memcmp(code,expected,8)==0;
+}
+
+For the shipped name MACSPB:
+  bytes = [77,65,67,83,80,66], length=6
+  first=77, second=65, third=67, penultimate=80
+  p=(80*42)%26=6; q=(65*35)%26=13
+  r=(67*24)%26=22; t=(67*11)%26=9
+  a=(6*128+6)%26=20; b=(13+20)%26=7; c=(13+7)%26=20
+  output indices = [20,0,2,7,2,20,5,3]
+  add ASCII 'A' -> UACHCUFD
+
+The original/host validator regression was rerun while preparing this document:
+12,288 saved-original cases matched exactly, including computed comparison
+operands. Cases cover name lengths0..255, three byte patterns, altered/case-changed/
+short/long/zero-containing codes and both prior-state values. This supports the
+reconstructed validator; it is not a new full-game or all-GPU validation.
+
+8. CAMPAIGN ENTITLEMENT VS THE LEVEL-SELECTION MENU
+
+Our ui.unlockedLevel starts at least1, loads stored progression, and advances:
+
+  ui.unlockedLevel = MAX(ui.unlockedLevel,
+      MIN(16, (campaign.level-1)*2 + campaign.half));
+
+The menu enables LevelN only when N>0 && N<=ui.unlockedLevel. Thus a fresh registered
+profile can progress past level3 without displaying every later-stage shortcut
+immediately. The 17th campaign file/final encounter is not proof of a Level17
+shortcut; this selection counter is capped at16.
+
+The packed preference record is542 bytes. Its progression word is at offset534,
+and disk encoding adds100 when saving and subtracts100 when loading. Registration
+strings occupy separate Pascal-string slots at offsets10 and266. The progression
+encoding is not the registration algorithm and changing it is not how we removed
+the shareware barrier. Neither implementation needs new level assets to enable
+continued play.
+
+9. REPRODUCIBILITY AND LIMITS
+
+Relevant reconstruction files:
+  src/preview.m, src/tiger/preview.m: default registration, ready-flow gate,
+      reminder behavior and progression updates
+  src/ui_model.c: astro_registration_valid
+  src/ui_renderer.m: registration/menu visibility
+  src/preferences.c, src/preferences.h: packed save layout
+  tests/registration_validator.sh and registration_validator_native.csv.gz
+
+Relevant independent Sam files (in the separately supplied source tree):
+  decompiled/code/AstroSquid_code.pef
+  decompiled/code/03_game.s, functions.csv
+  port/tools/recompile.py: PATCHES, original-word check, translation order
+  port/gen/ppc_code_06.c: translated GETREADY
+
+No executable, preference profile or original archive was patched while preparing
+this explanation. The document records mechanisms in existing delivered source.
+The observed Sam HUD issue is a separate unresolved rendering question; campaign
+unlocking does not establish that HUD rendering or every gameplay scenario works.
+
+APPENDIX A — COMPLETE ORIGINAL REGREMINDER DISASSEMBLY
+
+    03e924:  7c0802a6   mflr    r0
+    03e928:  90010008   stw     r0, 8(r1)
+    03e92c:  bda1ffa0   stmw    r13, -0x60(r1)
+    03e930:  9421ff30   stwu    r1, -0xd0(r1)
+    03e934:  39a10020   addi    r13, r1, 0x20
+    03e938:  3be01701   li      r31, 0x1701
+    03e93c:  7fe3fb78   mr      r3, r31
+    03e940:  4802b12d   bl      glMatrixMode    ; [OpenGLLibrary]
+    03e944:  80410014   lwz     r2, 0x14(r1)
+    03e948:  4802b10d   bl      glLoadIdentity    ; [OpenGLLibrary]
+    03e94c:  80410014   lwz     r2, 0x14(r1)
+    03e950:  3be00000   li      r31, 0
+    03e954:  3bc00000   li      r30, 0
+    03e958:  3ba00280   li      r29, 0x280
+    03e95c:  3b8001e0   li      r28, 0x1e0
+    03e960:  7f86e378   mr      r6, r28
+    03e964:  7fa5eb78   mr      r5, r29
+    03e968:  7fc4f378   mr      r4, r30
+    03e96c:  7fe3fb78   mr      r3, r31
+    03e970:  4802b21d   bl      glViewport    ; [OpenGLLibrary]
+    03e974:  80410014   lwz     r2, 0x14(r1)
+    03e978:  38600000   li      r3, 0
+    03e97c:  4bfc22e5   bl      _FloatLoadNum    ; push 0
+    03e980:  4bfc48a1   bl      _doPushFloat
+    03e984:  7c7f1b78   mr      r31, r3
+    03e988:  7fe3fb78   mr      r3, r31
+    03e98c:  7c7f1b78   mr      r31, r3
+    03e990:  a86e0ed6   lha     r3, 0xed6(r14)    ; g_0ed6
+    03e994:  4bfc2415   bl      _Int2Float
+    03e998:  4bfc4889   bl      _doPushFloat
+    03e99c:  7c7e1b78   mr      r30, r3
+    03e9a0:  7fc4f378   mr      r4, r30
+    03e9a4:  7c7e1b78   mr      r30, r3
+    03e9a8:  38600e08   li      r3, 0xe08
+    03e9ac:  4bfc22b5   bl      _FloatLoadNum    ; push 480
+    03e9b0:  4bfc4871   bl      _doPushFloat
+    03e9b4:  7c7d1b78   mr      r29, r3
+    03e9b8:  7fa5eb78   mr      r5, r29
+    03e9bc:  7c7d1b78   mr      r29, r3
+    03e9c0:  38600000   li      r3, 0
+    03e9c4:  4bfc229d   bl      _FloatLoadNum    ; push 0
+    03e9c8:  4bfc4859   bl      _doPushFloat
+    03e9cc:  7c7c1b78   mr      r28, r3
+    03e9d0:  7f86e378   mr      r6, r28
+    03e9d4:  7c7c1b78   mr      r28, r3
+    03e9d8:  7f83e378   mr      r3, r28
+    03e9dc:  c8830000   lfd     f4, 0(r3)
+    03e9e0:  7fa3eb78   mr      r3, r29
+    03e9e4:  c8630000   lfd     f3, 0(r3)
+    03e9e8:  7fc3f378   mr      r3, r30
+    03e9ec:  c8430000   lfd     f2, 0(r3)
+    03e9f0:  7fe3fb78   mr      r3, r31
+    03e9f4:  c8230000   lfd     f1, 0(r3)
+    03e9f8:  4802b1ad   bl      gluOrtho2D    ; [OpenGLUtility]
+    03e9fc:  80410014   lwz     r2, 0x14(r1)
+    03ea00:  7c7f1b78   mr      r31, r3
+    03ea04:  3bc00040   li      r30, 0x40
+    03ea08:  7fc4f378   mr      r4, r30
+    03ea0c:  7fe3fb78   mr      r3, r31
+    03ea10:  4bfc48dd   bl      _doPopNBytes
+    03ea14:  3be01700   li      r31, 0x1700
+    03ea18:  7fe3fb78   mr      r3, r31
+    03ea1c:  4802b051   bl      glMatrixMode    ; [OpenGLLibrary]
+    03ea20:  80410014   lwz     r2, 0x14(r1)
+    03ea24:  3be04000   li      r31, 0x4000
+    03ea28:  7fe3fb78   mr      r3, r31
+    03ea2c:  4802af09   bl      glClear    ; [OpenGLLibrary]
+    03ea30:  80410014   lwz     r2, 0x14(r1)
+    03ea34:  3be00046   li      r31, 0x46
+    03ea38:  38600000   li      r3, 0
+    03ea3c:  4bfc2225   bl      _FloatLoadNum    ; push 0
+    03ea40:  4bfc47e1   bl      _doPushFloat
+    03ea44:  7c7e1b78   mr      r30, r3
+    03ea48:  7fc4f378   mr      r4, r30
+    03ea4c:  7c7e1b78   mr      r30, r3
+    03ea50:  38600000   li      r3, 0
+    03ea54:  4bfc220d   bl      _FloatLoadNum    ; push 0
+    03ea58:  4bfc47c9   bl      _doPushFloat
+    03ea5c:  7c7d1b78   mr      r29, r3
+    03ea60:  7fa5eb78   mr      r5, r29
+    03ea64:  7c7d1b78   mr      r29, r3
+    03ea68:  38600e10   li      r3, 0xe10
+    03ea6c:  4bfc21f5   bl      _FloatLoadNum    ; push 640
+    03ea70:  4bfc47b1   bl      _doPushFloat
+    03ea74:  7c7c1b78   mr      r28, r3
+    03ea78:  7f86e378   mr      r6, r28
+    03ea7c:  7c7c1b78   mr      r28, r3
+    03ea80:  38600e18   li      r3, 0xe18
+    03ea84:  4bfc21dd   bl      _FloatLoadNum    ; push 480
+    03ea88:  4bfc4799   bl      _doPushFloat
+    03ea8c:  7c7b1b78   mr      r27, r3
+    03ea90:  7f67db78   mr      r7, r27
+    03ea94:  7c7b1b78   mr      r27, r3
+    03ea98:  7f67db78   mr      r7, r27
+    03ea9c:  7f86e378   mr      r6, r28
+    03eaa0:  7fa5eb78   mr      r5, r29
+    03eaa4:  7fc4f378   mr      r4, r30
+    03eaa8:  7fe3fb78   mr      r3, r31
+    03eaac:  4bffd0ad   bl      LMDRAWPICTURE
+    03eab0:  7c7f1b78   mr      r31, r3
+    03eab4:  3bc00040   li      r30, 0x40
+    03eab8:  7fc4f378   mr      r4, r30
+    03eabc:  7fe3fb78   mr      r3, r31
+    03eac0:  4bfc482d   bl      _doPopNBytes
+    03eac4:  4bff73f5   bl      LMSWAP
+    03eac8:  3be01388   li      r31, 0x1388
+    03eacc:  7fe3fb78   mr      r3, r31
+    03ead0:  4bfc4c91   bl      _DODELAY
+    03ead4:  4bff49e9   bl      SERVICEMUSIC
+    03ead8:  4800e051   bl      GETKEYMAP
+    03eadc:  48028729   bl      Button    ; [CarbonLib]
+    03eae0:  80410014   lwz     r2, 0x14(r1)
+    03eae4:  7c7f0775   extsb.  r31, r3
+    03eae8:  a86e0ab2   lha     r3, 0xab2(r14)    ; g_0ab2
+    03eaec:  7fe31b79   or.     r3, r31, r3
+    03eaf0:  7c631b79   or.     r3, r3, r3
+    03eaf4:  4182ffe0   beq     L_03ead4
+    03eaf8:  38600000   li      r3, 0
+    03eafc:  b06e0a68   sth     r3, 0xa68(r14)    ; g_0a68
+    03eb00:  38600001   li      r3, 1
+    03eb04:  b06e058c   sth     r3, 0x58c(r14)    ; g_058c
+    03eb08:  382100d0   addi    r1, r1, 0xd0
+    03eb0c:  80010008   lwz     r0, 8(r1)
+    03eb10:  7c0803a6   mtlr    r0
+    03eb14:  b9a1ffa0   lmw     r13, -0x60(r1)
+    03eb18:  4e800020   blr
+
+APPENDIX B — COMPLETE ORIGINAL CHECKREGCODE DISASSEMBLY
+
+    03d844:  7c0802a6   mflr    r0
+    03d848:  90010008   stw     r0, 8(r1)
+    03d84c:  bda1ffa0   stmw    r13, -0x60(r1)
+    03d850:  9421fc30   stwu    r1, -0x3d0(r1)
+    03d854:  39a10020   addi    r13, r1, 0x20
+    03d858:  7c9a2378   mr      r26, r4
+    03d85c:  7c791b78   mr      r25, r3
+    03d860:  7f5fd378   mr      r31, r26
+    03d864:  3bcd0140   addi    r30, r13, 0x140    ; &local_140
+    03d868:  7fc4f378   mr      r4, r30
+    03d86c:  7fe3fb78   mr      r3, r31
+    03d870:  4bfc4e7d   bl      MOVEPASCALSTR
+    03d874:  7f3fcb78   mr      r31, r25
+    03d878:  3bcd0040   addi    r30, r13, 0x40    ; &local_40
+    03d87c:  7fc4f378   mr      r4, r30
+    03d880:  7fe3fb78   mr      r3, r31
+    03d884:  4bfc4e69   bl      MOVEPASCALSTR
+    03d888:  3bed0040   addi    r31, r13, 0x40    ; &local_40
+    03d88c:  7fe3fb78   mr      r3, r31
+    03d890:  4bfc5199   bl      FBGETSTRADDR
+    03d894:  4bfc8b39   bl      _Len
+    03d898:  7c7f1b78   mr      r31, r3
+    03d89c:  1fff0080   mulli   r31, r31, 0x80
+    03d8a0:  3860001a   li      r3, 0x1a
+    03d8a4:  7c9f1bd6   divw    r4, r31, r3
+    03d8a8:  7c8419d6   mullw   r4, r4, r3
+    03d8ac:  7c64f851   subf.   r3, r4, r31
+    03d8b0:  7c701b78   mr      r16, r3
+    03d8b4:  3bed0040   addi    r31, r13, 0x40    ; &local_40
+    03d8b8:  7fe3fb78   mr      r3, r31
+    03d8bc:  4bfc516d   bl      FBGETSTRADDR
+    03d8c0:  4bfc55d1   bl      _PushString
+    03d8c4:  3be00001   li      r31, 1
+    03d8c8:  3bc00001   li      r30, 1
+    03d8cc:  7fc4f378   mr      r4, r30
+    03d8d0:  7fe3fb78   mr      r3, r31
+    03d8d4:  4bfc9061   bl      FBMID
+    03d8d8:  4bfc8c31   bl      _Asc
+    03d8dc:  7c7f1b78   mr      r31, r3
+    03d8e0:  1fff000d   mulli   r31, r31, 0xd
+    03d8e4:  3860001a   li      r3, 0x1a
+    03d8e8:  7c9f1bd6   divw    r4, r31, r3
+    03d8ec:  7c8419d6   mullw   r4, r4, r3
+    03d8f0:  7c64f851   subf.   r3, r4, r31
+    03d8f4:  7c711b78   mr      r17, r3
+    03d8f8:  3bed0040   addi    r31, r13, 0x40    ; &local_40
+    03d8fc:  7fe3fb78   mr      r3, r31
+    03d900:  4bfc5129   bl      FBGETSTRADDR
+    03d904:  4bfc558d   bl      _PushString
+    03d908:  3bed0040   addi    r31, r13, 0x40    ; &local_40
+    03d90c:  7fe3fb78   mr      r3, r31
+    03d910:  4bfc5119   bl      FBGETSTRADDR
+    03d914:  4bfc8ab9   bl      _Len
+    03d918:  7c7f1b78   mr      r31, r3
+    03d91c:  3bffffff   addi    r31, r31, -1
+    03d920:  3bc00001   li      r30, 1
+    03d924:  7fc4f378   mr      r4, r30
+    03d928:  7fe3fb78   mr      r3, r31
+    03d92c:  4bfc9009   bl      FBMID
+    03d930:  4bfc8bd9   bl      _Asc
+    03d934:  7c7f1b78   mr      r31, r3
+    03d938:  1fff002a   mulli   r31, r31, 0x2a
+    03d93c:  3860001a   li      r3, 0x1a
+    03d940:  7c9f1bd6   divw    r4, r31, r3
+    03d944:  7c8419d6   mullw   r4, r4, r3
+    03d948:  7c64f851   subf.   r3, r4, r31
+    03d94c:  7c721b78   mr      r18, r3
+    03d950:  3bed0040   addi    r31, r13, 0x40    ; &local_40
+    03d954:  7fe3fb78   mr      r3, r31
+    03d958:  4bfc50d1   bl      FBGETSTRADDR
+    03d95c:  4bfc5535   bl      _PushString
+    03d960:  3be00002   li      r31, 2
+    03d964:  3bc00001   li      r30, 1
+    03d968:  7fc4f378   mr      r4, r30
+    03d96c:  7fe3fb78   mr      r3, r31
+    03d970:  4bfc8fc5   bl      FBMID
+    03d974:  4bfc8b95   bl      _Asc
+    03d978:  7c7f1b78   mr      r31, r3
+    03d97c:  1fff0023   mulli   r31, r31, 0x23
+    03d980:  3860001a   li      r3, 0x1a
+    03d984:  7c9f1bd6   divw    r4, r31, r3
+    03d988:  7c8419d6   mullw   r4, r4, r3
+    03d98c:  7c64f851   subf.   r3, r4, r31
+    03d990:  7c731b78   mr      r19, r3
+    03d994:  3bed0040   addi    r31, r13, 0x40    ; &local_40
+    03d998:  7fe3fb78   mr      r3, r31
+    03d99c:  4bfc508d   bl      FBGETSTRADDR
+    03d9a0:  4bfc54f1   bl      _PushString
+    03d9a4:  3be00001   li      r31, 1
+    03d9a8:  3bc00001   li      r30, 1
+    03d9ac:  7fc4f378   mr      r4, r30
+    03d9b0:  7fe3fb78   mr      r3, r31
+    03d9b4:  4bfc8f81   bl      FBMID
+    03d9b8:  4bfc8b51   bl      _Asc
+    03d9bc:  7c7f1b78   mr      r31, r3
+    03d9c0:  1fff0048   mulli   r31, r31, 0x48
+    03d9c4:  3860001a   li      r3, 0x1a
+    03d9c8:  7c9f1bd6   divw    r4, r31, r3
+    03d9cc:  7c8419d6   mullw   r4, r4, r3
+    03d9d0:  7c64f851   subf.   r3, r4, r31
+    03d9d4:  7c741b78   mr      r20, r3
+    03d9d8:  3bed0040   addi    r31, r13, 0x40    ; &local_40
+    03d9dc:  7fe3fb78   mr      r3, r31
+    03d9e0:  4bfc5049   bl      FBGETSTRADDR
+    03d9e4:  4bfc54ad   bl      _PushString
+    03d9e8:  3be00002   li      r31, 2
+    03d9ec:  3bc00001   li      r30, 1
+    03d9f0:  7fc4f378   mr      r4, r30
+    03d9f4:  7fe3fb78   mr      r3, r31
+    03d9f8:  4bfc8f3d   bl      FBMID
+    03d9fc:  4bfc8b0d   bl      _Asc
+    03da00:  7c7f1b78   mr      r31, r3
+    03da04:  1fff0023   mulli   r31, r31, 0x23
+    03da08:  3860001a   li      r3, 0x1a
+    03da0c:  7c9f1bd6   divw    r4, r31, r3
+    03da10:  7c8419d6   mullw   r4, r4, r3
+    03da14:  7c64f851   subf.   r3, r4, r31
+    03da18:  7c751b78   mr      r21, r3
+    03da1c:  3bed0040   addi    r31, r13, 0x40    ; &local_40
+    03da20:  7fe3fb78   mr      r3, r31
+    03da24:  4bfc5005   bl      FBGETSTRADDR
+    03da28:  4bfc5469   bl      _PushString
+    03da2c:  3be00003   li      r31, 3
+    03da30:  3bc00001   li      r30, 1
+    03da34:  7fc4f378   mr      r4, r30
+    03da38:  7fe3fb78   mr      r3, r31
+    03da3c:  4bfc8ef9   bl      FBMID
+    03da40:  4bfc8ac9   bl      _Asc
+    03da44:  7c7f1b78   mr      r31, r3
+    03da48:  1fff0018   mulli   r31, r31, 0x18
+    03da4c:  3860001a   li      r3, 0x1a
+    03da50:  7c9f1bd6   divw    r4, r31, r3
+    03da54:  7c8419d6   mullw   r4, r4, r3
+    03da58:  7c64f851   subf.   r3, r4, r31
+    03da5c:  7c761b78   mr      r22, r3
+    03da60:  3bed0040   addi    r31, r13, 0x40    ; &local_40
+    03da64:  7fe3fb78   mr      r3, r31
+    03da68:  4bfc4fc1   bl      FBGETSTRADDR
+    03da6c:  4bfc5425   bl      _PushString
+    03da70:  3be00003   li      r31, 3
+    03da74:  3bc00001   li      r30, 1
+    03da78:  7fc4f378   mr      r4, r30
+    03da7c:  7fe3fb78   mr      r3, r31
+    03da80:  4bfc8eb5   bl      FBMID
+    03da84:  4bfc8a85   bl      _Asc
+    03da88:  7c7f1b78   mr      r31, r3
+    03da8c:  1fff000b   mulli   r31, r31, 0xb
+    03da90:  3860001a   li      r3, 0x1a
+    03da94:  7c9f1bd6   divw    r4, r31, r3
+    03da98:  7c8419d6   mullw   r4, r4, r3
+    03da9c:  7c64f851   subf.   r3, r4, r31
+    03daa0:  b06d0340   sth     r3, 0x340(r13)    ; local_340
+    03daa4:  7e1f8378   mr      r31, r16
+    03daa8:  7e439378   mr      r3, r18
+    03daac:  7c7f1a14   add     r3, r31, r3
+    03dab0:  7c7f1b78   mr      r31, r3
+    03dab4:  3860001a   li      r3, 0x1a
+    03dab8:  7c9f1bd6   divw    r4, r31, r3
+    03dabc:  7c8419d6   mullw   r4, r4, r3
+    03dac0:  7c64f851   subf.   r3, r4, r31
+    03dac4:  7c701b78   mr      r16, r3
+    03dac8:  7e3f8b78   mr      r31, r17
+    03dacc:  7ea3ab78   mr      r3, r21
+    03dad0:  7c7f1a14   add     r3, r31, r3
+    03dad4:  7c7f1b78   mr      r31, r3
+    03dad8:  3860001a   li      r3, 0x1a
+    03dadc:  7c9f1bd6   divw    r4, r31, r3
+    03dae0:  7c8419d6   mullw   r4, r4, r3
+    03dae4:  7c64f851   subf.   r3, r4, r31
+    03dae8:  7c711b78   mr      r17, r3
+    03daec:  7e5f9378   mr      r31, r18
+    03daf0:  7ec3b378   mr      r3, r22
+    03daf4:  7c7f1a14   add     r3, r31, r3
+    03daf8:  7c7f1b78   mr      r31, r3
+    03dafc:  3860001a   li      r3, 0x1a
+    03db00:  7c9f1bd6   divw    r4, r31, r3
+    03db04:  7c8419d6   mullw   r4, r4, r3
+    03db08:  7c64f851   subf.   r3, r4, r31
+    03db0c:  7c721b78   mr      r18, r3
+    03db10:  7e7f9b78   mr      r31, r19
+    03db14:  7e038378   mr      r3, r16
+    03db18:  7c7f1a14   add     r3, r31, r3
+    03db1c:  7c7f1b78   mr      r31, r3
+    03db20:  3860001a   li      r3, 0x1a
+    03db24:  7c9f1bd6   divw    r4, r31, r3
+    03db28:  7c8419d6   mullw   r4, r4, r3
+    03db2c:  7c64f851   subf.   r3, r4, r31
+    03db30:  7c731b78   mr      r19, r3
+    03db34:  7e9fa378   mr      r31, r20
+    03db38:  7ec3b378   mr      r3, r22
+    03db3c:  7c7f1a14   add     r3, r31, r3
+    03db40:  7c7f1b78   mr      r31, r3
+    03db44:  3860001a   li      r3, 0x1a
+    03db48:  7c9f1bd6   divw    r4, r31, r3
+    03db4c:  7c8419d6   mullw   r4, r4, r3
+    03db50:  7c64f851   subf.   r3, r4, r31
+    03db54:  7c741b78   mr      r20, r3
+    03db58:  7ebfab78   mr      r31, r21
+    03db5c:  7e639b78   mr      r3, r19
+    03db60:  7c7f1a14   add     r3, r31, r3
+    03db64:  7c7f1b78   mr      r31, r3
+    03db68:  3860001a   li      r3, 0x1a
+    03db6c:  7c9f1bd6   divw    r4, r31, r3
+    03db70:  7c8419d6   mullw   r4, r4, r3
+    03db74:  7c64f851   subf.   r3, r4, r31
+    03db78:  7c751b78   mr      r21, r3
+    03db7c:  7edfb378   mr      r31, r22
+    03db80:  a86d0340   lha     r3, 0x340(r13)    ; local_340
+    03db84:  7c7f1a14   add     r3, r31, r3
+    03db88:  7c7f1b78   mr      r31, r3
+    03db8c:  3860001a   li      r3, 0x1a
+    03db90:  7c9f1bd6   divw    r4, r31, r3
+    03db94:  7c8419d6   mullw   r4, r4, r3
+    03db98:  7c64f851   subf.   r3, r4, r31
+    03db9c:  7c761b78   mr      r22, r3
+    03dba0:  abed0340   lha     r31, 0x340(r13)    ; local_340
+    03dba4:  7ea3ab78   mr      r3, r21
+    03dba8:  7c7f1a14   add     r3, r31, r3
+    03dbac:  7c7f1b78   mr      r31, r3
+    03dbb0:  3860001a   li      r3, 0x1a
+    03dbb4:  7c9f1bd6   divw    r4, r31, r3
+    03dbb8:  7c8419d6   mullw   r4, r4, r3
+    03dbbc:  7c64f851   subf.   r3, r4, r31
+    03dbc0:  b06d0340   sth     r3, 0x340(r13)    ; local_340
+    03dbc4:  7e1f8378   mr      r31, r16
+    03dbc8:  3bff0041   addi    r31, r31, 0x41
+    03dbcc:  7fe3fb78   mr      r3, r31
+    03dbd0:  4bfc68ad   bl      _Chr
+    03dbd4:  4bfc52bd   bl      _PushString
+    03dbd8:  7e3f8b78   mr      r31, r17
+    03dbdc:  3bff0041   addi    r31, r31, 0x41
+    03dbe0:  7fe3fb78   mr      r3, r31
+    03dbe4:  4bfc6899   bl      _Chr
+    03dbe8:  4bfc530d   bl      FBAddStrings
+    03dbec:  4bfc52a5   bl      _PushString
+    03dbf0:  7e5f9378   mr      r31, r18
+    03dbf4:  3bff0041   addi    r31, r31, 0x41
+    03dbf8:  7fe3fb78   mr      r3, r31
+    03dbfc:  4bfc6881   bl      _Chr
+    03dc00:  4bfc52f5   bl      FBAddStrings
+    03dc04:  4bfc528d   bl      _PushString
+    03dc08:  7e7f9b78   mr      r31, r19
+    03dc0c:  3bff0041   addi    r31, r31, 0x41
+    03dc10:  7fe3fb78   mr      r3, r31
+    03dc14:  4bfc6869   bl      _Chr
+    03dc18:  4bfc52dd   bl      FBAddStrings
+    03dc1c:  4bfc5275   bl      _PushString
+    03dc20:  7e9fa378   mr      r31, r20
+    03dc24:  3bff0041   addi    r31, r31, 0x41
+    03dc28:  7fe3fb78   mr      r3, r31
+    03dc2c:  4bfc6851   bl      _Chr
+    03dc30:  4bfc52c5   bl      FBAddStrings
+    03dc34:  4bfc525d   bl      _PushString
+    03dc38:  7ebfab78   mr      r31, r21
+    03dc3c:  3bff0041   addi    r31, r31, 0x41
+    03dc40:  7fe3fb78   mr      r3, r31
+    03dc44:  4bfc6839   bl      _Chr
+    03dc48:  4bfc52ad   bl      FBAddStrings
+    03dc4c:  4bfc5245   bl      _PushString
+    03dc50:  7edfb378   mr      r31, r22
+    03dc54:  3bff0041   addi    r31, r31, 0x41
+    03dc58:  7fe3fb78   mr      r3, r31
+    03dc5c:  4bfc6821   bl      _Chr
+    03dc60:  4bfc5295   bl      FBAddStrings
+    03dc64:  4bfc522d   bl      _PushString
+    03dc68:  abed0340   lha     r31, 0x340(r13)    ; local_340
+    03dc6c:  3bff0041   addi    r31, r31, 0x41
+    03dc70:  7fe3fb78   mr      r3, r31
+    03dc74:  4bfc6809   bl      _Chr
+    03dc78:  4bfc527d   bl      FBAddStrings
+    03dc7c:  3bed0240   addi    r31, r13, 0x240    ; &local_240
+    03dc80:  3bc00100   li      r30, 0x100
+    03dc84:  7fc4f378   mr      r4, r30
+    03dc88:  7fe3fb78   mr      r3, r31
+    03dc8c:  4bfc4d05   bl      FBSetPascalStr
+    03dc90:  39e00000   li      r15, 0
+    03dc94:  3c6061a8   lis     r3, 0x61a8
+    03dc98:  386300a5   addi    r3, r3, 0xa5    ; = 0x61a800a5
+    03dc9c:  4bfc500d   bl      _GETSTRRSRC    ; STR#25000[165] "Unregistered"
+    03dca0:  3bee0ac2   addi    r31, r14, 0xac2    ; &g_0ac2
+    03dca4:  3bc00100   li      r30, 0x100
+    03dca8:  7fc4f378   mr      r4, r30
+    03dcac:  7fe3fb78   mr      r3, r31
+    03dcb0:  4bfc4ce1   bl      FBSetPascalStr
+    03dcb4:  3bed0140   addi    r31, r13, 0x140    ; &local_140
+    03dcb8:  7fe3fb78   mr      r3, r31
+    03dcbc:  4bfc4d6d   bl      FBGETSTRADDR
+    03dcc0:  4bfc51d1   bl      _PushString
+    03dcc4:  3bed0240   addi    r31, r13, 0x240    ; &local_240
+    03dcc8:  7fe3fb78   mr      r3, r31
+    03dccc:  4bfc4d5d   bl      FBGETSTRADDR
+    03dcd0:  3be00001   li      r31, 1
+    03dcd4:  7fe3fb78   mr      r3, r31
+    03dcd8:  4bfc56cd   bl      FBCompareStrings
+    03dcdc:  7c631b79   or.     r3, r3, r3
+    03dce0:  40820008   bne     L_03dce8
+    03dce4:  48000094   b       L_03dd78
+    03dce8:  39e00001   li      r15, 1
+    03dcec:  3c6061a8   lis     r3, 0x61a8
+    03dcf0:  386300a6   addi    r3, r3, 0xa6    ; = 0x61a800a6
+    03dcf4:  4bfc4fb5   bl      _GETSTRRSRC    ; STR#25000[166] "Register"
+    03dcf8:  4bfc558d   bl      _doPushString
+    03dcfc:  7c7f1b78   mr      r31, r3
+    03dd00:  3bc00000   li      r30, 0
+    03dd04:  7fc4f378   mr      r4, r30
+    03dd08:  7fe3fb78   mr      r3, r31
+    03dd0c:  4bffd555   bl      LMGETSPRITE
+    03dd10:  7c7f1b78   mr      r31, r3
+    03dd14:  3bc00100   li      r30, 0x100
+    03dd18:  7fc4f378   mr      r4, r30
+    03dd1c:  7fe3fb78   mr      r3, r31
+    03dd20:  4bfc55cd   bl      _doPopNBytes
+    03dd24:  7c7f1b78   mr      r31, r3
+    03dd28:  7fe3fb78   mr      r3, r31
+    03dd2c:  4bff70ad   bl      LMKILLSPRITE
+    03dd30:  38600001   li      r3, 1
+    03dd34:  b06e0a0c   sth     r3, 0xa0c(r14)    ; g_0a0c
+    03dd38:  3bed0040   addi    r31, r13, 0x40    ; &local_40
+    03dd3c:  7fe3fb78   mr      r3, r31
+    03dd40:  4bfc4ce9   bl      FBGETSTRADDR
+    03dd44:  3bee0ac2   addi    r31, r14, 0xac2    ; &g_0ac2
+    03dd48:  3bc00100   li      r30, 0x100
+    03dd4c:  7fc4f378   mr      r4, r30
+    03dd50:  7fe3fb78   mr      r3, r31
+    03dd54:  4bfc4c3d   bl      FBSetPascalStr
+    03dd58:  3bed0140   addi    r31, r13, 0x140    ; &local_140
+    03dd5c:  7fe3fb78   mr      r3, r31
+    03dd60:  4bfc4cc9   bl      FBGETSTRADDR
+    03dd64:  3bee0bc2   addi    r31, r14, 0xbc2    ; &g_0bc2
+    03dd68:  3bc00100   li      r30, 0x100
+    03dd6c:  7fc4f378   mr      r4, r30
+    03dd70:  7fe3fb78   mr      r3, r31
+    03dd74:  4bfc4c1d   bl      FBSetPascalStr
+    03dd78:  7de37b78   mr      r3, r15
+    03dd7c:  382103d0   addi    r1, r1, 0x3d0
+    03dd80:  80010008   lwz     r0, 8(r1)
+    03dd84:  7c0803a6   mtlr    r0
+    03dd88:  b9a1ffa0   lmw     r13, -0x60(r1)
+    03dd8c:  4e800020   blr
