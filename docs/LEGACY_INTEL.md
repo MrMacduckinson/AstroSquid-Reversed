@@ -1,7 +1,7 @@
 # Intel Legacy: Mac OS X 10.7 Lion target
 
-`Applications/Intel-Legacy/AstroSquid.app`, also distributed as
-`AstroSquid-Intel-Legacy.zip`, is an additional **x86_64** application, not i386.
+`Applications/x86_64-SDK10.13-min10.7/AstroSquid.app`, also distributed as
+`AstroSquid-x86_64-SDK10.13-min10.7.zip`, is an additional **x86_64** application, not i386.
 It requires a 64-bit Intel CPU; first-generation 32-bit Core Duo, 10.4–10.6 and
 PowerPC are not covered by this variant.
 

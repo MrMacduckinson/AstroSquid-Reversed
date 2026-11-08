@@ -83,8 +83,8 @@ use ordinary gameplay to listen to effects, not that technical test.
 ## Updating the packaged applications
 
 Build the same committed revision on each target architecture. Copy the entire
-bundle (not only its executable) into `Applications/ARM/AstroSquid.app` or
-`Applications/Intel/AstroSquid.app` with macOS `ditto`. Recheck architecture,
+bundle (not only its executable) into `Applications/arm64-SDK27.0-min11.0/AstroSquid.app` or
+`Applications/x86_64-SDK10.13-min10.13/AstroSquid.app` with macOS `ditto`. Recheck architecture,
 Mach-O minimum and Info.plist; keep executable permissions and all resources.
 Update `Applications/BUILD_INFO.json` with the source revision, build/test hosts,
 and SHA-256 of each executable; update `Applications/SHA256SUMS` for all bundle

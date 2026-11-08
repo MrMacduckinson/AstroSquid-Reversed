@@ -1,9 +1,9 @@
 # Ready-to-run applications
 
-- `ARM/AstroSquid.app`: Apple Silicon, macOS **11.0+**.
-- `Intel/AstroSquid.app`: Intel x86_64, macOS **10.13+**.
-- `Intel-Legacy/AstroSquid.app`: Intel x86_64, target **10.7+**, separate OpenAL backend; not tested on Lion itself.
-- `Intel-Tiger/AstroSquid.app`: i386, target **10.4+**; not tested on Tiger itself. Requires 32-bit application support (through macOS 10.14).
+- `arm64-SDK27.0-min11.0/AstroSquid.app`: Apple Silicon, macOS **11.0+**.
+- `x86_64-SDK10.13-min10.13/AstroSquid.app`: Intel x86_64, macOS **10.13+**.
+- `x86_64-SDK10.13-min10.7/AstroSquid.app`: Intel x86_64, target **10.7+**, separate OpenAL backend; not tested on Lion itself.
+- `i386-SDK10.4u-min10.4/AstroSquid.app`: i386, target **10.4+**; not tested on Tiger itself. Requires 32-bit application support (through macOS 10.14).
 
 Each `.app` is a self-contained macOS application bundle with resources. Transfer
 the whole bundle, not just Contents/MacOS/AstroSquid. Use the application ZIPs

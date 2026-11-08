@@ -6,9 +6,9 @@ if [ -n "$(git status --porcelain)" ]; then
   printf 'Commit the source, assets and Applications before packaging.\n' >&2
   exit 1
 fi
-for target in ARM Intel Intel-Legacy Intel-Tiger; do
+for target in arm64-SDK27.0-min11.0 x86_64-SDK10.13-min10.13 x86_64-SDK10.13-min10.7 i386-SDK10.4u-min10.4; do
   app="Applications/$target/AstroSquid.app"
-  case "$target" in ARM) arch=arm64; minimum=11.0 ;; Intel) arch=x86_64; minimum=10.13 ;; Intel-Legacy) arch=x86_64; minimum=10.7 ;; Intel-Tiger) arch=i386; minimum=10.4 ;; esac
+  case "$target" in arm64-*) arch=arm64; minimum=11.0 ;; x86_64-*-min10.13) arch=x86_64; minimum=10.13 ;; x86_64-*-min10.7) arch=x86_64; minimum=10.7 ;; i386-*) arch=i386; minimum=10.4 ;; esac
   lipo "$app/Contents/MacOS/AstroSquid" -verify_arch "$arch"
   declared=$(/usr/libexec/PlistBuddy -c 'Print LSMinimumSystemVersion' "$app/Contents/Info.plist")
   [ "$declared" = "$minimum" ] || { printf 'Wrong minimum for %s\n' "$target" >&2; exit 1; }
@@ -26,7 +26,7 @@ cp README.md SOURCE_GUIDE.md VALIDATION.md STATUS.md CHANGELOG.md THIRD_PARTY.md
 git rev-parse HEAD > "$source_dir/SOURCE_COMMIT.txt"
 git archive HEAD | tar -xf - -C "$repo_dir"
 git rev-parse HEAD > "$repo_dir/SOURCE_COMMIT.txt"
-for target in ARM Intel Intel-Legacy Intel-Tiger; do
+for target in arm64-SDK27.0-min11.0 x86_64-SDK10.13-min10.13 x86_64-SDK10.13-min10.7 i386-SDK10.4u-min10.4; do
   /usr/bin/ditto -c -k --norsrc --noextattr --noqtn --keepParent "Applications/$target/AstroSquid.app" "$output/AstroSquid-$target.zip"
 done
 /usr/bin/ditto -c -k --norsrc --noextattr --noqtn --keepParent "$source_dir" "$output/AstroSquid-Source.zip"

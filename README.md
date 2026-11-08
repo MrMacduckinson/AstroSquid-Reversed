@@ -1,18 +1,22 @@
-# AstroSquid 1.1 — reconstruction and native Mac port
+# AstroSquid Reversed 0.0.1
 
 A buildable C/Objective-C project with **four ready-to-run applications**. This
 reconstructs the behavior of Lost Minds' original game; it is not recovered
 FutureBASIC source. Playing requires no emulator, Classic Environment, or original
 executable.
 
+This port is version **0.0.1**, based on the original AstroSquid 1.1.
+`main` has no player cheats; `with-cheats` adds the optional `weapons` cheat.
+Download complete application bundles from [Releases](https://github.com/MrMacduckinson/AstroSquid-Reversed/releases).
+
 ## Choose an application
 
 | Mac | Application | Minimum macOS target | Runtime validation |
 | --- | --- | --- | --- |
-| Apple Silicon, ARM64 | [Applications/ARM/AstroSquid.app](Applications/ARM/) | **11.0 Big Sur** | ARM macOS 27.0, OS build 26A5406e |
-| Intel, x86_64 | [Applications/Intel/AstroSquid.app](Applications/Intel/) | **10.13 High Sierra** | Intel macOS 10.13.6 |
-| Older Intel, x86_64 | [Applications/Intel-Legacy/AstroSquid.app](Applications/Intel-Legacy/) | **10.7 Lion** | Tested on 10.13.6; Lion itself untested |
-| Intel i386, including Core Duo | [Applications/Intel-Tiger/AstroSquid.app](Applications/Intel-Tiger/) | **10.4 Tiger** | i386 tests on 10.13.6; Tiger itself untested |
+| Apple Silicon, ARM64 | [Applications/arm64-SDK27.0-min11.0/AstroSquid.app](Applications/arm64-SDK27.0-min11.0/) | **11.0 Big Sur** | ARM macOS 27.0, OS build 26A5406e |
+| Intel, x86_64 | [Applications/x86_64-SDK10.13-min10.13/AstroSquid.app](Applications/x86_64-SDK10.13-min10.13/) | **10.13 High Sierra** | Intel macOS 10.13.6 |
+| Older Intel, x86_64 | [Applications/x86_64-SDK10.13-min10.7/AstroSquid.app](Applications/x86_64-SDK10.13-min10.7/) | **10.7 Lion** | Tested on 10.13.6; Lion itself untested |
+| Intel i386, including Core Duo | [Applications/i386-SDK10.4u-min10.4/AstroSquid.app](Applications/i386-SDK10.4u-min10.4/) | **10.4 Tiger** | i386 tests on 10.13.6; Tiger itself untested |
 
 Minimums are recorded in both Mach-O and Info.plist. They are deployment targets,
 not proof of runtime compatibility with every intervening OS. ARM has not been

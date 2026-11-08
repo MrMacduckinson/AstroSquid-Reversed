@@ -1,3 +1,8 @@
+# Version 0.0.1 — 2026-11-08
+
+First public reconstruction release. Target names include architecture, SDK and minimum OS.
+The main branch keeps normal gameplay; optional weapon selection is on with-cheats.
+
 # Changes
 
 ## English-language distribution and Sam comparison — 2026-11-03

@@ -1,6 +1,6 @@
 # Separate Intel / Mac OS X 10.4 port
 
-`Applications/Intel-Tiger/AstroSquid.app` is a 32-bit i386 application built with
+`Applications/i386-SDK10.4u-min10.4/AstroSquid.app` is a 32-bit i386 application built with
 an actual MacOSX10.4u SDK and deployment target 10.4, including first-generation
 Intel Core Duo machines. It is native and needs neither Classic nor Rosetta.
 macOS 10.15 and later cannot run 32-bit applications; choose another variant there.
@@ -50,7 +50,7 @@ python3 tests/tiger_tools_test.py
 ```
 
 Output: `build/tiger-intel/AstroSquid.app`. Distribute the entire bundle or
-`AstroSquid-Intel-Tiger.zip`; users need no SDK or separate assets directory.
+`AstroSquid-i386-SDK10.4u-min10.4.zip`; users need no SDK or separate assets directory.
 
 ## Checks and limits
 

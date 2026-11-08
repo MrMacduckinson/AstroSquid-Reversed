@@ -3,46 +3,50 @@
   "notes": [
     "Native-resolution fullscreen, CmdCtrlF and original font border cleanup in all four variants.",
     "Fullscreen and font framebuffer checks passed on ARM27 and Intel10.13.6 (modern, legacy, i386).",
-    "No actual10.4/10.7 or new full-campaign validation; minimum targets unchanged."
+    "No actual10.4/10.7 or new full-campaign validation; minimum targets unchanged.",
+    "0.0.1: renamed target directories, updated bundle versions and ad-hoc signatures; game code unchanged on main."
   ],
   "applications": [
     {
-      "path": "Applications/ARM/AstroSquid.app",
+      "path": "Applications/arm64-SDK27.0-min11.0/AstroSquid.app",
       "architecture": "arm64",
       "minimum_macos": "11.0",
       "build_host": "macOS27.0 / Xcode27",
-      "executable_sha256": "5656049879cf3740f3fce713d8eb5a0e7cbe965ee011070a935f1332e79cbed9",
+      "executable_sha256": "eb3d79f4b39ca3578c2289ab6f42afc941dc9de495443ac27d2ae73bf4fd6b27",
       "runtime_on_minimum_os_verified": false,
       "source_commit": "d7dfe23316a67025548c12b281405ac346a24078",
-      "fullscreen_verified": "Native resolution, 4:3, CmdCtrlF/window restoration and exit on ARM27"
+      "fullscreen_verified": "Native resolution, 4:3, CmdCtrlF/window restoration and exit on ARM27",
+      "sdk": "27.0"
     },
     {
-      "path": "Applications/Intel/AstroSquid.app",
+      "path": "Applications/x86_64-SDK10.13-min10.13/AstroSquid.app",
       "architecture": "x86_64",
       "minimum_macos": "10.13",
       "build_host": "macOS10.13.6 / Apple LLVM10",
-      "executable_sha256": "12a3ea367e4bfb6ff36b7d3acbf1f750c133e019609ed10937425aa7f72536d0",
+      "executable_sha256": "0f649f843ebe6e17034e658a44ded188234ae56315c21679879e320d74e5d612",
       "runtime_on_minimum_os_verified": false,
       "source_commit": "d7dfe23316a67025548c12b281405ac346a24078",
-      "fullscreen_verified": "Native resolution, 4:3, CmdCtrlF/window restoration and exit on Intel10.13.6"
+      "fullscreen_verified": "Native resolution, 4:3, CmdCtrlF/window restoration and exit on Intel10.13.6",
+      "sdk": "10.13"
     },
     {
-      "path": "Applications/Intel-Legacy/AstroSquid.app",
+      "path": "Applications/x86_64-SDK10.13-min10.7/AstroSquid.app",
       "architecture": "x86_64",
       "minimum_macos": "10.7",
       "build_host": "macOS10.13.6 / Apple LLVM10",
-      "executable_sha256": "a60c040c9e2e086e0194aa5341091f393882943a33d87ca813007f6738ce2849",
+      "executable_sha256": "0535f0589b1fafbb0fd796eab7e61acd789fa4801a4172705fdb528724967657",
       "runtime_on_minimum_os_verified": false,
       "source_commit": "d7dfe23316a67025548c12b281405ac346a24078",
-      "fullscreen_verified": "Native resolution, 4:3, CmdCtrlF/window restoration and exit on Intel10.13.6"
+      "fullscreen_verified": "Native resolution, 4:3, CmdCtrlF/window restoration and exit on Intel10.13.6",
+      "sdk": "10.13"
     },
     {
-      "path": "Applications/Intel-Tiger/AstroSquid.app",
+      "path": "Applications/i386-SDK10.4u-min10.4/AstroSquid.app",
       "architecture": "i386",
       "minimum_macos": "10.4",
       "build_host": "macOS10.13.6 / Apple LLVM10 / actual SDK10.4u with isolated normalized linker stubs",
       "source_commit": "d7dfe23316a67025548c12b281405ac346a24078",
-      "executable_sha256": "cd211cec17ac72d30d88327dd10d8c5970bb9ad9f24df1d768f4e74534c6bf3c",
+      "executable_sha256": "d046cba4cd57e4adefb3e4c2920572d74aa236f3ef8a4ab5a1a7f0f98b25ddac",
       "runtime_on_minimum_os_verified": false,
       "runtime_test_host": "Intel10.13.6 i386",
       "limitations": [
@@ -50,8 +54,11 @@
         "No full campaign run on this variant"
       ],
       "launch_verified": "LaunchServices startup and rendered splash on Intel10.13.6 after Foundation compatibility fix",
-      "fullscreen_verified": "Native resolution, 4:3, CmdCtrlF/window restoration and exit on Intel10.13.6"
+      "fullscreen_verified": "Native resolution, 4:3, CmdCtrlF/window restoration and exit on Intel10.13.6",
+      "sdk": "10.4u"
     }
   ],
-  "source_commit_note": "All four bundles built from the recorded shared source revision."
+  "source_commit_note": "All four bundles built from the recorded shared source revision.",
+  "release_version": "0.0.1",
+  "packaged_date": "2026-11-08"
 }
