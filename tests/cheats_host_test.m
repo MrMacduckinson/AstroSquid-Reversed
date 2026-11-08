@@ -42,6 +42,9 @@
 }
 @end
 int main(void){@autoreleasepool{
-    [NSApplication sharedApplication];[NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
+    [NSApplication sharedApplication];
+#ifndef ASTRO_TIGER_TEST
+    [NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
+#endif
     CheatView *view=[[CheatView alloc]initWithFrame:NSMakeRect(0,0,640,480)];[view verifyCheat];
 }}

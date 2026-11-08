@@ -1,10 +1,9 @@
 {
-  "built_date": "2026-11-03",
+  "built_date": "2026-11-08",
   "notes": [
-    "Native-resolution fullscreen, CmdCtrlF and original font border cleanup in all four variants.",
-    "Fullscreen and font framebuffer checks passed on ARM27 and Intel10.13.6 (modern, legacy, i386).",
-    "No actual10.4/10.7 or new full-campaign validation; minimum targets unchanged.",
-    "0.0.1: renamed target directories, updated bundle versions and ad-hoc signatures; game code unchanged on main."
+    "Rebuilt all four variants with the weapons cheat.",
+    "ARM and Intel native component suites passed; actual modern and i386 keyboard handlers passed.",
+    "No full gameplay campaign or actual minimum-OS runtime retest."
   ],
   "applications": [
     {
@@ -12,41 +11,44 @@
       "architecture": "arm64",
       "minimum_macos": "11.0",
       "build_host": "macOS27.0 / Xcode27",
-      "executable_sha256": "eb3d79f4b39ca3578c2289ab6f42afc941dc9de495443ac27d2ae73bf4fd6b27",
+      "executable_sha256": "34e995e12add50f771c0fdad38f89258ee8ff84a5c12eebbcf6bbabc69b7caa0",
       "runtime_on_minimum_os_verified": false,
-      "source_commit": "d7dfe23316a67025548c12b281405ac346a24078",
-      "fullscreen_verified": "Native resolution, 4:3, CmdCtrlF/window restoration and exit on ARM27",
-      "sdk": "27.0"
+      "source_commit": "83c0450289acf6a686c137c40bc51d55b4ec8057",
+      "fullscreen_verified": "Historical check on previous game revision; not repeated for weapons cheat",
+      "sdk": "27.0",
+      "keyboard_cheat_verified": "Actual keyDown on ARM27 or Intel10.13.6, without window/audio/preferences writes"
     },
     {
       "path": "Applications/x86_64-SDK10.13-min10.13/AstroSquid.app",
       "architecture": "x86_64",
       "minimum_macos": "10.13",
       "build_host": "macOS10.13.6 / Apple LLVM10",
-      "executable_sha256": "0f649f843ebe6e17034e658a44ded188234ae56315c21679879e320d74e5d612",
+      "executable_sha256": "058db8dbdc7ec92ef0c494e50a71fc0ca2704d5f1343fabfb1e8331dae8f86ca",
       "runtime_on_minimum_os_verified": false,
-      "source_commit": "d7dfe23316a67025548c12b281405ac346a24078",
-      "fullscreen_verified": "Native resolution, 4:3, CmdCtrlF/window restoration and exit on Intel10.13.6",
-      "sdk": "10.13"
+      "source_commit": "83c0450289acf6a686c137c40bc51d55b4ec8057",
+      "fullscreen_verified": "Historical check on previous game revision; not repeated for weapons cheat",
+      "sdk": "10.13",
+      "keyboard_cheat_verified": "Actual keyDown on ARM27 or Intel10.13.6, without window/audio/preferences writes"
     },
     {
       "path": "Applications/x86_64-SDK10.13-min10.7/AstroSquid.app",
       "architecture": "x86_64",
       "minimum_macos": "10.7",
       "build_host": "macOS10.13.6 / Apple LLVM10",
-      "executable_sha256": "0535f0589b1fafbb0fd796eab7e61acd789fa4801a4172705fdb528724967657",
+      "executable_sha256": "f5c3d328ae74b3dbaef856daa4e5b5eec47d4731c496d22020471fef50a63d73",
       "runtime_on_minimum_os_verified": false,
-      "source_commit": "d7dfe23316a67025548c12b281405ac346a24078",
-      "fullscreen_verified": "Native resolution, 4:3, CmdCtrlF/window restoration and exit on Intel10.13.6",
-      "sdk": "10.13"
+      "source_commit": "83c0450289acf6a686c137c40bc51d55b4ec8057",
+      "fullscreen_verified": "Historical check on previous game revision; not repeated for weapons cheat",
+      "sdk": "10.13",
+      "keyboard_cheat_verified": "Actual keyDown on ARM27 or Intel10.13.6, without window/audio/preferences writes"
     },
     {
       "path": "Applications/i386-SDK10.4u-min10.4/AstroSquid.app",
       "architecture": "i386",
       "minimum_macos": "10.4",
       "build_host": "macOS10.13.6 / Apple LLVM10 / actual SDK10.4u with isolated normalized linker stubs",
-      "source_commit": "d7dfe23316a67025548c12b281405ac346a24078",
-      "executable_sha256": "d046cba4cd57e4adefb3e4c2920572d74aa236f3ef8a4ab5a1a7f0f98b25ddac",
+      "source_commit": "83c0450289acf6a686c137c40bc51d55b4ec8057",
+      "executable_sha256": "d1361f0004b079d5206ce26b3845f61d657f988394a32644929fc4e93eeacced",
       "runtime_on_minimum_os_verified": false,
       "runtime_test_host": "Intel10.13.6 i386",
       "limitations": [
@@ -54,11 +56,13 @@
         "No full campaign run on this variant"
       ],
       "launch_verified": "LaunchServices startup and rendered splash on Intel10.13.6 after Foundation compatibility fix",
-      "fullscreen_verified": "Native resolution, 4:3, CmdCtrlF/window restoration and exit on Intel10.13.6",
-      "sdk": "10.4u"
+      "fullscreen_verified": "Historical check on previous game revision; not repeated for weapons cheat",
+      "sdk": "10.4u",
+      "keyboard_cheat_verified": "Actual keyDown on ARM27 or Intel10.13.6, without window/audio/preferences writes"
     }
   ],
   "source_commit_note": "All four bundles built from the recorded shared source revision.",
   "release_version": "0.0.1",
-  "packaged_date": "2026-11-08"
+  "packaged_date": "2026-11-08",
+  "variant": "with-cheats"
 }
