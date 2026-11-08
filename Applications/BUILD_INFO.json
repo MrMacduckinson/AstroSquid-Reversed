@@ -6,7 +6,8 @@
     "Exact old/batched star pixels at1x/2x passed ARM and Intel; keyboard/game reset tests passed modern and i386.",
     "First-use Laser peaks reduced~0.88 to~0.31 with silent idle-node gain; waveform/peak/reconfiguration tests passed ARM and Intel without speaker output.",
     "Em dash drawn explicitly because original atlas lacks its glyph; notice pixels/GL state verified.",
-    "Four candidates rebuilt; user repeated-NewGame and audio confirmation pending. No0.0.2 release; old0.0.1 assets unchanged."
+    "Ready cards now present synchronously before waiting for input; prior test-forced display removed.",
+    "User confirmed ARM New Game works without switching application focus; separator placement accepted. Intel builds and notice test passed; minimum OS runtime not rerun."
   ],
   "applications": [
     {
@@ -14,9 +15,9 @@
       "architecture": "arm64",
       "minimum_macos": "11.0",
       "build_host": "macOS27.0 / Xcode27",
-      "executable_sha256": "4e5f08160d9135e192abcba9be357df486c76dd2334700f9352e97fbe9ed7aa2",
+      "executable_sha256": "c603d1e7a650cc31f3f68d0657bf74c2bf0b920f3f43127c8e11f979e24589d0",
       "runtime_on_minimum_os_verified": false,
-      "source_commit": "421280c3dca663c8817b74feecf7605ea6ea3a7f",
+      "source_commit": "971f27b8faafdc70007a0aca259796c6fc6960df",
       "fullscreen_verified": "Historical check on previous game revision; not repeated for weapons cheat",
       "sdk": "27.0",
       "keyboard_cheat_verified": "Physical keys, Shift/Caps, activation expiry and four selections: modern and Tiger keyDown tests on ARM27/Intel10.13.6."
@@ -26,9 +27,9 @@
       "architecture": "x86_64",
       "minimum_macos": "10.13",
       "build_host": "macOS10.13.6 / Apple LLVM10",
-      "executable_sha256": "5df68dc893ae0c85535b5e8449304a8adead975a7c2f22721484595aac5ef150",
+      "executable_sha256": "214460d426daac2624690acf34a7dd280a1e952d305c83decc45651ff0c5aabf",
       "runtime_on_minimum_os_verified": false,
-      "source_commit": "421280c3dca663c8817b74feecf7605ea6ea3a7f",
+      "source_commit": "971f27b8faafdc70007a0aca259796c6fc6960df",
       "fullscreen_verified": "Historical check on previous game revision; not repeated for weapons cheat",
       "sdk": "10.13",
       "keyboard_cheat_verified": "Physical keys, Shift/Caps, activation expiry and four selections: modern and Tiger keyDown tests on ARM27/Intel10.13.6."
@@ -38,9 +39,9 @@
       "architecture": "x86_64",
       "minimum_macos": "10.7",
       "build_host": "macOS10.13.6 / Apple LLVM10",
-      "executable_sha256": "5ca544dc6fc3209cb6b4e5799c071db8ae92c38260d864e3ea212e5c7971960e",
+      "executable_sha256": "7e6805ddad56dfe9e8819cee592f266b56bd39ca8350e402d82b4b0bde2aa300",
       "runtime_on_minimum_os_verified": false,
-      "source_commit": "421280c3dca663c8817b74feecf7605ea6ea3a7f",
+      "source_commit": "971f27b8faafdc70007a0aca259796c6fc6960df",
       "fullscreen_verified": "Historical check on previous game revision; not repeated for weapons cheat",
       "sdk": "10.13",
       "keyboard_cheat_verified": "Physical keys, Shift/Caps, activation expiry and four selections: modern and Tiger keyDown tests on ARM27/Intel10.13.6."
@@ -50,8 +51,8 @@
       "architecture": "i386",
       "minimum_macos": "10.4",
       "build_host": "macOS10.13.6 / Apple LLVM10 / actual SDK10.4u with isolated normalized linker stubs",
-      "source_commit": "421280c3dca663c8817b74feecf7605ea6ea3a7f",
-      "executable_sha256": "19c8f816f1c1e33689e3d87de6605f3f8d623bd3c5df81c121a1ea9b6a5ccf73",
+      "source_commit": "971f27b8faafdc70007a0aca259796c6fc6960df",
+      "executable_sha256": "a46e78a6fa9ba5648bbce45319f625ea03069c8211c1fb7d9c4ddbf8e971d94f",
       "runtime_on_minimum_os_verified": false,
       "runtime_test_host": "Intel10.13.6 i386",
       "limitations": [

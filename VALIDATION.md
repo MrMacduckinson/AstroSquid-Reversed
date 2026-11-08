@@ -1279,4 +1279,6 @@ present the card without an explicit test display or application focus change.
 Both hosts present pending cards synchronously before waiting for card input.
 The notice separator moved from y=94 to y=91, matching the visible capitals
 inside the original font cells rather than the nominal font baseline.
-User confirmation remains required; frame rate alone is not startup validation.
+ARM user confirmed the new build works without switching away and back.
+ARM ready-card/pacing test and ARM/Intel notice tests pass; all four builds pass.
+Minimum OS runtime was not repeated. Frame rate alone is not startup validation.

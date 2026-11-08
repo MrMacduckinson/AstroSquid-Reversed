@@ -9,7 +9,7 @@
 - Start/reset prewarmed sound nodes at zero gain to prevent first-cue volume bursts.
 - Center the activation notice em dash on the visible capital letters.
 - Present the ready card synchronously instead of waiting for AppKit invalidation.
-- User confirmation of repeated New Game responsiveness is still pending.
+- User confirmed New Game works without switching away and back after the ready-card fix.
 
 # Version 0.0.1 — 2026-11-08
 
