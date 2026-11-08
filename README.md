@@ -1,12 +1,12 @@
-# AstroSquid Reversed 0.0.1
+# AstroSquid Reversed 0.0.2
 
 A buildable C/Objective-C project with **four ready-to-run applications**. This
 reconstructs the behavior of Lost Minds' original game; it is not recovered
 FutureBASIC source. Playing requires no emulator, Classic Environment, or original
 executable.
 
-The current main branch includes optional cheats and changes under review for
-**0.0.2 (unreleased)**. The published **0.0.1** release remains unchanged.
+Version **0.0.2** includes optional weapons cheats, input, audio and rendering
+fixes. The historical **0.0.1** release remains available.
 This project reconstructs the original AstroSquid 1.1.
 Download published application bundles from [Releases](https://github.com/MrMacduckinson/AstroSquid-Reversed/releases).
 

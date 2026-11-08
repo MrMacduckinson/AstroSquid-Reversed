@@ -1,4 +1,4 @@
-# 0.0.2 — unreleased, awaiting user validation
+# Version 0.0.2 — 2026-11-08
 
 - Consolidate the optional weapons cheat into main; retire the separate branch/release.
 - Recognize physical key positions independently of layout, Shift and Caps Lock.
@@ -18,7 +18,7 @@
 
 First public reconstruction release. Target names include architecture, SDK and minimum OS.
 At publication, main kept normal gameplay and with-cheats provided optional weapon selection.
-The separate branch/release was subsequently retired; see the unreleased section above.
+The separate branch/release was subsequently retired; see version 0.0.2 above.
 
 # Changes
 

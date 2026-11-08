@@ -54,8 +54,8 @@ cat > "$app/Contents/Info.plist" <<PLIST
 <key>CFBundleName</key><string>AstroSquid</string>
 <key>CFBundleIconFile</key><string>AstroSquid.icns</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleVersion</key><string>0.0.1</string>
-<key>CFBundleShortVersionString</key><string>0.0.1</string>
+<key>CFBundleVersion</key><string>0.0.2</string>
+<key>CFBundleShortVersionString</key><string>0.0.2</string>
 <key>LSMinimumSystemVersion</key><string>$minimum_macos</string>
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
