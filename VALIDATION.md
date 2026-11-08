@@ -1304,3 +1304,15 @@ do not establish its unique cause. User validation remains separate.
 All four application candidates rebuilt and signatures verified. Intel modern
 and Tiger keyDown tests and Intel registration/menu-queue tests also pass.
 Minimum supported OS runtime and full campaign were not rerun.
+
+
+## Autonomous background audit — 2026-11-08
+
+See [the audit report](docs/QUALITY_AUDIT_2026-11-08.txt) for scope and limits.
+Confirmed a fractional-scale gap between HUD and world: two untouched rows at
+2618x1964 and one at1366x1024. Shared rounded viewport edges remove the gap in
+both hosts. `bash tests/world_coverage_host.sh` uses the production draw/HUD paths
+in an offscreen framebuffer; all four tested sizes are now fully covered.
+Full native/reference suite, ASan/UBSan run, 11 ARM host scripts, Intel native
+and graphics/audio checks, and Tiger component tests passed. All tests were
+background/muted; the user's screen and audio device settings were not changed.

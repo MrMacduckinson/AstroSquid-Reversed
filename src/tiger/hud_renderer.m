@@ -32,6 +32,6 @@
         }
     }
     glColor4d(1,1,1,1);glMatrixMode(GL_PROJECTION);glLoadIdentity();
-    glViewport(0,(GLint)(height*30/480),width,(GLsizei)(height*380/480));glOrtho(0,640,379,0,-1,1);glMatrixMode(GL_MODELVIEW);
+    astro_world_viewport(width,height);glOrtho(0,640,379,0,-1,1);glMatrixMode(GL_MODELVIEW);
 }
 @end

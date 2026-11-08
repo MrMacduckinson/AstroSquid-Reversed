@@ -9,6 +9,14 @@ static void destroy_first(void *context,const AstroBeam *beam) {
 }
 int main(int argc,char **argv) {
     assert(argc==2);FILE *f=fopen(argv[1],"r");assert(f);
+    // No targets is a valid shot, including a null pointer with zero count.
+    const int emptyWeapons[]={40,41,42,43,50,51,52,53};
+    for(unsigned w=0;w<8;w++)for(int heading=0;heading<360;heading++){
+        AstroBeam shots[2];uint32_t seed=123;
+        int n=astro_beam_shots(emptyWeapons[w],320,190,heading,1,1,-1,NULL,0,0,0,640,380,&seed,shots,NULL,NULL);
+        assert(n==(w<2?1:w<4?2:0));
+        for(int i=0;i<n;i++)assert(shots[i].target==-1);
+    }
     char line[512];unsigned checked=0,stale_cases=0,legacy_differences=0,edge_cases=0,interval_cases=0;
     unsigned char interval_seen[8][9]={{0}};
     while(fgets(line,sizeof(line),f)) {

@@ -1,0 +1,73 @@
+What this repo does:
+AstroSquid Reversed is a local, single-player reconstruction for four Mac targets.
+It loads bundled game resources, accepts keyboard/mouse input and saves local
+settings and high scores. This audit assumes one running game and normal local
+assets, not an untrusted mod-hosting service.
+
+Must fix (fixed in this revision)
+
+1. A thin unpainted gap between the HUD and the world at fractional scales.
+   What this is: The two renderers share a boundary at logical y=70 and y=450.
+   Problem: Truncating viewport offset and height separately leaves whole rows
+   untouched. Production rendering left 5,236 pixels (two rows) at 2618x1964
+   and 1,366 pixels (one row) at 1366x1024. Retained buffer contents can become
+   visible at the exact seam reported by the user.
+   Fix: src/world_viewport.h rounds the shared top/bottom edges once. Both
+   modern and Tiger HUD/world paths use this helper.
+   If skipped: old frame contents can remain in the strip; repainting the HUD
+   twice does not cover it. The new offscreen production-path test fails before
+   the fix and passes at 640x480, 1280x960, 2618x1964 and 1366x1024 afterward.
+   The user's movie was not readable. This proves the gap, not that every
+   observed flicker has the same cause.
+
+Validation performed without taking over the user's desktop
+
+- ARM: complete test.sh, including bundled-resource/audio/raster checks.
+- ARM: native suite under AddressSanitizer and UndefinedBehaviorSanitizer;
+  no sanitizer errors on those cases. Leak detection was disabled.
+- ARM: 11 background host scripts: cheats, notice pixels, New Game/reset,
+  registration input, settings save, packed preferences, loaded-world player,
+  Game Over input, pause, captured audio waveform, engine-change recovery.
+- ARM/Intel: fractional-scale world coverage, original/batched star pixels
+  (ARM), Retina primitive thickness, keyboard and bootstrap checks.
+- Intel: native suite, modern sound waveform test with output muted.
+- Intel i386: compatibility, actor lifetime, loading all 17 stage sections,
+  audio, departure geometry, Retina primitives, UI, and cheat input.
+  Loading stages and stepping them briefly is not a complete playthrough.
+- Intel Legacy: 18 sound buffers, six-channel limit, 100 pause/stop cycles,
+  finished-cue behavior and music pause, all muted.
+- All four application targets rebuilt; packaging/signatures checked separately
+  in Applications/BUILD_INFO.json and Applications/SHA256SUMS.
+
+Code review scope
+
+Read the current README/build entry points and the affected rendering paths.
+Reviewed application input dispatch, ready-card/menu/game flow, cheat guards,
+settings/high-score loading and saving, preference serialization, screenshot
+bounds, text editing, script parsing, and modern/Legacy/Tiger audio lifetimes.
+Reviewed original-behavior tests before changing shared geometry. Did not
+manually reread every line of the reverse-engineered physics/math implementation
+or all historical oracle traces; those were exercised by the reference suite.
+
+Static analysis scanned 21 production C files. It emitted one null-dereference
+warning in beams.c for targets=NULL,count=0. Code tracing shows point_target
+returns -1 for that case, so the dereference branch is unreachable. Added a
+regression for eight weapons across 360 headings with an empty target list;
+it passes ASan/UBSan along with the original beam vectors. No suppression or
+unnecessary production change was added for this warning.
+
+Recent fixes retained and rechecked
+
+- Ready cards render before waiting for input; no test-forced redraw masks it.
+- Cheat input accepts bound fire/movement controls and respawn protection.
+- Gameplay repeats no longer accumulate in the menu command/text queue.
+- First-use effect gain bursts and format-change node timelines are covered by
+  muted PCM checks. Game rules, health and level progression were not changed.
+
+Verdict: Fix applied for a reproducible rendering gap. The completed automated
+checks pass; no other new actionable defect was confirmed in this audit.
+
+Not checked: a new full human campaign, every GPU/display combination, actual
+macOS 11.0/10.7/10.4 runtime, driver-level physical keyboard latency, or the
+unreadable movie. The current audit did not open fullscreen windows, play sound,
+change audio devices, or ask for user interaction. No 0.0.2 release was published.

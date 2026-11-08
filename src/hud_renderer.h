@@ -1,5 +1,7 @@
 #import "ui_renderer.h"
 #include "hud.h"
+#include "world_viewport.h"
+
 @interface AstroHUDRenderer : NSObject
 @property(nonatomic,copy) AstroUISpriteDrawer didDrawSprite;
 - (instancetype)initWithGame:(NSDictionary *)game ui:(AstroUIRenderer *)ui;

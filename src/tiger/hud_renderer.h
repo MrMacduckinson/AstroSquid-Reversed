@@ -1,6 +1,7 @@
 #import "compat.h"
 #import "ui_renderer.h"
 #include "hud.h"
+#include "../world_viewport.h"
 @interface AstroHUDRenderer : NSObject {
 
     NSDictionary *_game;

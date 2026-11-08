@@ -8,6 +8,7 @@
 - Fix duplicate layer-backed rendering and missed game-clock ticks; the measured ARM
   development run increased from about 20 to 59 world updates per second.
 - Batch star vertices without changing their order or pixels.
+- Remove one/two-pixel HUD/world gaps at fractional fullscreen scales by sharing rounded viewport edges.
 - Start/reset prewarmed sound nodes at zero gain to prevent first-cue volume bursts.
 - Center the activation notice em dash on the visible capital letters.
 - Present the ready card synchronously instead of waiting for AppKit invalidation.

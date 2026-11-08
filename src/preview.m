@@ -554,7 +554,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [ui drawPicture:40 x:0 y:0 width:0 height:0 texture:^GLuint(NSInteger n){return [self texture:n];}];
         [self presentFrame];[self preloadSpriteMaps];if(![self initializeAudio])exit(1);[self reloadMainMenu];
     }
-    glViewport(0,(GLint)(bounds.size.height*30/480),(GLsizei)bounds.size.width,(GLsizei)(bounds.size.height*380/480));
+    astro_world_viewport((GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
     BOOL worldOverlay=menuVisible&&([ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"]);
     // Original RENDERGAMEWINDOW preserves both buffers outside its world draws.
     if(!worldOverlay&&(menuVisible||flow.phase!=ASTRO_FLOW_PLAY))glClear(GL_COLOR_BUFFER_BIT);
