@@ -9,7 +9,9 @@
     "Ready cards now present synchronously before waiting for input; prior test-forced display removed.",
     "User confirmed ARM New Game works without switching application focus; separator placement accepted. Intel builds and notice test passed; minimum OS runtime not rerun.",
     "Cheat input now allows bound modifier/movement controls and respawn protection; gameplay events no longer accumulate in menu queue.",
-    "ARM/Intel keyboard and menu tests pass, including Tiger keyboard handler. ARM posted-event fullscreen check: event age 1ms, first notice 17ms; user-reported multi-second delay not reproduced."
+    "ARM/Intel keyboard and menu tests pass, including Tiger keyboard handler. ARM posted-event fullscreen check: event age 1ms, first notice 17ms; user-reported multi-second delay not reproduced.",
+    "Autonomous background audit: fractional HUD/world gap fixed in both hosts; production framebuffer coverage now complete at four sizes.",
+    "Native reference tests, ARM ASan/UBSan, 11 ARM host scripts, Intel graphics/audio and Tiger component checks passed. See docs/QUALITY_AUDIT_2026-11-08.txt. No new foreground game run or release."
   ],
   "applications": [
     {
@@ -17,9 +19,9 @@
       "architecture": "arm64",
       "minimum_macos": "11.0",
       "build_host": "macOS27.0 / Xcode27",
-      "executable_sha256": "a972253d44a287910fa32e2c7e9a6efc4736da1dd66ee66e355f7d9174f08932",
+      "executable_sha256": "50ca86c830ed1f1018b793cfffd0ff578d7fd7711c3149931843b0a0d7f169de",
       "runtime_on_minimum_os_verified": false,
-      "source_commit": "0fcb7bf129ded3e921920f79076ea8c1e7900087",
+      "source_commit": "0506639d5751ab366ebeb3dead642e0f490799b6",
       "fullscreen_verified": "Historical check on previous game revision; not repeated for weapons cheat",
       "sdk": "27.0",
       "keyboard_cheat_verified": "Physical keys, Shift/Caps, activation expiry and four selections: modern and Tiger keyDown tests on ARM27/Intel10.13.6."
@@ -29,9 +31,9 @@
       "architecture": "x86_64",
       "minimum_macos": "10.13",
       "build_host": "macOS10.13.6 / Apple LLVM10",
-      "executable_sha256": "13635846eef4cdcdee3be2eac1b0550ce6d7c0eb79cb23b27c4e2d6e4608185d",
+      "executable_sha256": "032e0a6a36730fc051948d06072ec2bf83a47c4c7d840c7b4e06024cd2ffc74f",
       "runtime_on_minimum_os_verified": false,
-      "source_commit": "0fcb7bf129ded3e921920f79076ea8c1e7900087",
+      "source_commit": "0506639d5751ab366ebeb3dead642e0f490799b6",
       "fullscreen_verified": "Historical check on previous game revision; not repeated for weapons cheat",
       "sdk": "10.13",
       "keyboard_cheat_verified": "Physical keys, Shift/Caps, activation expiry and four selections: modern and Tiger keyDown tests on ARM27/Intel10.13.6."
@@ -41,9 +43,9 @@
       "architecture": "x86_64",
       "minimum_macos": "10.7",
       "build_host": "macOS10.13.6 / Apple LLVM10",
-      "executable_sha256": "45eebf48f7a0fd2295bd33cc57525ec07e387a822a4f5a3e9a2e6eec1ec1e52f",
+      "executable_sha256": "e6157f5d8418cbb588c66b7b259874bb8ce2ca8c31ba74d94bbabdd99072ed3b",
       "runtime_on_minimum_os_verified": false,
-      "source_commit": "0fcb7bf129ded3e921920f79076ea8c1e7900087",
+      "source_commit": "0506639d5751ab366ebeb3dead642e0f490799b6",
       "fullscreen_verified": "Historical check on previous game revision; not repeated for weapons cheat",
       "sdk": "10.13",
       "keyboard_cheat_verified": "Physical keys, Shift/Caps, activation expiry and four selections: modern and Tiger keyDown tests on ARM27/Intel10.13.6."
@@ -53,8 +55,8 @@
       "architecture": "i386",
       "minimum_macos": "10.4",
       "build_host": "macOS10.13.6 / Apple LLVM10 / actual SDK10.4u with isolated normalized linker stubs",
-      "source_commit": "0fcb7bf129ded3e921920f79076ea8c1e7900087",
-      "executable_sha256": "7fa1a6f946ec612c38a8eb192f02095d04a19b9a231a6f615aa26d6948e5d1f9",
+      "source_commit": "0506639d5751ab366ebeb3dead642e0f490799b6",
+      "executable_sha256": "7ab2ce290e44f36c3fab30d77efe9e728cf7c75e7e59053d793f2f13e9f624ff",
       "runtime_on_minimum_os_verified": false,
       "runtime_test_host": "Intel10.13.6 i386",
       "limitations": [

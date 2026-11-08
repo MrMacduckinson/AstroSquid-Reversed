@@ -1,5 +1,5 @@
 d7e62719b48d160d09c6bacf1a3dd6af1cb15560247672317d8a591af3bedda9  Applications/arm64-SDK27.0-min11.0/AstroSquid.app/Contents/Info.plist
-a972253d44a287910fa32e2c7e9a6efc4736da1dd66ee66e355f7d9174f08932  Applications/arm64-SDK27.0-min11.0/AstroSquid.app/Contents/MacOS/AstroSquid
+50ca86c830ed1f1018b793cfffd0ff578d7fd7711c3149931843b0a0d7f169de  Applications/arm64-SDK27.0-min11.0/AstroSquid.app/Contents/MacOS/AstroSquid
 3a4cc9c5dc1f2544ee7d8de79496ec4c97bd7dadc26675c6f0335fabadadedf8  Applications/arm64-SDK27.0-min11.0/AstroSquid.app/Contents/Resources/AstroSquid.icns
 c400b52afc70962bd8537f71e70368e52e52bfa30dcdc31b73e231a9c5abe52e  Applications/arm64-SDK27.0-min11.0/AstroSquid.app/Contents/Resources/assets/Music1.mp3
 140a5f6ecd9b44818b60a3d8badc4188f8c70a1f890e85118d75aa199ffc85b4  Applications/arm64-SDK27.0-min11.0/AstroSquid.app/Contents/Resources/assets/Music2.mp3
@@ -84,7 +84,7 @@ a9b5e262812db15c485ef7c2cf343cc3c226edc631420398ebb8bc4427088acd  Applications/a
 00fa044190f603482d3f91da8747c3ea7510bcc9e96b86c853232daa46bb3a83  Applications/arm64-SDK27.0-min11.0/AstroSquid.app/Contents/Resources/licenses/BlocksRuntime.txt
 e3e24f45357a54eba8027e17d90fd2979c537d0d528f5d07b9da9af94dc87e1a  Applications/arm64-SDK27.0-min11.0/AstroSquid.app/Contents/_CodeSignature/CodeResources
 bb178c62c698156f8c52c999a1d94e8b9cca08df7ca62d302d99fb4f839b72f3  Applications/i386-SDK10.4u-min10.4/AstroSquid.app/Contents/Info.plist
-7fa1a6f946ec612c38a8eb192f02095d04a19b9a231a6f615aa26d6948e5d1f9  Applications/i386-SDK10.4u-min10.4/AstroSquid.app/Contents/MacOS/AstroSquid
+7ab2ce290e44f36c3fab30d77efe9e728cf7c75e7e59053d793f2f13e9f624ff  Applications/i386-SDK10.4u-min10.4/AstroSquid.app/Contents/MacOS/AstroSquid
 3a4cc9c5dc1f2544ee7d8de79496ec4c97bd7dadc26675c6f0335fabadadedf8  Applications/i386-SDK10.4u-min10.4/AstroSquid.app/Contents/Resources/AstroSquid.icns
 c400b52afc70962bd8537f71e70368e52e52bfa30dcdc31b73e231a9c5abe52e  Applications/i386-SDK10.4u-min10.4/AstroSquid.app/Contents/Resources/assets/Music1.mp3
 140a5f6ecd9b44818b60a3d8badc4188f8c70a1f890e85118d75aa199ffc85b4  Applications/i386-SDK10.4u-min10.4/AstroSquid.app/Contents/Resources/assets/Music2.mp3
@@ -170,7 +170,7 @@ f4dae3729f005fb5887790f4496f7692a72a31b333c3f8dbc7d6efff36220590  Applications/i
 00fa044190f603482d3f91da8747c3ea7510bcc9e96b86c853232daa46bb3a83  Applications/i386-SDK10.4u-min10.4/AstroSquid.app/Contents/Resources/licenses/BlocksRuntime.txt
 c74cd6587d74104ed8d3bfaee5f3a4968a344296876dc5efba2e05799adcaad3  Applications/i386-SDK10.4u-min10.4/AstroSquid.app/Contents/_CodeSignature/CodeResources
 07b8b2a068a776b3da2167f721e72fcbb8b4abc33dedbe1d6ca8bcb656633f47  Applications/x86_64-SDK10.13-min10.13/AstroSquid.app/Contents/Info.plist
-13635846eef4cdcdee3be2eac1b0550ce6d7c0eb79cb23b27c4e2d6e4608185d  Applications/x86_64-SDK10.13-min10.13/AstroSquid.app/Contents/MacOS/AstroSquid
+032e0a6a36730fc051948d06072ec2bf83a47c4c7d840c7b4e06024cd2ffc74f  Applications/x86_64-SDK10.13-min10.13/AstroSquid.app/Contents/MacOS/AstroSquid
 3a4cc9c5dc1f2544ee7d8de79496ec4c97bd7dadc26675c6f0335fabadadedf8  Applications/x86_64-SDK10.13-min10.13/AstroSquid.app/Contents/Resources/AstroSquid.icns
 c400b52afc70962bd8537f71e70368e52e52bfa30dcdc31b73e231a9c5abe52e  Applications/x86_64-SDK10.13-min10.13/AstroSquid.app/Contents/Resources/assets/Music1.mp3
 140a5f6ecd9b44818b60a3d8badc4188f8c70a1f890e85118d75aa199ffc85b4  Applications/x86_64-SDK10.13-min10.13/AstroSquid.app/Contents/Resources/assets/Music2.mp3
@@ -255,7 +255,7 @@ a9b5e262812db15c485ef7c2cf343cc3c226edc631420398ebb8bc4427088acd  Applications/x
 00fa044190f603482d3f91da8747c3ea7510bcc9e96b86c853232daa46bb3a83  Applications/x86_64-SDK10.13-min10.13/AstroSquid.app/Contents/Resources/licenses/BlocksRuntime.txt
 e3e24f45357a54eba8027e17d90fd2979c537d0d528f5d07b9da9af94dc87e1a  Applications/x86_64-SDK10.13-min10.13/AstroSquid.app/Contents/_CodeSignature/CodeResources
 9caa12ffb9fac24d04cda9ebb94cf7ea714d306ca987b6f72ec18371ebb53980  Applications/x86_64-SDK10.13-min10.7/AstroSquid.app/Contents/Info.plist
-45eebf48f7a0fd2295bd33cc57525ec07e387a822a4f5a3e9a2e6eec1ec1e52f  Applications/x86_64-SDK10.13-min10.7/AstroSquid.app/Contents/MacOS/AstroSquid
+e6157f5d8418cbb588c66b7b259874bb8ce2ca8c31ba74d94bbabdd99072ed3b  Applications/x86_64-SDK10.13-min10.7/AstroSquid.app/Contents/MacOS/AstroSquid
 3a4cc9c5dc1f2544ee7d8de79496ec4c97bd7dadc26675c6f0335fabadadedf8  Applications/x86_64-SDK10.13-min10.7/AstroSquid.app/Contents/Resources/AstroSquid.icns
 c400b52afc70962bd8537f71e70368e52e52bfa30dcdc31b73e231a9c5abe52e  Applications/x86_64-SDK10.13-min10.7/AstroSquid.app/Contents/Resources/assets/Music1.mp3
 140a5f6ecd9b44818b60a3d8badc4188f8c70a1f890e85118d75aa199ffc85b4  Applications/x86_64-SDK10.13-min10.7/AstroSquid.app/Contents/Resources/assets/Music2.mp3
