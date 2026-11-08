@@ -27,7 +27,7 @@
     double before=[ui textWidth:@"WEAPONS ENABLED " size:16],after=[ui textWidth:@" SELECT 1-4" size:16];
     double dashX=320-(before+16+after)/2+before,scale=backing.size.width/640;
     unsigned char dash[128*8*4];unsigned width=16*scale;assert(width<=128);
-    glReadPixels((GLint)(dashX*scale),(GLint)((480-94)*scale)-4,width,8,GL_RGBA,GL_UNSIGNED_BYTE,dash);
+    glReadPixels((GLint)(dashX*scale),(GLint)((480-91)*scale)-4,width,8,GL_RGBA,GL_UNSIGNED_BYTE,dash);
     unsigned yellow=0;for(unsigned n=0;n<width*8;n++)if(dash[n*4]>200&&dash[n*4+1]>200&&dash[n*4+2]<150)yellow++;
     assert(yellow>=width-2);GLint viewport[4],mode;GLdouble matrix[16];
     glGetIntegerv(GL_VIEWPORT,viewport);glGetIntegerv(GL_MATRIX_MODE,&mode);glGetDoublev(GL_MODELVIEW_MATRIX,matrix);

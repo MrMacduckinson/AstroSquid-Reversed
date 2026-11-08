@@ -5,6 +5,7 @@ static BOOL measuring;static unsigned updates,draws,worldUpdates;static double b
 @interface PacingView:AstroView
 - (void)startMeasure;
 - (void)finishMeasure;
+- (void)checkReadyCard;
 - (void)stopTimer;
 @end
 @implementation PacingView
@@ -15,12 +16,19 @@ static BOOL measuring;static unsigned updates,draws,worldUpdates;static double b
 - (void)tick:(NSTimer *)t {if(measuring)updates++;[super tick:t];}
 - (void)stopTimer {pollInterval=timer.timeInterval;[timer invalidate];timer=nil;}
 - (void)startMeasure {
- [self acceptSplash];[ui show:@"Play Menu"];[self performMenuAction:@"New Game"];[self display];
- flow.ticks=59;[self advanceFlowWithKey:YES];
+ [self acceptSplash];[ui show:@"Play Menu"];[self performMenuAction:@"New Game"];
+ [self tickWallClock];assert(cardClockStarted);
  assert(self.wantsLayer);
- began=NSProcessInfo.processInfo.systemUptime;measuring=YES;
+ began=NSProcessInfo.processInfo.systemUptime;
  timer=[NSTimer scheduledTimerWithTimeInterval:pollInterval target:self selector:@selector(tick:) userInfo:nil repeats:YES];
  [[NSRunLoop currentRunLoop]addTimer:timer forMode:NSRunLoopCommonModes];
+ [self performSelector:@selector(checkReadyCard) withObject:nil afterDelay:.25];
+}
+- (void)checkReadyCard {
+ printf("READY elapsed=%.3f presented=%d\n",NSProcessInfo.processInfo.systemUptime-began,cardClockStarted);fflush(stdout);
+ assert(cardClockStarted);
+ flow.ticks=59;[self advanceFlowWithKey:YES];
+ began=NSProcessInfo.processInfo.systemUptime;measuring=YES;
  [self performSelector:@selector(finishMeasure) withObject:nil afterDelay:3];
 }
 - (void)finishMeasure {

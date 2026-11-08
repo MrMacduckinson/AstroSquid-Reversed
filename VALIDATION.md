@@ -1268,3 +1268,15 @@ width and UI) passed on10.13.6. Primitive widths passed at1x/2x on ARM and Intel
 Actual10.4/10.7 and multi-monitor hotplug were not tested. This is not a new
 full-campaign validation. User confirmation on the formerly problematic screen
 remains separate from these framebuffer checks.
+
+
+## Ready-card presentation follow-up — 2026-11-08
+
+User reports New Game remains visually stuck until switching away and back.
+The previous pacing test forced display immediately after New Game, masking
+the production deferred-display path. The test now requires tickWallClock to
+present the card without an explicit test display or application focus change.
+Both hosts present pending cards synchronously before waiting for card input.
+The notice separator moved from y=94 to y=91, matching the visible capitals
+inside the original font cells rather than the nominal font baseline.
+User confirmation remains required; frame rate alone is not startup validation.

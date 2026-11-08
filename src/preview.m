@@ -690,7 +690,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         [ui drawText:prefix x:x+offset baseline:100+offset size:16 texture:^GLuint(NSInteger n){return [self texture:n];}];
         // The original atlas has no em dash glyph; draw its full-em separator explicitly.
         glDisable(GL_TEXTURE_2D);glLineWidth(bounds.size.width/640);glBegin(GL_LINES);
-        glVertex2d(x+before+offset,94+offset);glVertex2d(x+before+16+offset,94+offset);glEnd();
+        glVertex2d(x+before+offset,91+offset);glVertex2d(x+before+16+offset,91+offset);glEnd();
         [ui drawText:suffix x:x+before+16+offset baseline:100+offset size:16 texture:^GLuint(NSInteger n){return [self texture:n];}];
     }
     glPopMatrix();glMatrixMode(GL_PROJECTION);glPopMatrix();glPopAttrib();
@@ -2124,7 +2124,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         }
         if(!menuVisible&&flow.phase!=ASTRO_FLOW_PLAY){
             [self pollFlowCard];
-            if(flow.phase!=ASTRO_FLOW_PLAY&&!cardClockStarted)[self setNeedsDisplay:YES];
+            // Present before waiting for input; deferred AppKit redraw can wait for a focus change.
+            if(flow.phase!=ASTRO_FLOW_PLAY&&!cardClockStarted)[self display];
             self.window.title=@"AstroSquid";return;
         }
         uint32_t stamp=(uint32_t)floor((NSProcessInfo.processInfo.systemUptime-clockOrigin)*60);
@@ -2134,7 +2135,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         BOOL idle=menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY;
         if(menuVisible)[self pollMainMenu];
         if(gameEndRequested){[self pollGame];return;}
-        if(idle&&!menuVisible)[self setNeedsDisplay:YES];
+        if(idle&&!menuVisible)[self display];
         self.window.title=@"AstroSquid";
     } @finally {
         wallClockPoll=NO;

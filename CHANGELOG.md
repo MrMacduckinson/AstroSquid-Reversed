@@ -7,7 +7,8 @@
   development run increased from about 20 to 59 world updates per second.
 - Batch star vertices without changing their order or pixels.
 - Start/reset prewarmed sound nodes at zero gain to prevent first-cue volume bursts.
-- Use an em dash in the activation notice.
+- Center the activation notice em dash on the visible capital letters.
+- Present the ready card synchronously instead of waiting for AppKit invalidation.
 - User confirmation of repeated New Game responsiveness is still pending.
 
 # Version 0.0.1 — 2026-11-08
