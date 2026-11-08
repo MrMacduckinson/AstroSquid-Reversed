@@ -45,6 +45,20 @@
         [self keyDown:e];
     }
     assert(cheats.weapons&&cheatNoticeUntil>NSProcessInfo.processInfo.systemUptime);
+    cheats=(AstroCheats){0};controlKeys[0]=55;controlKeys[4]=123;
+    [self type:@"wea" repeat:NO flags:NSEventModifierFlagCommand];
+    NSEvent *arrow=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:NSEventModifierFlagCommand timestamp:0 windowNumber:0 context:nil characters:@"" charactersIgnoringModifiers:@"" isARepeat:NO keyCode:123];
+    [self keyDown:arrow];
+    [self type:@"pons" repeat:NO flags:NSEventModifierFlagCommand];
+    assert(cheats.weapons);[self type:@"4" repeat:NO flags:NSEventModifierFlagCommand];assert(playerWeapon==53);
+    cheats=(AstroCheats){0};playerCombat.kind=-1;invulnerableUntil=1;
+    [self type:@"weapons" repeat:NO flags:0];assert(cheats.weapons);
+    invulnerableUntil=0;playerCombat.kind=1;
+    [queuedKeyEvents removeAllObjects];
+    for(unsigned n=0;n<1000;n++)[self type:@"w" repeat:YES flags:0];
+    assert(!queuedKeyEvents.count);
+    menuVisible=YES;[self type:@"w" repeat:YES flags:0];assert(queuedKeyEvents.count==1);
+    puts("PASS shooting/movement during cheat input, respawn protection, no gameplay repeat backlog, retained menu input");
     puts("PASS layout-independent physical keys with Shift/Caps Lock and timed notice");
     puts("PASS actual keyDown: guards, activation, four selections, HUD and consumed key isolation");
 }

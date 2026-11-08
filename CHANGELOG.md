@@ -2,6 +2,8 @@
 
 - Consolidate the optional weapons cheat into main; retire the separate branch/release.
 - Recognize physical key positions independently of layout, Shift and Caps Lock.
+- Accept cheat input while using bound fire/movement controls and during respawn protection.
+- Stop retaining gameplay key repeats in the menu input queue.
 - Show a three-second activation notice and reset cheats when starting another game.
 - Fix duplicate layer-backed rendering and missed game-clock ticks; the measured ARM
   development run increased from about 20 to 59 world updates per second.

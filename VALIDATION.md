@@ -1282,3 +1282,21 @@ inside the original font cells rather than the nominal font baseline.
 ARM user confirmed the new build works without switching away and back.
 ARM ready-card/pacing test and ARM/Intel notice tests pass; all four builds pass.
 Minimum OS runtime was not repeated. Frame rate alone is not startup validation.
+
+
+## Cheat input follow-up — 2026-11-08
+
+Confirmed conflicts: Command (default fire) blocked all cheat input; movement
+key-downs between letters reset the prefix. Bound non-cheat controls now preserve
+the prefix and bound modifier buttons no longer count as unrelated shortcuts.
+Respawn protection accepts input while actual death/wait/transition guards remain.
+Gameplay key events no longer accumulate in the menu text/command queue.
+
+ARM actual keyDown tests cover bound Command plus interleaved movement, weapon
+selection, protection, and 1000 repeats without backlog; menu repeats remain
+retained. Existing registration and menu command/queue checks pass.
+Real fullscreen NSApplication event loop receives posted physical key events
+with Command and interleaved arrows: max event age 1 ms, first rendered notice
+17 ms, subsequent world rate 57.55 Hz. This is not physical keyboard injection.
+The user's multi-second delayed notice was not reproduced; these measurements
+do not establish its unique cause. User validation remains separate.

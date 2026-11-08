@@ -2498,19 +2498,31 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)keyDown:(NSEvent *)event {
     unsigned key=event.keyCode;
+    NSUInteger shortcutModifiers=event.modifierFlags&(NSEventModifierFlagCommand|NSEventModifierFlagControl|NSEventModifierFlagOption);
+    BOOL gameControl=NO;
+    for(unsigned i=0;i<6;i++) {
+        unsigned code=controlKeys[i];gameControl|=key==code;
+        // Bound modifiers are gameplay buttons (Command fires by default), not shortcuts.
+        if(code==54||code==55)shortcutModifiers&=~NSEventModifierFlagCommand;
+        if(code==59||code==62)shortcutModifiers&=~NSEventModifierFlagControl;
+        if(code==58||code==61)shortcutModifiers&=~NSEventModifierFlagOption;
+    }
     BOOL cheatInput=!splashVisible&&!menuVisible&&!paused&&!gameOver&&editingKey<0&&
-        flow.phase==ASTRO_FLOW_PLAY&&playerCombat.kind==1&&!specialLoopRunning&&!changingStage&&
-        !(event.modifierFlags&(NSEventModifierFlagCommand|NSEventModifierFlagControl|NSEventModifierFlagOption));
+        flow.phase==ASTRO_FLOW_PLAY&&(playerCombat.kind==1||invulnerableUntil)&&
+        !respawnPending&&!respawnTick&&!specialLoopRunning&&!changingStage&&!shortcutModifiers;
     if(!cheatInput)cheats.matched=0;
-    else if(!event.isARepeat) {
+    else if(!event.isARepeat&&(!gameControl||astro_cheat_character(key))) {
         int action=astro_cheat_key(&cheats,astro_cheat_character(key),&inventory);
         if(action==2){cheatNoticeUntil=NSProcessInfo.processInfo.systemUptime+3;return;}
         if(action==1){playerWeapon=inventory.weapon+inventory.upgrade;hudRedraws=2;return;}
     }
     if(splashVisible){if(key<128){keys[key]=YES;[self acceptSplash];}return;}
     if(key<128) keys[key]=YES;
-    if(!queuedKeyEvents)ASTRO_STORE(queuedKeyEvents,[NSMutableArray array]);
-    [queuedKeyEvents addObject:event];
+    // Gameplay uses the key map; retaining its repeats would replay them in later menus.
+    if(menuVisible) {
+        if(!queuedKeyEvents)ASTRO_STORE(queuedKeyEvents,[NSMutableArray array]);
+        [queuedKeyEvents addObject:event];
+    }
     if(menuVisible&&!gameOver&&!paused&&editingKey<0&&ui.activeRegistrationField>=0)return;
     if(menuVisible&&[ui.anchor isEqual:@"GameOver"]&&ui.editingHighscore>0)return;
     if(menuVisible&&gameOver)return;

@@ -49,7 +49,9 @@ uses a full-resolution OpenGL surface.
 During active gameplay, type **weapons** using the physical key positions of a
 US/QWERTY keyboard. This also works with another input layout selected (for
 example, the same Russian-layout keys spell `weapons` by position). Shift and
-Caps Lock do not matter; do not hold Command, Control or Option.
+Caps Lock do not matter. You can keep using bound movement/fire controls while
+typing, including Command for the default fire binding. Unbound Command, Control
+or Option combinations are ignored.
 A yellow **WEAPONS ENABLED — SELECT 1–4** message appears for three seconds.
 Then press the top-row **1**, **2**, **3** or **4** keys to select weapon families
 10, 30, 40 or 50 at upgrade level 3. Each selection refills special attacks to 4.
@@ -58,6 +60,7 @@ The cheat is limited to the current game: New Game or selecting a starting level
 resets it. Death within that game does not remove the unlock, but normal weapon
 downgrade rules still apply; press a selection key again to restore the upgrade.
 Menus, registration, pause, death and transitions ignore cheat activation.
+Input is accepted during the temporary protection period after respawning.
 Lives, health, level progression and damage remain normal. Scores share the
 normal profile and can therefore include cheat-assisted runs.
 
