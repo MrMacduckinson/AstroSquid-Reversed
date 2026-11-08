@@ -1,10 +1,12 @@
 {
   "built_date": "2026-11-08",
   "notes": [
-    "All four development bundles rebuilt with per-game/layout-independent weapons cheat and 3-second notice.",
-    "Actual keyboard tests passed modern/i386; real font GPU notice and NewGame/level-choice reset passed ARM/Intel.",
-    "Reported New Game beachball not reproduced: silent background probe NewGame 0.008s, initial graphics/audio 3.428s. No timing fix claimed.",
-    "No new public release; published 0.0.1 assets unchanged. No actual oldest-OS or full-campaign retest."
+    "Unreleased candidate: corrected frame polling, synchronous layer-backed draws and batched stars; main only.",
+    "ARM macOS27 fullscreen pacing:177worldupdates/177draws in3.001s,58.98Hz (old~20Hz/duplicate draws).",
+    "Exact old/batched star pixels at1x/2x passed ARM and Intel; keyboard/game reset tests passed modern and i386.",
+    "First-use Laser peaks reduced~0.88 to~0.31 with silent idle-node gain; waveform/peak/reconfiguration tests passed ARM and Intel without speaker output.",
+    "Em dash drawn explicitly because original atlas lacks its glyph; notice pixels/GL state verified.",
+    "Four candidates rebuilt; user repeated-NewGame and audio confirmation pending. No0.0.2 release; old0.0.1 assets unchanged."
   ],
   "applications": [
     {
@@ -12,9 +14,9 @@
       "architecture": "arm64",
       "minimum_macos": "11.0",
       "build_host": "macOS27.0 / Xcode27",
-      "executable_sha256": "385275a82721aa795c415a8195e9f6f38dc578b1a8c89fb5c76c28e33fdcb129",
+      "executable_sha256": "4e5f08160d9135e192abcba9be357df486c76dd2334700f9352e97fbe9ed7aa2",
       "runtime_on_minimum_os_verified": false,
-      "source_commit": "1f009f3c9b8df70ba9f2385be399dc77a79ee026",
+      "source_commit": "421280c3dca663c8817b74feecf7605ea6ea3a7f",
       "fullscreen_verified": "Historical check on previous game revision; not repeated for weapons cheat",
       "sdk": "27.0",
       "keyboard_cheat_verified": "Physical keys, Shift/Caps, activation expiry and four selections: modern and Tiger keyDown tests on ARM27/Intel10.13.6."
@@ -24,9 +26,9 @@
       "architecture": "x86_64",
       "minimum_macos": "10.13",
       "build_host": "macOS10.13.6 / Apple LLVM10",
-      "executable_sha256": "cc07ba0a73495e9ab9d38a9df55ab4bad04cc4f1ea18fe220c4602744f4f7a4b",
+      "executable_sha256": "5df68dc893ae0c85535b5e8449304a8adead975a7c2f22721484595aac5ef150",
       "runtime_on_minimum_os_verified": false,
-      "source_commit": "1f009f3c9b8df70ba9f2385be399dc77a79ee026",
+      "source_commit": "421280c3dca663c8817b74feecf7605ea6ea3a7f",
       "fullscreen_verified": "Historical check on previous game revision; not repeated for weapons cheat",
       "sdk": "10.13",
       "keyboard_cheat_verified": "Physical keys, Shift/Caps, activation expiry and four selections: modern and Tiger keyDown tests on ARM27/Intel10.13.6."
@@ -36,9 +38,9 @@
       "architecture": "x86_64",
       "minimum_macos": "10.7",
       "build_host": "macOS10.13.6 / Apple LLVM10",
-      "executable_sha256": "477dde212ed28831d927f14c3884867ea3a8f6cc552ae91491eb64b30cc4bb81",
+      "executable_sha256": "5ca544dc6fc3209cb6b4e5799c071db8ae92c38260d864e3ea212e5c7971960e",
       "runtime_on_minimum_os_verified": false,
-      "source_commit": "1f009f3c9b8df70ba9f2385be399dc77a79ee026",
+      "source_commit": "421280c3dca663c8817b74feecf7605ea6ea3a7f",
       "fullscreen_verified": "Historical check on previous game revision; not repeated for weapons cheat",
       "sdk": "10.13",
       "keyboard_cheat_verified": "Physical keys, Shift/Caps, activation expiry and four selections: modern and Tiger keyDown tests on ARM27/Intel10.13.6."
@@ -48,8 +50,8 @@
       "architecture": "i386",
       "minimum_macos": "10.4",
       "build_host": "macOS10.13.6 / Apple LLVM10 / actual SDK10.4u with isolated normalized linker stubs",
-      "source_commit": "1f009f3c9b8df70ba9f2385be399dc77a79ee026",
-      "executable_sha256": "fd550eb85108f625b1fe3d4d20124640027be1a285649dff8743da2c2548f692",
+      "source_commit": "421280c3dca663c8817b74feecf7605ea6ea3a7f",
+      "executable_sha256": "19c8f816f1c1e33689e3d87de6605f3f8d623bd3c5df81c121a1ea9b6a5ccf73",
       "runtime_on_minimum_os_verified": false,
       "runtime_test_host": "Intel10.13.6 i386",
       "limitations": [
