@@ -12,7 +12,7 @@
 - (void)type:(NSString *)text repeat:(BOOL)repeat flags:(NSUInteger)flags {
     for(NSUInteger n=0;n<text.length;n++) {
         NSString *ch=[text substringWithRange:NSMakeRange(n,1)];
-        NSEvent *e=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:flags timestamp:0 windowNumber:0 context:nil characters:ch charactersIgnoringModifiers:ch isARepeat:repeat keyCode:18];
+        NSEvent *e=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:flags timestamp:0 windowNumber:0 context:nil characters:ch charactersIgnoringModifiers:ch isARepeat:repeat keyCode:([@{@"w":@13,@"e":@14,@"a":@0,@"p":@35,@"o":@31,@"n":@45,@"s":@1,@"1":@18,@"2":@19,@"3":@20,@"4":@21}[[ch lowercaseString]] unsignedIntValue])];
         [self keyDown:e];
     }
 }
@@ -27,7 +27,7 @@
     playerCombat.kind=-1;[self type:@"weapons" repeat:NO flags:0];assert(!cheats.weapons);playerCombat.kind=1;
     [self type:@"wea" repeat:NO flags:0];menuVisible=YES;[self type:@"p" repeat:NO flags:0];menuVisible=NO;
     [self type:@"ons" repeat:NO flags:0];assert(!cheats.weapons);
-    [self type:@"WEAPONS" repeat:NO flags:0];assert(cheats.weapons);
+    [self type:@"WEAPONS" repeat:NO flags:0];assert(cheats.weapons&&cheatNoticeUntil>NSProcessInfo.processInfo.systemUptime);
     const int expected[]={13,33,43,53};
     for(int n=0;n<4;n++){
         NSUInteger queued=queuedKeyEvents.count;memset(keys,0,sizeof(keys));hudRedraws=0;
@@ -38,6 +38,14 @@
     changingStage=YES;[self type:@"1" repeat:NO flags:0];assert(playerWeapon==53);changingStage=NO;
     specialLoopRunning=YES;[self type:@"1" repeat:NO flags:0];assert(playerWeapon==53);specialLoopRunning=NO;
     menuVisible=YES;[self type:@"1" repeat:NO flags:0];assert(playerWeapon==53);
+    cheats=(AstroCheats){0};menuVisible=NO;
+    const unsigned codes[]={13,14,0,35,31,45,1};
+    for(unsigned n=0;n<7;n++) {
+        NSEvent *e=[NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint modifierFlags:NSEventModifierFlagShift|NSEventModifierFlagCapsLock timestamp:0 windowNumber:0 context:nil characters:@"x" charactersIgnoringModifiers:@"x" isARepeat:NO keyCode:codes[n]];
+        [self keyDown:e];
+    }
+    assert(cheats.weapons&&cheatNoticeUntil>NSProcessInfo.processInfo.systemUptime);
+    puts("PASS layout-independent physical keys with Shift/Caps Lock and timed notice");
     puts("PASS actual keyDown: guards, activation, four selections, HUD and consumed key isolation");
 }
 @end

@@ -7,6 +7,7 @@ int main(void){
     assert(!astro_cheat_key(&c,'4',&i)&&i.weapon==10&&i.upgrade==0);
     type(&c,&i,"weapXons");assert(!c.weapons);
     type(&c,&i,"wwWEAPONS");assert(c.weapons);
+    assert(astro_cheat_character(13)=='w'&&astro_cheat_character(21)=='4'&&!astro_cheat_character(127));
     const int family[]={10,30,40,50};
     for(unsigned n=0;n<4;n++){
         assert(astro_cheat_key(&c,'1'+n,&i));

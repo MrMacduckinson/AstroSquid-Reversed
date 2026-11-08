@@ -26,11 +26,11 @@ static unsigned resets,seedReads,startPhase;static BOOL checkStart;static int ol
  assert(![messages containsObject:@"0"]&&!starsInitialized);uint32_t seeded=123;astro_random(&seeded,1);assert(randomSeed==seeded);[self reloadMainMenu];
  NSError *error=nil;AstroUIRenderer *reference=[[AstroUIRenderer alloc]initWithAssets:assets error:&error];assert(reference);uint32_t expected=123;astro_random(&expected,1);[reference reloadMenuWithRandom:&expected];AstroStar menuStars[3000];astro_stars_init(menuStars,1,&expected);double dx=astro_random(&expected,8)-4,dy=astro_random(&expected,8)-4;
  assert(randomSeed==expected&&menuScroll.x==dx&&menuScroll.y==dy&&!memcmp(stars,menuStars,sizeof menuStars));
- splashVisible=NO;[ui show:@"Play Menu"];oldScore=score=123456;inventory=(AstroInventory){50,3,8,7};gameEndRequested=YES;checkStart=YES;startPhase=0;[self performMenuAction:@"New Game"];checkStart=NO;assert(startPhase==4&&inventory.weapon==10&&!inventory.upgrade&&inventory.specials==1&&inventory.lives==1);
+ splashVisible=NO;[ui show:@"Play Menu"];oldScore=score=123456;inventory=(AstroInventory){50,3,8,7};gameEndRequested=YES;cheats=(AstroCheats){3,1};cheatNoticeUntil=1e12;checkStart=YES;startPhase=0;[self performMenuAction:@"New Game"];assert(!cheats.weapons&&!cheats.matched&&!cheatNoticeUntil);checkStart=NO;assert(startPhase==4&&inventory.weapon==10&&!inventory.upgrade&&inventory.specials==1&&inventory.lives==1);
  assert(resets==1&&world.count&&enemies.count&&[world containsObject:[NSNull null]]&&campaign.level==1&&campaign.half==1&&gameLoopActive&&!playerVisualDeleted);
  assert([messages isEqual:@[@"0"]]);[self destroyGameWorld];assert(!world.count&&!enemies.count);
  oldScore=score=-1;inventory=(AstroInventory){50,3,8,7};gameEndRequested=YES;ui.unlockedLevel=16;
- checkStart=YES;startPhase=0;[self performMenuAction:@"Level8"];checkStart=NO;
+ cheats=(AstroCheats){3,1};cheatNoticeUntil=1e12;checkStart=YES;startPhase=0;[self performMenuAction:@"Level8"];assert(!cheats.weapons&&!cheats.matched&&!cheatNoticeUntil);checkStart=NO;
  assert(startPhase==4&&resets==2&&campaign.level==4&&campaign.half==2&&inventory.weapon==10&&!inventory.upgrade&&inventory.specials==1&&inventory.lives==1);
  [self destroyGameWorld];puts("PASS NewGame/Continue load old score/inventory, clear score before swap, reset lives/end before player, then initialize equipment");
  puts("PASS bootstrap has no game actors/maps/level-load message; native-proven menu RNG/star/drift composition retained; NewGame creates level/player exactly once");

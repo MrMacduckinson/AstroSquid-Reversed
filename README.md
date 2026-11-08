@@ -5,9 +5,10 @@ reconstructs the behavior of Lost Minds' original game; it is not recovered
 FutureBASIC source. Playing requires no emulator, Classic Environment, or original
 executable.
 
-This port is version **0.0.1**, based on the original AstroSquid 1.1.
-`main` has no player cheats; `with-cheats` adds the optional `weapons` cheat.
-Download complete application bundles from [Releases](https://github.com/MrMacduckinson/AstroSquid-Reversed/releases).
+The current main branch includes optional cheats and changes under review for
+**0.0.2 (unreleased)**. The published **0.0.1** release remains unchanged.
+This project reconstructs the original AstroSquid 1.1.
+Download published application bundles from [Releases](https://github.com/MrMacduckinson/AstroSquid-Reversed/releases).
 
 ## Choose an application
 
@@ -43,18 +44,22 @@ uses a full-resolution OpenGL surface.
 - Settings: controls, sound, music and filtering. Settings, scores and unlocked stages persist.
 - Command-Q or closing the window: quit. An active special attack or transition can defer exit.
 
-## Weapons cheat (with-cheats branch only)
+## Weapons cheat
 
-During active gameplay, type **weapons** using the English keyboard layout, with
-no Command/Control/Option modifier held. Then press **1**, **2**, **3** or **4**
-to select weapon families 10, 30, 40 or 50 at upgrade level 3. Each selection also
-refills special attacks to 4. The HUD shows the selected weapon and upgrade.
-The unlock lasts until you quit the application; it is not saved. After death,
-normal downgrade rules still apply: select a weapon again to restore its upgrade.
-Typing in menus, registration, pause, death or transitions does not activate it.
-Lives, health, level progression and damage remain normal. High scores share the
-normal application profile and can therefore include cheat-assisted runs.
-Download **0.0.1-with-cheats**, not the normal **0.0.1** release, for this feature.
+During active gameplay, type **weapons** using the physical key positions of a
+US/QWERTY keyboard. This also works with another input layout selected (for
+example, the same Russian-layout keys spell `weapons` by position). Shift and
+Caps Lock do not matter; do not hold Command, Control or Option.
+A yellow **WEAPONS ENABLED - SELECT 1-4** message appears for three seconds.
+Then press the top-row **1**, **2**, **3** or **4** keys to select weapon families
+10, 30, 40 or 50 at upgrade level 3. Each selection refills special attacks to 4.
+
+The cheat is limited to the current game: New Game or selecting a starting level
+resets it. Death within that game does not remove the unlock, but normal weapon
+downgrade rules still apply; press a selection key again to restore the upgrade.
+Menus, registration, pause, death and transitions ignore cheat activation.
+Lives, health, level progression and damage remain normal. Scores share the
+normal profile and can therefore include cheat-assisted runs.
 
 ## Scope and completion
 

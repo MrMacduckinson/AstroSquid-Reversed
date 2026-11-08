@@ -104,6 +104,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     NSUInteger emittedShots,damageHits,emittedBeams;
     int playerWeapon;
     AstroCheats cheats;
+    NSTimeInterval cheatNoticeUntil;
     int16_t preferenceFPS;
     AstroInventory inventory;
     AstroCampaign campaign;
@@ -666,7 +667,22 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     simulationTick=worldRenderTick;
     deferPresent=YES;simulationRender=YES;[self display];simulationRender=NO;deferPresent=NO;
 }
+- (void)drawCheatNotice {
+    if(!cheats.weapons||menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY||
+       NSProcessInfo.processInfo.systemUptime>=cheatNoticeUntil)return;
+    glPushAttrib(GL_ENABLE_BIT|GL_COLOR_BUFFER_BIT|GL_CURRENT_BIT|GL_TEXTURE_BIT|GL_VIEWPORT_BIT|GL_TRANSFORM_BIT);
+    NSRect bounds=[self convertRectToBacking:self.bounds];
+    glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
+    glMatrixMode(GL_PROJECTION);glPushMatrix();glLoadIdentity();glOrtho(0,640,480,0,-1,1);
+    glMatrixMode(GL_MODELVIEW);glPushMatrix();glLoadIdentity();
+    NSString *text=@"WEAPONS ENABLED - SELECT 1-4";
+    double x=320-[ui textWidth:text size:16]/2;
+    glColor4d(0,0,0,1);[ui drawText:text x:x+1 baseline:101 size:16 texture:^GLuint(NSInteger n){return [self texture:n];}];
+    glColor4d(1,1,.3,1);[ui drawText:text x:x baseline:100 size:16 texture:^GLuint(NSInteger n){return [self texture:n];}];
+    glPopMatrix();glMatrixMode(GL_PROJECTION);glPopMatrix();glPopAttrib();
+}
 - (void)presentFrame {
+    [self drawCheatNotice];
     if(visualDebug){
         // The original rate is assigned from the signed16 frame counter.
         NSString *text=[NSString stringWithFormat:@"% .0f fps % d sprites drawn",visualRate,visualSprites];
@@ -2474,11 +2490,9 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         !(event.modifierFlags&(NSEventModifierFlagCommand|NSEventModifierFlagControl|NSEventModifierFlagOption));
     if(!cheatInput)cheats.matched=0;
     else if(!event.isARepeat) {
-        NSString *text=event.charactersIgnoringModifiers;
-        unsigned ch=text.length==1?[text characterAtIndex:0]:0;
-        if(astro_cheat_key(&cheats,ch,&inventory)) {
-            playerWeapon=inventory.weapon+inventory.upgrade;hudRedraws=2;return;
-        }
+        int action=astro_cheat_key(&cheats,astro_cheat_character(key),&inventory);
+        if(action==2){cheatNoticeUntil=NSProcessInfo.processInfo.systemUptime+3;return;}
+        if(action==1){playerWeapon=inventory.weapon+inventory.upgrade;hudRedraws=2;return;}
     }
     if(splashVisible){if(key<128){keys[key]=YES;[self acceptSplash];}return;}
     if(key<128) keys[key]=YES;
@@ -2807,6 +2821,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(command.action==ASTRO_UI_NEW_GAME||command.action==ASTRO_UI_CONTINUE) {
         NSString *stage=[NSString stringWithFormat:@"Data %d%c",command.stage,command.section==1?'A':'B'];
         NSUInteger index=[levels indexOfObject:stage];if(index==NSNotFound)return;
+        cheats=(AstroCheats){0};cheatNoticeUntil=0;
         if(!selftestPath&&!campaignTestPath)simulationTick=(uint32_t)floor((NSProcessInfo.processInfo.systemUptime-clockOrigin)*60);
         initialReadyCard=YES;readyLoadPending=NO;changingStage=NO;transition=(AstroTransition){0};pendingCampaign=(AstroCampaign){0};
         ui.editingHighscore=0;selectedLevel=index;camera=-0.0;[self resetLevelWorld];

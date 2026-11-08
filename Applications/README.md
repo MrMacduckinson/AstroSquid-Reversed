@@ -1,5 +1,9 @@
 # Ready-to-run applications
 
+These checked-in bundles are development candidates for **0.0.2**, awaiting user
+validation. Published 0.0.1 release archives have not been replaced. See BUILD_INFO.json
+for the exact source revision; bundle version numbers will change at release time.
+
 - `arm64-SDK27.0-min11.0/AstroSquid.app`: Apple Silicon, macOS **11.0+**.
 - `x86_64-SDK10.13-min10.13/AstroSquid.app`: Intel x86_64, macOS **10.13+**.
 - `x86_64-SDK10.13-min10.7/AstroSquid.app`: Intel x86_64, target **10.7+**, separate OpenAL backend; not tested on Lion itself.

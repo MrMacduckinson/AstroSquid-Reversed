@@ -1,7 +1,15 @@
+# 0.0.2 — unreleased, awaiting user validation
+
+- Consolidate the optional weapons cheat into main; retire the separate branch/release.
+- Recognize physical key positions independently of layout, Shift and Caps Lock.
+- Show a three-second activation notice and reset cheats when starting another game.
+- Investigating a reported beachball after New Game; no timing fix is claimed yet.
+
 # Version 0.0.1 — 2026-11-08
 
 First public reconstruction release. Target names include architecture, SDK and minimum OS.
-The main branch keeps normal gameplay; optional weapon selection is on with-cheats.
+At publication, main kept normal gameplay and with-cheats provided optional weapon selection.
+The separate branch/release was subsequently retired; see the unreleased section above.
 
 # Changes
 
