@@ -1300,3 +1300,7 @@ with Command and interleaved arrows: max event age 1 ms, first rendered notice
 17 ms, subsequent world rate 57.55 Hz. This is not physical keyboard injection.
 The user's multi-second delayed notice was not reproduced; these measurements
 do not establish its unique cause. User validation remains separate.
+
+All four application candidates rebuilt and signatures verified. Intel modern
+and Tiger keyDown tests and Intel registration/menu-queue tests also pass.
+Minimum supported OS runtime and full campaign were not rerun.
