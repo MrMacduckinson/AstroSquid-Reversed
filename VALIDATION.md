@@ -1,3 +1,25 @@
+## Unreleased performance/audio regression checks — 2026-11-08
+
+On the ARM macOS 27 test host, the old live layer-backed path produced approximately
+20 world updates and 40 draws per second. The corrected path produced 177 world
+updates and 177 draws in 3.001 seconds (58.98 updates/second). The 60 Hz game clock
+still gates simulation; the host now polls it frequently enough to avoid losing
+updates while presenting frames. Forced draws no longer queue an extra AppKit
+layer redraw. `tests/frame_pacing_host.sh` is a silent foreground test for a
+layer-backed Apple Silicon display; it is not a timing guarantee for every Mac.
+
+`tests/star_renderer_host.sh` compares old and batched rendering byte-for-byte for
+menu stars, gameplay stars, trails and omitted star fields, at 1x and 2x scale.
+`tests/audio_waveform_host.sh` now checks finite samples and peak level in addition
+to waveform shape. Before the fix, first-use Laser peaks reached about 0.87–0.88;
+after silent-node initialization they were about 0.31 at the same volume. Output
+is captured upstream of a muted sink; no microphone or device settings are used.
+
+The user-reported long New Game wait was not a slow level-data read: interactive
+tracing measured preparation at 8–11 ms, with delayed visible presentation and
+late mouse-event delivery. The performance candidate still needs the user's
+repeat-start confirmation. No 0.0.2 release is published by these checks.
+
 # Historical validation record
 
 **Current handoff:** see [STATUS.md](STATUS.md) and [README.md](README.md).

@@ -50,7 +50,7 @@ During active gameplay, type **weapons** using the physical key positions of a
 US/QWERTY keyboard. This also works with another input layout selected (for
 example, the same Russian-layout keys spell `weapons` by position). Shift and
 Caps Lock do not matter; do not hold Command, Control or Option.
-A yellow **WEAPONS ENABLED - SELECT 1-4** message appears for three seconds.
+A yellow **WEAPONS ENABLED — SELECT 1–4** message appears for three seconds.
 Then press the top-row **1**, **2**, **3** or **4** keys to select weapon families
 10, 30, 40 or 50 at upgrade level 3. Each selection refills special attacks to 4.
 

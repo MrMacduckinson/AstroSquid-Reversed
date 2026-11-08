@@ -56,6 +56,19 @@ int main(int argc,char **argv){@autoreleasepool{
         @synchronized(left){left.length=right.length=0;}
         assert([audio playCue:cue]);[[NSRunLoop currentRunLoop]runUntilDate:[NSDate dateWithTimeIntervalSinceNow:duration+.7]];
         NSData *l,*r;@synchronized(left){l=[left copy];r=[right copy];}
+        double peak=0;
+        for(NSData *channel in @[l,r]) {
+            const float *values=channel.bytes;
+            for(NSUInteger i=0;i<channel.length/sizeof(float);i++) {
+                assert(isfinite(values[i]));peak=MAX(peak,fabs(values[i]));
+            }
+        }
+        // A single full-scale transient can hide inside an otherwise matching envelope.
+        double sourcePeak=0;const float *raw=pcm.bytes;for(NSUInteger i=0;i<pcm.length/sizeof(float);i++)sourcePeak=MAX(sourcePeak,fabs(raw[i]));
+        printf("%s captured peak %.5f source peak %.5f\n",cue.UTF8String,peak,sourcePeak);fflush(stdout);
+        // The two mono voices can sum at the mixer; allow resampling overshoot,
+        // but not a first-use burst at the nodes' default unity volume.
+        assert(peak<=sourcePeak*2*(76.0/255)*1.2+.01);
         double matchL=similarity(expected,envelope(l,format.sampleRate)),matchR=similarity(expected,envelope(r,format.sampleRate));
         printf("recovery%u %s duration%.3fs envelope L%.5f R%.5f\n",recovery,cue.UTF8String,duration,matchL,matchR);fflush(stdout);
         assert(matchL>.9&&matchR>.9);

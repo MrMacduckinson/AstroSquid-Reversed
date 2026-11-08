@@ -26,7 +26,8 @@ static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
 @end
 @implementation AstroCuePlayer
 - (instancetype)initWithEngine:(AVAudioEngine *)engine buffer:(AVAudioPCMBuffer *)pcm {
-    if((self=[super init])){buffer=pcm;node=[AVAudioPlayerNode new];atomic_init(&activeTicket,0);
+    // Prewarmed nodes must ramp up from silence, never down from default unity gain.
+    if((self=[super init])){buffer=pcm;node=[AVAudioPlayerNode new];node.volume=0;atomic_init(&activeTicket,0);
         [engine attachNode:node];[engine connect:node to:engine.mainMixerNode format:pcm.format];}
     return self;
 }
@@ -62,7 +63,7 @@ static float musicGain(float value){return MIN(126,(int)(value*128))/256.0f;}
 - (BOOL)play{if(!atomic_load(&activeTicket))return NO;[node play];return YES;}
 - (void)prepare{[node play];}
 - (void)pause{[node pause];}
-- (void)stop{atomic_store(&activeTicket,0);[node stop];}
+- (void)stop{atomic_store(&activeTicket,0);[node stop];node.volume=0;}
 @end
 static NSArray *preparedCue(AVAudioPCMBuffer *buffer,AVAudioEngine *engine){
     AstroCuePlayer *left=[[AstroCuePlayer alloc]initWithEngine:engine buffer:buffer];

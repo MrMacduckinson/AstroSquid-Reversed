@@ -46,6 +46,7 @@ static NSData *debugHeader(NSDateComponents *date,int32_t clock,int32_t memory,u
 #include "script.h"
 #include "weapons.h"
 #include "cheats.h"
+#include "star_renderer.h"
 #include "combat.h"
 #include "beams.h"
 #include "player.h"
@@ -347,7 +348,8 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     backgrounds=@[];parallaxData=[NSMutableData data];
     playerX = 30; playerY = 190;automatic=YES;worldBottom=380;
     previousTime = [NSDate timeIntervalSinceReferenceDate];
-    timer = [NSTimer scheduledTimerWithTimeInterval:1.0/60.0 target:self
+    // The 60 Hz game clock gates work; polling at 60 Hz itself loses ticks while drawing.
+    timer = [NSTimer scheduledTimerWithTimeInterval:0.001 target:self
                                            selector:@selector(tick:) userInfo:nil repeats:YES];
     [[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
     ui=[[AstroUIRenderer alloc] initWithAssets:path error:&error];
@@ -535,6 +537,11 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     if(menuVisible&&([ui.anchor isEqual:@"Pause"]||[ui.anchor isEqual:@"GameOver"]))ui.panelWorldOriginX=camera;
     if(consume)hudRedraws--;
 }
+- (void)display {
+    if(!self.wantsLayer){[super display];return;}
+    // The game presents synchronously; AppKit display also queues a second layer redraw.
+    [self drawRect:self.bounds];[self setNeedsDisplay:NO];
+}
 - (void)drawRect:(NSRect)dirty {
     if(graphicsReleased||stringOverflowActive)return;
     [[self openGLContext] makeCurrentContext];
@@ -574,8 +581,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
             [ui drawSplashWithTexture:^GLuint(NSInteger n){return [self texture:n];}];
             [self presentFrame];return;
         }
-        AstroSceneSink menuSink={(__bridge void *)self,sceneLine,sceneSprite,scenePoint,sceneTrail};
-        astro_stars_draw(stars,1,campaign.level,0,&menuSink);
+        astro_stars_draw_gl(stars,1,campaign.level,0,[self scenePixelScale]);
         if(menuFrameActive){menuFrameActive=NO;[self handleMenuSprites];[self pollMenuMouse];}
         visualSprites=0;
         [ui drawSprites:^(NSInteger n,double x,double y,double w,double h){
@@ -590,7 +596,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
         glVertex2d(0,0);glVertex2d(640,0);glVertex2d(640,380);glVertex2d(0,380);glEnd();
     }
     AstroSceneSink sink={(__bridge void *)self,sceneLine,sceneSprite,scenePoint,sceneTrail};
-    astro_stars_draw(stars,0,campaign.level,tickedScroll,&sink);
+    astro_stars_draw_gl(stars,0,campaign.level,tickedScroll,[self scenePixelScale]);
     visualSprites=0;
     glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     const AstroParallax *parallax=parallaxData.bytes;
@@ -675,7 +681,7 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
     glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
     glMatrixMode(GL_PROJECTION);glPushMatrix();glLoadIdentity();glOrtho(0,640,480,0,-1,1);
     glMatrixMode(GL_MODELVIEW);glPushMatrix();glLoadIdentity();
-    NSString *text=@"WEAPONS ENABLED - SELECT 1-4";
+    NSString *text=@"WEAPONS ENABLED — SELECT 1–4";
     double x=320-[ui textWidth:text size:16]/2;
     glColor4d(0,0,0,1);[ui drawText:text x:x+1 baseline:101 size:16 texture:^GLuint(NSInteger n){return [self texture:n];}];
     glColor4d(1,1,.3,1);[ui drawText:text x:x baseline:100 size:16 texture:^GLuint(NSInteger n){return [self texture:n];}];

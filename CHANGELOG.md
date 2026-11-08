@@ -3,7 +3,12 @@
 - Consolidate the optional weapons cheat into main; retire the separate branch/release.
 - Recognize physical key positions independently of layout, Shift and Caps Lock.
 - Show a three-second activation notice and reset cheats when starting another game.
-- Investigating a reported beachball after New Game; no timing fix is claimed yet.
+- Fix duplicate layer-backed rendering and missed game-clock ticks; the measured ARM
+  development run increased from about 20 to 59 world updates per second.
+- Batch star vertices without changing their order or pixels.
+- Start/reset prewarmed sound nodes at zero gain to prevent first-cue volume bursts.
+- Use an em dash in the activation notice.
+- User confirmation of repeated New Game responsiveness is still pending.
 
 # Version 0.0.1 — 2026-11-08
 
