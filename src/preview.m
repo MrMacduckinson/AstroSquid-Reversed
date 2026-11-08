@@ -676,15 +676,23 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 - (void)drawCheatNotice {
     if(!cheats.weapons||menuVisible||paused||gameOver||flow.phase!=ASTRO_FLOW_PLAY||
        NSProcessInfo.processInfo.systemUptime>=cheatNoticeUntil)return;
-    glPushAttrib(GL_ENABLE_BIT|GL_COLOR_BUFFER_BIT|GL_CURRENT_BIT|GL_TEXTURE_BIT|GL_VIEWPORT_BIT|GL_TRANSFORM_BIT);
+    glPushAttrib(GL_ENABLE_BIT|GL_COLOR_BUFFER_BIT|GL_CURRENT_BIT|GL_TEXTURE_BIT|GL_VIEWPORT_BIT|GL_TRANSFORM_BIT|GL_LINE_BIT);
     NSRect bounds=[self convertRectToBacking:self.bounds];
     glViewport(0,0,(GLsizei)bounds.size.width,(GLsizei)bounds.size.height);
     glMatrixMode(GL_PROJECTION);glPushMatrix();glLoadIdentity();glOrtho(0,640,480,0,-1,1);
     glMatrixMode(GL_MODELVIEW);glPushMatrix();glLoadIdentity();
-    NSString *text=@"WEAPONS ENABLED — SELECT 1–4";
-    double x=320-[ui textWidth:text size:16]/2;
-    glColor4d(0,0,0,1);[ui drawText:text x:x+1 baseline:101 size:16 texture:^GLuint(NSInteger n){return [self texture:n];}];
-    glColor4d(1,1,.3,1);[ui drawText:text x:x baseline:100 size:16 texture:^GLuint(NSInteger n){return [self texture:n];}];
+    NSString *prefix=@"WEAPONS ENABLED ",*suffix=@" SELECT 1-4";
+    double before=[ui textWidth:prefix size:16],after=[ui textWidth:suffix size:16];
+    double x=320-(before+16+after)/2;
+    for(unsigned pass=0;pass<2;pass++) {
+        double offset=pass?0:1;
+        if(pass)glColor4d(1,1,.3,1);else glColor4d(0,0,0,1);
+        [ui drawText:prefix x:x+offset baseline:100+offset size:16 texture:^GLuint(NSInteger n){return [self texture:n];}];
+        // The original atlas has no em dash glyph; draw its full-em separator explicitly.
+        glDisable(GL_TEXTURE_2D);glLineWidth(bounds.size.width/640);glBegin(GL_LINES);
+        glVertex2d(x+before+offset,94+offset);glVertex2d(x+before+16+offset,94+offset);glEnd();
+        [ui drawText:suffix x:x+before+16+offset baseline:100+offset size:16 texture:^GLuint(NSInteger n){return [self texture:n];}];
+    }
     glPopMatrix();glMatrixMode(GL_PROJECTION);glPopMatrix();glPopAttrib();
 }
 - (void)presentFrame {
