@@ -43,6 +43,19 @@ uses a full-resolution OpenGL surface.
 - Settings: controls, sound, music and filtering. Settings, scores and unlocked stages persist.
 - Command-Q or closing the window: quit. An active special attack or transition can defer exit.
 
+## Weapons cheat (with-cheats branch only)
+
+During active gameplay, type **weapons** using the English keyboard layout, with
+no Command/Control/Option modifier held. Then press **1**, **2**, **3** or **4**
+to select weapon families 10, 30, 40 or 50 at upgrade level 3. Each selection also
+refills special attacks to 4. The HUD shows the selected weapon and upgrade.
+The unlock lasts until you quit the application; it is not saved. After death,
+normal downgrade rules still apply: select a weapon again to restore its upgrade.
+Typing in menus, registration, pause, death or transitions does not activate it.
+Lives, health, level progression and damage remain normal. High scores share the
+normal application profile and can therefore include cheat-assisted runs.
+Download **0.0.1-with-cheats**, not the normal **0.0.1** release, for this feature.
+
 ## Scope and completion
 
 Implemented: all **17 stage sections**, enemies and bosses, regular weapons,

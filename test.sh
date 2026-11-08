@@ -2,6 +2,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 mkdir -p build
+"${CC:-cc}" -std=c99 -Wall -Wextra tests/cheats_test.c -o build/cheats_test
+build/cheats_test
 "${CC:-cc}" -std=c99 -O2 -Wall -Wextra tests/picture_test.c src/picture.c -o build/picture_test
 picture_python=$(command -v python3 || command -v python)
 "$picture_python" tests/picture_native_test.py build/picture_test

@@ -45,6 +45,7 @@ static NSData *debugHeader(NSDateComponents *date,int32_t clock,int32_t memory,u
 #include "ppc_math.h"
 #include "script.h"
 #include "weapons.h"
+#include "cheats.h"
 #include "combat.h"
 #include "beams.h"
 #include "player.h"
@@ -102,6 +103,7 @@ static int visualOrder(const void *a,const void *b){uint64_t x=((const VisualUpd
     int score;
     NSUInteger emittedShots,damageHits,emittedBeams;
     int playerWeapon;
+    AstroCheats cheats;
     int16_t preferenceFPS;
     AstroInventory inventory;
     AstroCampaign campaign;
@@ -2467,6 +2469,17 @@ static void sceneTrail(void *context,double x,double y,double ex,double gray) {
 }
 - (void)keyDown:(NSEvent *)event {
     unsigned key=event.keyCode;
+    BOOL cheatInput=!splashVisible&&!menuVisible&&!paused&&!gameOver&&editingKey<0&&
+        flow.phase==ASTRO_FLOW_PLAY&&playerCombat.kind==1&&!specialLoopRunning&&!changingStage&&
+        !(event.modifierFlags&(NSEventModifierFlagCommand|NSEventModifierFlagControl|NSEventModifierFlagOption));
+    if(!cheatInput)cheats.matched=0;
+    else if(!event.isARepeat) {
+        NSString *text=event.charactersIgnoringModifiers;
+        unsigned ch=text.length==1?[text characterAtIndex:0]:0;
+        if(astro_cheat_key(&cheats,ch,&inventory)) {
+            playerWeapon=inventory.weapon+inventory.upgrade;hudRedraws=2;return;
+        }
+    }
     if(splashVisible){if(key<128){keys[key]=YES;[self acceptSplash];}return;}
     if(key<128) keys[key]=YES;
     if(!queuedKeyEvents)queuedKeyEvents=[NSMutableArray array];
